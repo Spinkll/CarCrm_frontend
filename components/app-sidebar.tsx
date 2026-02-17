@@ -11,6 +11,7 @@ import {
   Wrench,
   ChevronLeft,
   ChevronRight,
+  UserCog,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
@@ -31,6 +32,7 @@ const navItems: NavItem[] = [
   { label: "Vehicles", href: "/vehicles", icon: Car, roles: ["admin", "mechanic", "client"] },
   { label: "Service Orders", href: "/orders", icon: ClipboardList, roles: ["admin", "mechanic", "client"] },
   { label: "Appointments", href: "/appointments", icon: CalendarDays, roles: ["admin", "mechanic", "client"] },
+  { label: "Employees", href: "/employees", icon: UserCog, roles: ["admin"] },
 ]
 
 export function AppSidebar() {

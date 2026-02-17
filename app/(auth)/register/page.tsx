@@ -7,16 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Wrench, UserPlus } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
-import type { UserRole } from "@/lib/data"
 
 export default function RegisterPage() {
   const { register } = useAuth()
@@ -26,7 +18,6 @@ export default function RegisterPage() {
     email: "",
     password: "",
     confirmPassword: "",
-    role: "" as UserRole | "",
   })
   const [error, setError] = useState("")
 
@@ -34,7 +25,7 @@ export default function RegisterPage() {
     e.preventDefault()
     setError("")
 
-    if (!form.name || !form.email || !form.password || !form.role) {
+    if (!form.name || !form.email || !form.password) {
       setError("Please fill in all fields")
       return
     }
@@ -49,7 +40,7 @@ export default function RegisterPage() {
       return
     }
 
-    const result = register(form.name, form.email, form.password, form.role as UserRole)
+    const result = register(form.name, form.email, form.password, "client")
     if (result.success) {
       router.replace("/")
     } else {
@@ -125,24 +116,9 @@ export default function RegisterPage() {
                 required
               />
             </div>
-            <div className="grid gap-2">
-              <Label>Role</Label>
-              <Select
-                value={form.role}
-                onValueChange={(v) => setForm({ ...form, role: v as UserRole })}
-              >
-                <SelectTrigger className="w-full bg-secondary">
-                  <SelectValue placeholder="Select your role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="client">Client</SelectItem>
-                  <SelectItem value="mechanic">Mechanic</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Admin accounts can only be created by existing administrators
-              </p>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              By registering you will create a client account. Employee accounts are created by administrators.
+            </p>
             <Button type="submit" className="gap-2">
               <UserPlus className="size-4" />
               Create Account

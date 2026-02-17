@@ -11,6 +11,9 @@ type AuthContextType = {
   isLoading: boolean
   login: (email: string, password: string) => { success: boolean; error?: string }
   register: (name: string, email: string, password: string, role: UserRole) => { success: boolean; error?: string }
+  addEmployee: (name: string, email: string, password: string, role: "mechanic" | "admin") => { success: boolean; error?: string }
+  removeEmployee: (userId: string) => { success: boolean; error?: string }
+  getEmployees: () => AuthUser[]
   logout: () => void
 }
 
@@ -111,6 +114,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     []
   )
 
+  const addEmployee = useCallback(
+    (name: string, email: string, password: string, role: "mechanic" | "admin") => {
+      const users = getStoredUsers()
+      if (users.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
+        return { success: false, error: "Email already exists" }
+      }
+
+      const newId = `U${String(Date.now()).slice(-6)}`
+      const newUser: AppUser = {
+        id: newId,
+        name,
+        email,
+        password,
+        role,
+        mechanicName: role === "mechanic" ? name : undefined,
+      }
+
+      const updatedUsers = [...users, newUser]
+      storeUsers(updatedUsers)
+      return { success: true }
+    },
+    []
+  )
+
+  const removeEmployee = useCallback(
+    (userId: string) => {
+      const users = getStoredUsers()
+      const target = users.find((u) => u.id === userId)
+      if (!target) return { success: false, error: "User not found" }
+      if (target.role === "client") return { success: false, error: "Cannot remove client accounts from employees" }
+      if (target.id === user?.id) return { success: false, error: "Cannot remove yourself" }
+
+      const updatedUsers = users.filter((u) => u.id !== userId)
+      storeUsers(updatedUsers)
+      return { success: true }
+    },
+    [user?.id]
+  )
+
+  const getEmployees = useCallback(() => {
+    const users = getStoredUsers()
+    return users
+      .filter((u) => u.role === "admin" || u.role === "mechanic")
+      .map(({ password: _pw, ...rest }) => rest as AuthUser)
+  }, [])
+
   const logout = useCallback(() => {
     setUser(null)
     localStorage.removeItem(STORAGE_KEY)
@@ -124,6 +173,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         login,
         register,
+        addEmployee,
+        removeEmployee,
+        getEmployees,
         logout,
       }}
     >
