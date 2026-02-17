@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -21,11 +22,20 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Plus, Mail, Phone, MapPin } from "lucide-react"
+import { Plus, Mail, Phone } from "lucide-react"
 import { useCrm } from "@/lib/crm-context"
 
 export default function CustomersPage() {
-  const { customers, vehicles, serviceOrders, addCustomer } = useCrm()
+  const {
+    filteredCustomers,
+    vehicles,
+    serviceOrders,
+    addCustomer,
+    customers,
+    role,
+    canCreateCustomers,
+  } = useCrm()
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState("")
   const [form, setForm] = useState({
@@ -35,7 +45,16 @@ export default function CustomersPage() {
     address: "",
   })
 
-  const filtered = customers.filter(
+  // Redirect clients away from this page
+  useEffect(() => {
+    if (role === "client") {
+      router.replace("/")
+    }
+  }, [role, router])
+
+  if (role === "client") return null
+
+  const filtered = filteredCustomers.filter(
     (c) =>
       c.name.toLowerCase().includes(search.toLowerCase()) ||
       c.email.toLowerCase().includes(search.toLowerCase()) ||
@@ -60,11 +79,13 @@ export default function CustomersPage() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <PageHeader title="Customers" description="Manage your customer database">
-        <Button onClick={() => setOpen(true)} className="gap-2">
-          <Plus className="size-4" />
-          Add Customer
-        </Button>
+      <PageHeader title="Customers" description={role === "mechanic" ? "View customer information" : "Manage your customer database"}>
+        {canCreateCustomers && (
+          <Button onClick={() => setOpen(true)} className="gap-2">
+            <Plus className="size-4" />
+            Add Customer
+          </Button>
+        )}
       </PageHeader>
 
       <div className="flex-1 overflow-auto p-6">
@@ -147,58 +168,60 @@ export default function CustomersPage() {
         </Card>
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add New Customer</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input
-                id="name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="John Doe"
-              />
+      {canCreateCustomers && (
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Add New Customer</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">Full Name</Label>
+                <Input
+                  id="name"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="John Doe"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  placeholder="john@email.com"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="phone">Phone</Label>
+                <Input
+                  id="phone"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="(555) 000-0000"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="address">Address</Label>
+                <Input
+                  id="address"
+                  value={form.address}
+                  onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  placeholder="123 Main Street, City, State"
+                />
+              </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                placeholder="john@email.com"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="(555) 000-0000"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="address">Address</Label>
-              <Input
-                id="address"
-                value={form.address}
-                onChange={(e) => setForm({ ...form, address: e.target.value })}
-                placeholder="123 Main Street, City, State"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSubmit}>Add Customer</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSubmit}>Add Customer</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }

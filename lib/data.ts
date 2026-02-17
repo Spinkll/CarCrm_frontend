@@ -1,5 +1,25 @@
 // CRM data types and mock data for car service
 
+export type UserRole = "admin" | "mechanic" | "client"
+
+export type AppUser = {
+  id: string
+  name: string
+  email: string
+  password: string
+  role: UserRole
+  customerId?: string // links client users to their customer record
+  mechanicName?: string // links mechanic users to service order assignments
+}
+
+export const initialUsers: AppUser[] = [
+  { id: "U001", name: "Admin User", email: "admin@autocare.com", password: "admin123", role: "admin" },
+  { id: "U002", name: "Mike Torres", email: "mike@autocare.com", password: "mech123", role: "mechanic", mechanicName: "Mike Torres" },
+  { id: "U003", name: "Lisa Park", email: "lisa@autocare.com", password: "mech123", role: "mechanic", mechanicName: "Lisa Park" },
+  { id: "U004", name: "Alex Johnson", email: "alex.johnson@email.com", password: "client123", role: "client", customerId: "C001" },
+  { id: "U005", name: "Maria Garcia", email: "maria.g@email.com", password: "client123", role: "client", customerId: "C002" },
+]
+
 export type Customer = {
   id: string
   name: string

@@ -14,18 +14,33 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
+import { useAuth } from "@/lib/auth-context"
+import { UserNav } from "@/components/user-nav"
+import type { UserRole } from "@/lib/data"
 
-const navItems = [
-  { label: "Dashboard", href: "/", icon: LayoutDashboard },
-  { label: "Customers", href: "/customers", icon: Users },
-  { label: "Vehicles", href: "/vehicles", icon: Car },
-  { label: "Service Orders", href: "/orders", icon: ClipboardList },
-  { label: "Appointments", href: "/appointments", icon: CalendarDays },
+type NavItem = {
+  label: string
+  href: string
+  icon: typeof LayoutDashboard
+  roles: UserRole[] // which roles can see this item
+}
+
+const navItems: NavItem[] = [
+  { label: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["admin", "mechanic", "client"] },
+  { label: "Customers", href: "/customers", icon: Users, roles: ["admin", "mechanic"] },
+  { label: "Vehicles", href: "/vehicles", icon: Car, roles: ["admin", "mechanic", "client"] },
+  { label: "Service Orders", href: "/orders", icon: ClipboardList, roles: ["admin", "mechanic", "client"] },
+  { label: "Appointments", href: "/appointments", icon: CalendarDays, roles: ["admin", "mechanic", "client"] },
 ]
 
 export function AppSidebar() {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
+  const { user } = useAuth()
+
+  const visibleItems = navItems.filter(
+    (item) => user && item.roles.includes(user.role)
+  )
 
   return (
     <aside
@@ -47,7 +62,7 @@ export function AppSidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 p-2">
-        {navItems.map((item) => {
+        {visibleItems.map((item) => {
           const isActive =
             pathname === item.href ||
             (item.href !== "/" && pathname.startsWith(item.href))
@@ -68,6 +83,8 @@ export function AppSidebar() {
           )
         })}
       </nav>
+
+      <UserNav collapsed={collapsed} />
 
       <div className="border-t border-sidebar-border p-2">
         <button

@@ -30,9 +30,20 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Plus, Car } from "lucide-react"
 import { useCrm } from "@/lib/crm-context"
+import { useAuth } from "@/lib/auth-context"
 
 export default function VehiclesPage() {
-  const { vehicles, customers, serviceOrders, addVehicle } = useCrm()
+  const {
+    filteredVehicles,
+    customers,
+    serviceOrders,
+    addVehicle,
+    vehicles,
+    role,
+    canCreateVehicles,
+    filteredCustomers,
+  } = useCrm()
+  const { user } = useAuth()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState("")
   const [form, setForm] = useState({
@@ -46,7 +57,7 @@ export default function VehiclesPage() {
     mileage: "",
   })
 
-  const filtered = vehicles.filter(
+  const filtered = filteredVehicles.filter(
     (v) =>
       `${v.make} ${v.model}`.toLowerCase().includes(search.toLowerCase()) ||
       v.licensePlate.toLowerCase().includes(search.toLowerCase()) ||
@@ -54,10 +65,12 @@ export default function VehiclesPage() {
   )
 
   function handleSubmit() {
-    if (!form.make || !form.model || !form.customerId) return
+    if (!form.make || !form.model) return
+    const customerId = role === "client" ? (user?.customerId || "") : form.customerId
+    if (!customerId) return
     addVehicle({
       id: `V${String(vehicles.length + 1).padStart(3, "0")}`,
-      customerId: form.customerId,
+      customerId,
       make: form.make,
       model: form.model,
       year: parseInt(form.year) || new Date().getFullYear(),
@@ -70,13 +83,21 @@ export default function VehiclesPage() {
     setOpen(false)
   }
 
+  const descriptions: Record<string, string> = {
+    admin: "Track all registered vehicles",
+    mechanic: "Vehicles from your assigned orders",
+    client: "Manage your registered vehicles",
+  }
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <PageHeader title="Vehicles" description="Track all registered vehicles">
-        <Button onClick={() => setOpen(true)} className="gap-2">
-          <Plus className="size-4" />
-          Add Vehicle
-        </Button>
+      <PageHeader title={role === "client" ? "My Vehicles" : "Vehicles"} description={descriptions[role]}>
+        {canCreateVehicles && (
+          <Button onClick={() => setOpen(true)} className="gap-2">
+            <Plus className="size-4" />
+            Add Vehicle
+          </Button>
+        )}
       </PageHeader>
 
       <div className="flex-1 overflow-auto p-6">
@@ -94,7 +115,7 @@ export default function VehiclesPage() {
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
                   <TableHead className="pl-6 text-muted-foreground">Vehicle</TableHead>
-                  <TableHead className="text-muted-foreground">Owner</TableHead>
+                  {role !== "client" && <TableHead className="text-muted-foreground">Owner</TableHead>}
                   <TableHead className="text-muted-foreground">License Plate</TableHead>
                   <TableHead className="text-muted-foreground">Mileage</TableHead>
                   <TableHead className="text-muted-foreground">Color</TableHead>
@@ -122,7 +143,9 @@ export default function VehiclesPage() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-foreground">{owner?.name || "N/A"}</TableCell>
+                      {role !== "client" && (
+                        <TableCell className="text-foreground">{owner?.name || "N/A"}</TableCell>
+                      )}
                       <TableCell>
                         <span className="rounded-md bg-secondary px-2 py-1 text-sm font-mono text-foreground">
                           {vehicle.licensePlate}
@@ -155,7 +178,7 @@ export default function VehiclesPage() {
                 })}
                 {filtered.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
+                    <TableCell colSpan={role !== "client" ? 6 : 5} className="py-12 text-center text-muted-foreground">
                       No vehicles found
                     </TableCell>
                   </TableRow>
@@ -166,66 +189,70 @@ export default function VehiclesPage() {
         </Card>
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add New Vehicle</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Owner</Label>
-              <Select value={form.customerId} onValueChange={(v) => setForm({ ...form, customerId: v })}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select customer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="v-make">Make</Label>
-                <Input id="v-make" value={form.make} onChange={(e) => setForm({ ...form, make: e.target.value })} placeholder="Toyota" />
+      {canCreateVehicles && (
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Add New Vehicle</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              {role === "admin" && (
+                <div className="grid gap-2">
+                  <Label>Owner</Label>
+                  <Select value={form.customerId} onValueChange={(v) => setForm({ ...form, customerId: v })}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select customer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {customers.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="v-make">Make</Label>
+                  <Input id="v-make" value={form.make} onChange={(e) => setForm({ ...form, make: e.target.value })} placeholder="Toyota" />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="v-model">Model</Label>
+                  <Input id="v-model" value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder="Camry" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="v-year">Year</Label>
+                  <Input id="v-year" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} placeholder="2024" />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="v-color">Color</Label>
+                  <Input id="v-color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} placeholder="Silver" />
+                </div>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="v-model">Model</Label>
-                <Input id="v-model" value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder="Camry" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="v-year">Year</Label>
-                <Input id="v-year" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} placeholder="2024" />
+                <Label htmlFor="v-plate">License Plate</Label>
+                <Input id="v-plate" value={form.licensePlate} onChange={(e) => setForm({ ...form, licensePlate: e.target.value })} placeholder="ABC-1234" />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="v-color">Color</Label>
-                <Input id="v-color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} placeholder="Silver" />
+                <Label htmlFor="v-vin">VIN</Label>
+                <Input id="v-vin" value={form.vin} onChange={(e) => setForm({ ...form, vin: e.target.value })} placeholder="1HGBH41JXMN109186" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="v-mileage">Mileage</Label>
+                <Input id="v-mileage" value={form.mileage} onChange={(e) => setForm({ ...form, mileage: e.target.value })} placeholder="0" />
               </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="v-plate">License Plate</Label>
-              <Input id="v-plate" value={form.licensePlate} onChange={(e) => setForm({ ...form, licensePlate: e.target.value })} placeholder="ABC-1234" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="v-vin">VIN</Label>
-              <Input id="v-vin" value={form.vin} onChange={(e) => setForm({ ...form, vin: e.target.value })} placeholder="1HGBH41JXMN109186" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="v-mileage">Mileage</Label>
-              <Input id="v-mileage" value={form.mileage} onChange={(e) => setForm({ ...form, mileage: e.target.value })} placeholder="0" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmit}>Add Vehicle</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button onClick={handleSubmit}>Add Vehicle</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }
