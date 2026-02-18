@@ -15,24 +15,53 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth, type UserRole } from "@/lib/auth-context" 
 import { UserNav } from "@/components/user-nav"
-import type { UserRole } from "@/lib/data"
 
 type NavItem = {
   label: string
   href: string
   icon: typeof LayoutDashboard
-  roles: UserRole[] // which roles can see this item
+  roles: UserRole[] 
 }
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["admin", "mechanic", "client"] },
-  { label: "Customers", href: "/customers", icon: Users, roles: ["admin", "mechanic"] },
-  { label: "Vehicles", href: "/vehicles", icon: Car, roles: ["admin", "mechanic", "client"] },
-  { label: "Service Orders", href: "/orders", icon: ClipboardList, roles: ["admin", "mechanic", "client"] },
-  { label: "Appointments", href: "/appointments", icon: CalendarDays, roles: ["admin", "mechanic", "client"] },
-  { label: "Employees", href: "/employees", icon: UserCog, roles: ["admin"] },
+  { 
+    label: "Dashboard", 
+    href: "/", 
+    icon: LayoutDashboard, 
+    roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"] 
+  },
+  { 
+    label: "Customers", 
+    href: "/customers", 
+    icon: Users, 
+    roles: ["ADMIN", "MECHANIC", "MANAGER"] 
+  },
+  { 
+    label: "Vehicles", 
+    href: "/vehicles", 
+    icon: Car, 
+    roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"] 
+  },
+  { 
+    label: "Service Orders", 
+    href: "/orders", 
+    icon: ClipboardList, 
+    roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"] 
+  },
+  { 
+    label: "Appointments", 
+    href: "/appointments", 
+    icon: CalendarDays, 
+    roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"] 
+  },
+  { 
+    label: "Employees", 
+    href: "/employees", 
+    icon: UserCog, 
+    roles: ["ADMIN", "MANAGER"] 
+  },
 ]
 
 export function AppSidebar() {
@@ -40,8 +69,10 @@ export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
 
+  if (!user) return null;
+
   const visibleItems = navItems.filter(
-    (item) => user && item.roles.includes(user.role)
+    (item) => item.roles.includes(user.role)
   )
 
   return (

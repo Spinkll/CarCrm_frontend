@@ -7,40 +7,30 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Wrench, LogIn, Shield, Settings, User } from "lucide-react"
+import { Wrench, LogIn } from "lucide-react" 
 import { useAuth } from "@/lib/auth-context"
-
-const demoAccounts = [
-  { label: "Administrator", email: "admin@autocare.com", password: "admin123", icon: Shield, description: "Full access to all features" },
-  { label: "Mechanic", email: "mike@autocare.com", password: "mech123", icon: Settings, description: "Assigned orders & appointments" },
-  { label: "Client", email: "alex.johnson@email.com", password: "client123", icon: User, description: "Own vehicles, orders & appointments" },
-]
 
 export default function LoginPage() {
   const { login } = useAuth()
   const router = useRouter()
+  
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const [isLoading, setIsLoading] = useState(false) 
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
-    const result = login(email, password)
-    if (result.success) {
-      router.replace("/")
-    } else {
-      setError(result.error || "Login failed")
-    }
-  }
+    setIsLoading(true)
 
-  function handleDemoLogin(demoEmail: string, demoPassword: string) {
-    setError("")
-    const result = login(demoEmail, demoPassword)
+    const result = await login(email, password)
+    
     if (result.success) {
       router.replace("/")
     } else {
       setError(result.error || "Login failed")
+      setIsLoading(false)
     }
   }
 
@@ -50,13 +40,13 @@ export default function LoginPage() {
         <div className="flex size-12 items-center justify-center rounded-xl bg-primary">
           <Wrench className="size-6 text-primary-foreground" />
         </div>
-        <h1 className="text-2xl font-bold text-foreground">AutoCare CRM</h1>
-        <p className="text-sm text-muted-foreground">Sign in to manage your car service operations</p>
+        <h1 className="text-2xl font-bold text-foreground">WagGarage CRM</h1> 
+        <p className="text-sm text-muted-foreground">Увійдіть, щоб керувати роботою вашого автосервісу</p>
       </div>
-
+      
       <Card className="border-border bg-card">
         <CardHeader className="pb-4">
-          <CardTitle className="text-base text-foreground">Sign In</CardTitle>
+          <CardTitle className="text-base text-foreground">Вхід</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="grid gap-4">
@@ -66,7 +56,7 @@ export default function LoginPage() {
               </div>
             )}
             <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Електронна пошта</Label>
               <Input
                 id="email"
                 type="email"
@@ -75,57 +65,34 @@ export default function LoginPage() {
                 placeholder="you@email.com"
                 className="bg-secondary"
                 required
+                disabled={isLoading}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Пароль</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
+                placeholder="Введіть ваш пароль"
                 className="bg-secondary"
                 required
+                disabled={isLoading}
               />
             </div>
-            <Button type="submit" className="gap-2">
+            <Button type="submit" className="gap-2" disabled={isLoading}>
               <LogIn className="size-4" />
-              Sign In
+              {isLoading ? "Вхід..." : "Увійти"}
             </Button>
           </form>
 
           <div className="mt-4 text-center text-sm text-muted-foreground">
-            {"Don't have an account? "}
+            {"Немає облікового запису? "}
             <Link href="/register" className="text-primary underline-offset-4 hover:underline">
-              Register
+              Реєстрація
             </Link>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card className="border-border bg-card">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Quick Demo Login
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-2">
-          {demoAccounts.map((demo) => (
-            <button
-              key={demo.email}
-              onClick={() => handleDemoLogin(demo.email, demo.password)}
-              className="flex items-center gap-3 rounded-lg border border-border bg-secondary/50 px-3 py-2.5 text-left transition-colors hover:bg-secondary"
-            >
-              <div className="flex size-8 items-center justify-center rounded-md bg-primary/10">
-                <demo.icon className="size-4 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">{demo.label}</p>
-                <p className="text-xs text-muted-foreground">{demo.description}</p>
-              </div>
-            </button>
-          ))}
         </CardContent>
       </Card>
     </div>

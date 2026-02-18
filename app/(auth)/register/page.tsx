@@ -13,39 +13,63 @@ import { useAuth } from "@/lib/auth-context"
 export default function RegisterPage() {
   const { register } = useAuth()
   const router = useRouter()
+  
   const [form, setForm] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     password: "",
     confirmPassword: "",
+    phone: ""
   })
+  
   const [error, setError] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
+    setIsLoading(true)
 
-    if (!form.name || !form.email || !form.password) {
+    if (!form.firstName || !form.lastName || !form.email || !form.password || !form.phone) {
       setError("Please fill in all fields")
+      setIsLoading(false)
       return
     }
 
-    if (form.password.length < 6) {
-      setError("Password must be at least 6 characters")
+    if (form.password.length < 8) {
+      setError("Password must be at least 8 characters")
+      setIsLoading(false)
       return
     }
 
     if (form.password !== form.confirmPassword) {
       setError("Passwords do not match")
+      setIsLoading(false)
       return
     }
 
-    const result = register(form.name, form.email, form.password, "client")
+    const result = await register(
+      form.firstName, 
+      form.lastName, 
+      form.email, 
+      form.password, 
+      form.phone
+    )
+    
     if (result.success) {
       router.replace("/")
     } else {
       setError(result.error || "Registration failed")
     }
+    setIsLoading(false)
+    
+    if (result.success) {
+      router.replace("/")
+    } else {
+      setError(result.error || "Registration failed")
+    }
+    setIsLoading(false)
   }
 
   return (
@@ -54,13 +78,13 @@ export default function RegisterPage() {
         <div className="flex size-12 items-center justify-center rounded-xl bg-primary">
           <Wrench className="size-6 text-primary-foreground" />
         </div>
-        <h1 className="text-2xl font-bold text-foreground">Create Account</h1>
-        <p className="text-sm text-muted-foreground">Register to get started with AutoCare CRM</p>
+        <h1 className="text-2xl font-bold text-foreground">Створити обліковий запис</h1>
+        <p className="text-sm text-muted-foreground">Зареєструйтесь, щоб розпочати роботу з WagGarage CRM</p>
       </div>
 
       <Card className="border-border bg-card">
         <CardHeader className="pb-4">
-          <CardTitle className="text-base text-foreground">Register</CardTitle>
+          <CardTitle className="text-base text-foreground">Зареєструватися</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="grid gap-4">
@@ -69,19 +93,34 @@ export default function RegisterPage() {
                 {error}
               </div>
             )}
-            <div className="grid gap-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input
-                id="name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="John Doe"
-                className="bg-secondary"
-                required
-              />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="firstName">Ім'я</Label>
+                <Input
+                  id="firstName"
+                  value={form.firstName}
+                  onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                  placeholder="Іван"
+                  className="bg-secondary"
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="lastName">Прізвище</Label>
+                <Input
+                  id="lastName"
+                  value={form.lastName}
+                  onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                  placeholder="Шевченко"
+                  className="bg-secondary"
+                  required
+                />
+              </div>
             </div>
+
             <div className="grid gap-2">
-              <Label htmlFor="reg-email">Email</Label>
+              <Label htmlFor="reg-email">Електронна пошта</Label>
               <Input
                 id="reg-email"
                 type="email"
@@ -92,43 +131,60 @@ export default function RegisterPage() {
                 required
               />
             </div>
+
             <div className="grid gap-2">
-              <Label htmlFor="reg-password">Password</Label>
+              <Label htmlFor="phone">Номер телефону</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                placeholder="+380XXXXXXXXX" 
+                className="bg-secondary"
+                required
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="reg-password">Пароль</Label>
               <Input
                 id="reg-password"
                 type="password"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
-                placeholder="At least 6 characters"
+                placeholder="Принаймні 8 символів"
                 className="bg-secondary"
                 required
               />
             </div>
+
             <div className="grid gap-2">
-              <Label htmlFor="reg-confirm">Confirm Password</Label>
+              <Label htmlFor="reg-confirm">Підтвердьте пароль</Label>
               <Input
                 id="reg-confirm"
                 type="password"
                 value={form.confirmPassword}
                 onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                placeholder="Re-enter your password"
+                placeholder="Введіть свій пароль ще раз"
                 className="bg-secondary"
                 required
               />
             </div>
+
             <p className="text-xs text-muted-foreground">
-              By registering you will create a client account. Employee accounts are created by administrators.
+              Реєструючись, ви створите обліковий запис клієнта. Облікові записи співробітників створюються адміністраторами.
             </p>
-            <Button type="submit" className="gap-2">
+            
+            <Button type="submit" className="gap-2" disabled={isLoading}>
               <UserPlus className="size-4" />
-              Create Account
+              {isLoading ? "Creating..." : "Створити обліковий запис"}
             </Button>
           </form>
 
           <div className="mt-4 text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
+            Вже маєте обліковий запис?{" "}
             <Link href="/login" className="text-primary underline-offset-4 hover:underline">
-              Sign In
+              Увійти
             </Link>
           </div>
         </CardContent>

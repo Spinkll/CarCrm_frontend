@@ -1,14 +1,31 @@
 "use client"
 
 import { useAuth } from "@/lib/auth-context"
-import { LogOut, Shield, Settings, User } from "lucide-react"
+import { LogOut, Shield, Settings, User, Briefcase } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
 const roleConfig = {
-  admin: { label: "Admin", icon: Shield, className: "bg-primary/20 text-primary border-primary/30" },
-  mechanic: { label: "Mechanic", icon: Settings, className: "bg-chart-2/20 text-chart-2 border-chart-2/30" },
-  client: { label: "Client", icon: User, className: "bg-chart-3/20 text-chart-3 border-chart-3/30" },
+  ADMIN: { 
+    label: "Admin", 
+    icon: Shield, 
+    className: "bg-primary/20 text-primary border-primary/30" 
+  },
+  MANAGER: { 
+    label: "Manager", 
+    icon: Briefcase, 
+    className: "bg-orange-500/20 text-orange-600 border-orange-500/30" 
+  },
+  MECHANIC: { 
+    label: "Mechanic", 
+    icon: Settings, 
+    className: "bg-blue-500/20 text-blue-600 border-blue-500/30" 
+  },
+  CLIENT: { 
+    label: "Client", 
+    icon: User, 
+    className: "bg-green-500/20 text-green-600 border-green-500/30" 
+  },
 }
 
 export function UserNav({ collapsed }: { collapsed: boolean }) {
@@ -16,12 +33,11 @@ export function UserNav({ collapsed }: { collapsed: boolean }) {
 
   if (!user) return null
 
-  const role = roleConfig[user.role]
-  const initials = user.name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
+  const role = roleConfig[user.role as keyof typeof roleConfig] || roleConfig.CLIENT
+
+  const initials = `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase()
+
+  const fullName = `${user.firstName} ${user.lastName}`
 
   return (
     <div className="border-t border-sidebar-border p-2">
@@ -37,9 +53,10 @@ export function UserNav({ collapsed }: { collapsed: boolean }) {
         {!collapsed && (
           <div className="flex flex-1 flex-col overflow-hidden">
             <span className="truncate text-sm font-medium text-sidebar-foreground">
-              {user.name}
+              {fullName} 
             </span>
             <div className="flex items-center gap-1.5">
+              <role.icon className="size-3 opacity-70" /> 
               <Badge variant="outline" className={cn("h-4 rounded px-1 text-[10px] font-medium leading-none", role.className)}>
                 {role.label}
               </Badge>

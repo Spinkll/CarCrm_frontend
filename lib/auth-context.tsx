@@ -1,169 +1,123 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react"
-import { initialUsers, type AppUser, type UserRole } from "./data"
+import api from "./api"
+import { useRouter } from "next/navigation"
 
-type AuthUser = Omit<AppUser, "password">
+export type UserRole = "CLIENT" | "ADMIN" | "MECHANIC" | "MANAGER"
+
+export interface AuthUser {
+  id: number
+  email: string
+  firstName: string
+  lastName: string
+  phone?: string
+  role: UserRole
+}
 
 type AuthContextType = {
   user: AuthUser | null
   isAuthenticated: boolean
   isLoading: boolean
-  login: (email: string, password: string) => { success: boolean; error?: string }
-  register: (name: string, email: string, password: string, role: UserRole) => { success: boolean; error?: string }
-  addEmployee: (name: string, email: string, password: string, role: "mechanic" | "admin") => { success: boolean; error?: string }
-  removeEmployee: (userId: string) => { success: boolean; error?: string }
-  getEmployees: () => AuthUser[]
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
+  register: (firstName: string, lastName: string, email: string, password: string, phone: string) => Promise<{ success: boolean; error?: string }>
+  addEmployee: (firstName: string, lastName: string, email: string, password: string, phone: string, role: UserRole) => Promise<{ success: boolean; error?: string }>
   logout: () => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const STORAGE_KEY = "autocare-auth"
-const USERS_KEY = "autocare-users"
-
-function getStoredUsers(): AppUser[] {
-  if (typeof window === "undefined") return initialUsers
-  try {
-    const stored = localStorage.getItem(USERS_KEY)
-    if (stored) return JSON.parse(stored)
-  } catch {}
-  return initialUsers
-}
-
-function storeUsers(users: AppUser[]) {
-  if (typeof window === "undefined") return
-  localStorage.setItem(USERS_KEY, JSON.stringify(users))
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        setUser(parsed)
+    const initAuth = async () => {
+      const token = localStorage.getItem("access_token")
+      const storedUser = localStorage.getItem("user_data")
+      
+      if (token && storedUser) {
+        try {
+            setUser(JSON.parse(storedUser))
+        } catch (e) {
+            console.error("Failed to parse user data", e)
+            logout()
+        }
       }
-    } catch {}
-    setIsLoading(false)
-  }, [])
-
-  const login = useCallback((email: string, password: string) => {
-    const users = getStoredUsers()
-    const found = users.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-    )
-    if (!found) return { success: false, error: "Invalid email or password" }
-
-    const authUser: AuthUser = {
-      id: found.id,
-      name: found.name,
-      email: found.email,
-      role: found.role,
-      customerId: found.customerId,
-      mechanicName: found.mechanicName,
+      setIsLoading(false)
     }
-    setUser(authUser)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(authUser))
-    return { success: true }
+    initAuth()
   }, [])
 
-  const register = useCallback(
-    (name: string, email: string, password: string, role: UserRole) => {
-      const users = getStoredUsers()
-      if (users.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
-        return { success: false, error: "Email already exists" }
+  const login = useCallback(async (email: string, password: string) => {
+    try {
+      const { data } = await api.post("/auth/login", { email, password })
+      
+      localStorage.setItem("access_token", data.access_token)
+      localStorage.setItem("refresh_token", data.refresh_token)
+      
+      if (data.user) {
+        localStorage.setItem("user_data", JSON.stringify(data.user))
+        setUser(data.user)
       }
 
-      const newId = `U${String(users.length + 1).padStart(3, "0")}`
-      let customerId: string | undefined
+      return { success: true }
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Не вдалося ввійти"
+      return { success: false, error: Array.isArray(msg) ? msg[0] : msg }
+    }
+  }, [])
 
-      // If registering as a client, create a linked customer ID
-      if (role === "client") {
-        customerId = `C${String(Date.now()).slice(-5)}`
-      }
-
-      const newUser: AppUser = {
-        id: newId,
-        name,
+  const register = useCallback(async (firstName: string, lastName: string, email: string, password: string, phone: string) => {
+    try {
+      const { data } = await api.post("/auth/register", {
         email,
         password,
-        role,
-        customerId,
-        mechanicName: role === "mechanic" ? name : undefined,
+        firstName, 
+        lastName,  
+        phone,
+      })
+
+      localStorage.setItem("access_token", data.access_token)
+      localStorage.setItem("refresh_token", data.refresh_token)
+      if (data.user) {
+        localStorage.setItem("user_data", JSON.stringify(data.user))
+        setUser(data.user)
       }
 
-      const updatedUsers = [...users, newUser]
-      storeUsers(updatedUsers)
-
-      const authUser: AuthUser = {
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role,
-        customerId: newUser.customerId,
-        mechanicName: newUser.mechanicName,
-      }
-      setUser(authUser)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(authUser))
       return { success: true }
-    },
-    []
-  )
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Реєстрація не вдалася"
+      return { success: false, error: Array.isArray(msg) ? msg[0] : msg }
+    }
+  }, [])
 
-  const addEmployee = useCallback(
-    (name: string, email: string, password: string, role: "mechanic" | "admin") => {
-      const users = getStoredUsers()
-      if (users.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
-        return { success: false, error: "Email already exists" }
-      }
-
-      const newId = `U${String(Date.now()).slice(-6)}`
-      const newUser: AppUser = {
-        id: newId,
-        name,
+  const addEmployee = useCallback(async (firstName: string, lastName: string, email: string, password: string, phone: string, role: UserRole) => {
+    try {
+      await api.post("/users/employees", {
         email,
         password,
+        firstName,
+        lastName,
+        phone,
         role,
-        mechanicName: role === "mechanic" ? name : undefined,
-      }
+      })
 
-      const updatedUsers = [...users, newUser]
-      storeUsers(updatedUsers)
       return { success: true }
-    },
-    []
-  )
-
-  const removeEmployee = useCallback(
-    (userId: string) => {
-      const users = getStoredUsers()
-      const target = users.find((u) => u.id === userId)
-      if (!target) return { success: false, error: "User not found" }
-      if (target.role === "client") return { success: false, error: "Cannot remove client accounts from employees" }
-      if (target.id === user?.id) return { success: false, error: "Cannot remove yourself" }
-
-      const updatedUsers = users.filter((u) => u.id !== userId)
-      storeUsers(updatedUsers)
-      return { success: true }
-    },
-    [user?.id]
-  )
-
-  const getEmployees = useCallback(() => {
-    const users = getStoredUsers()
-    return users
-      .filter((u) => u.role === "admin" || u.role === "mechanic")
-      .map(({ password: _pw, ...rest }) => rest as AuthUser)
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Failed to add employee"
+      return { success: false, error: Array.isArray(msg) ? msg[0] : msg }
+    }
   }, [])
 
   const logout = useCallback(() => {
+    localStorage.removeItem("access_token")
+    localStorage.removeItem("refresh_token")
+    localStorage.removeItem("user_data")
     setUser(null)
-    localStorage.removeItem(STORAGE_KEY)
-  }, [])
+    router.push("/login")
+  }, [router])
 
   return (
     <AuthContext.Provider
@@ -174,8 +128,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         register,
         addEmployee,
-        removeEmployee,
-        getEmployees,
         logout,
       }}
     >
