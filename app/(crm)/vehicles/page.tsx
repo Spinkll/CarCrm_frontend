@@ -19,85 +19,76 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Plus, Car } from "lucide-react"
-import { useCrm } from "@/lib/crm-context"
 import { useAuth } from "@/lib/auth-context"
+import { useVehicles } from "@/lib/vehicles-context"
 
 export default function VehiclesPage() {
-  const {
-    filteredVehicles,
-    customers,
-    serviceOrders,
-    addVehicle,
-    vehicles,
-    role,
-    canCreateVehicles,
-    filteredCustomers,
-  } = useCrm()
   const { user } = useAuth()
+  const { vehicles, addVehicle, isLoading } = useVehicles()
+
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const [form, setForm] = useState({
-    customerId: "",
-    make: "",
+    brand: "",
     model: "",
     year: "",
     vin: "",
-    licensePlate: "",
+    plate: "",  
     color: "",
     mileage: "",
   })
 
-  const filtered = filteredVehicles.filter(
-    (v) =>
-      `${v.make} ${v.model}`.toLowerCase().includes(search.toLowerCase()) ||
-      v.licensePlate.toLowerCase().includes(search.toLowerCase()) ||
+  if (!user) return null
+
+  const filtered = vehicles.filter(
+    (v: any) =>
+      `${v.brand} ${v.model}`.toLowerCase().includes(search.toLowerCase()) ||
+      (v.plate && v.plate.toLowerCase().includes(search.toLowerCase())) ||
       v.vin.toLowerCase().includes(search.toLowerCase())
   )
 
-  function handleSubmit() {
-    if (!form.make || !form.model) return
-    const customerId = role === "client" ? (user?.customerId || "") : form.customerId
-    if (!customerId) return
-    addVehicle({
-      id: `V${String(vehicles.length + 1).padStart(3, "0")}`,
-      customerId,
-      make: form.make,
+  async function handleSubmit() {
+    if (!form.brand || !form.model || !form.plate || !form.vin) {
+        alert("Please fill in all required fields");
+        return;
+    }
+    
+    setIsSubmitting(true)
+
+    const payload = {
+      brand: form.brand,
       model: form.model,
       year: parseInt(form.year) || new Date().getFullYear(),
       vin: form.vin,
-      licensePlate: form.licensePlate,
-      color: form.color,
-      mileage: parseInt(form.mileage) || 0,
-    })
-    setForm({ customerId: "", make: "", model: "", year: "", vin: "", licensePlate: "", color: "", mileage: "" })
-    setOpen(false)
-  }
+      plate: form.plate,
+      color: form.color, 
+      mileage: parseInt(form.mileage) || 0, 
+    }
 
-  const descriptions: Record<string, string> = {
-    admin: "Track all registered vehicles",
-    mechanic: "Vehicles from your assigned orders",
-    client: "Manage your registered vehicles",
+    const result = await addVehicle(payload as any)
+
+    setIsSubmitting(false)
+
+    if (result.success) {
+      setForm({ brand: "", model: "", year: "", vin: "", plate: "", color: "", mileage: "" })
+      setOpen(false)
+    } else {
+      alert(typeof result.error === 'string' ? result.error : JSON.stringify(result.error))
+    }
   }
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <PageHeader title={role === "client" ? "My Vehicles" : "Vehicles"} description={descriptions[role]}>
-        {canCreateVehicles && (
-          <Button onClick={() => setOpen(true)} className="gap-2">
-            <Plus className="size-4" />
-            Add Vehicle
-          </Button>
-        )}
+      <PageHeader title="Vehicles" description="Manage your vehicles">
+        <Button onClick={() => setOpen(true)} className="gap-2">
+          <Plus className="size-4" />
+          Add Vehicle
+        </Button>
       </PageHeader>
 
       <div className="flex-1 overflow-auto p-6">
@@ -105,30 +96,27 @@ export default function VehiclesPage() {
           <CardContent className="p-0">
             <div className="border-b border-border p-4">
               <Input
-                placeholder="Search by make, model, plate, or VIN..."
+                placeholder="Search by brand, model, plate or VIN..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="max-w-md bg-secondary"
               />
             </div>
+            
+            {isLoading ? (
+               <div className="p-8 text-center text-muted-foreground">Loading vehicles...</div>
+            ) : (
             <Table>
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="pl-6 text-muted-foreground">Vehicle</TableHead>
-                  {role !== "client" && <TableHead className="text-muted-foreground">Owner</TableHead>}
-                  <TableHead className="text-muted-foreground">License Plate</TableHead>
-                  <TableHead className="text-muted-foreground">Mileage</TableHead>
-                  <TableHead className="text-muted-foreground">Color</TableHead>
-                  <TableHead className="pr-6 text-muted-foreground">Service History</TableHead>
+                  <TableHead className="pl-6 text-muted-foreground">Транспортний засіб</TableHead>
+                  <TableHead className="text-muted-foreground">Номерний знак</TableHead>
+                  <TableHead className="text-muted-foreground">Колір</TableHead>
+                  <TableHead className="text-muted-foreground">Пробіг</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((vehicle) => {
-                  const owner = customers.find((c) => c.id === vehicle.customerId)
-                  const orderCount = serviceOrders.filter(
-                    (o) => o.vehicleId === vehicle.id
-                  ).length
-                  return (
+                {filtered.map((vehicle: any) => (
                     <TableRow key={vehicle.id} className="border-border">
                       <TableCell className="pl-6">
                         <div className="flex items-center gap-3">
@@ -137,122 +125,134 @@ export default function VehiclesPage() {
                           </div>
                           <div>
                             <p className="font-medium text-foreground">
-                              {vehicle.year} {vehicle.make} {vehicle.model}
+                              {vehicle.year} {vehicle.brand} {vehicle.model}
                             </p>
                             <p className="text-xs text-muted-foreground">{vehicle.vin}</p>
                           </div>
                         </div>
                       </TableCell>
-                      {role !== "client" && (
-                        <TableCell className="text-foreground">{owner?.name || "N/A"}</TableCell>
-                      )}
                       <TableCell>
                         <span className="rounded-md bg-secondary px-2 py-1 text-sm font-mono text-foreground">
-                          {vehicle.licensePlate}
+                          {vehicle.plate}
                         </span>
                       </TableCell>
-                      <TableCell className="text-foreground">
-                        {vehicle.mileage.toLocaleString()} mi
-                      </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="inline-block size-3 rounded-full border border-border"
-                            style={{
-                              backgroundColor:
-                                vehicle.color.toLowerCase() === "white"
-                                  ? "#e5e5e5"
-                                  : vehicle.color.toLowerCase() === "silver"
-                                    ? "#a8a8a8"
-                                    : vehicle.color.toLowerCase(),
-                            }}
-                          />
-                          <span className="text-sm text-foreground">{vehicle.color}</span>
-                        </div>
+                         <div className="flex items-center gap-2">
+                            <div className="h-3 w-3 rounded-full border border-gray-500" style={{ backgroundColor: vehicle.color }}></div>
+                            <span className="text-sm text-foreground">{vehicle.color}</span>
+                         </div>
                       </TableCell>
-                      <TableCell className="pr-6 text-muted-foreground">
-                        {orderCount} order{orderCount !== 1 ? "s" : ""}
+                      <TableCell className="text-foreground">
+                        {vehicle.mileage?.toLocaleString()} km
                       </TableCell>
                     </TableRow>
                   )
-                })}
+                )}
                 {filtered.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={role !== "client" ? 6 : 5} className="py-12 text-center text-muted-foreground">
+                    <TableCell colSpan={4} className="py-12 text-center text-muted-foreground">
                       No vehicles found
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {canCreateVehicles && (
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Add New Vehicle</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              {role === "admin" && (
-                <div className="grid gap-2">
-                  <Label>Owner</Label>
-                  <Select value={form.customerId} onValueChange={(v) => setForm({ ...form, customerId: v })}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select customer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {customers.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="v-make">Make</Label>
-                  <Input id="v-make" value={form.make} onChange={(e) => setForm({ ...form, make: e.target.value })} placeholder="Toyota" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="v-model">Model</Label>
-                  <Input id="v-model" value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder="Camry" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="v-year">Year</Label>
-                  <Input id="v-year" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} placeholder="2024" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="v-color">Color</Label>
-                  <Input id="v-color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} placeholder="Silver" />
-                </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Додати транспортний засіб</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="v-brand">Марка</Label>
+                <Input 
+                  id="v-brand" 
+                  value={form.brand} 
+                  onChange={(e) => setForm({ ...form, brand: e.target.value })} 
+                  placeholder="Toyota" 
+                />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="v-plate">License Plate</Label>
-                <Input id="v-plate" value={form.licensePlate} onChange={(e) => setForm({ ...form, licensePlate: e.target.value })} placeholder="ABC-1234" />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="v-vin">VIN</Label>
-                <Input id="v-vin" value={form.vin} onChange={(e) => setForm({ ...form, vin: e.target.value })} placeholder="1HGBH41JXMN109186" />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="v-mileage">Mileage</Label>
-                <Input id="v-mileage" value={form.mileage} onChange={(e) => setForm({ ...form, mileage: e.target.value })} placeholder="0" />
+                <Label htmlFor="v-model">Модель</Label>
+                <Input 
+                  id="v-model" 
+                  value={form.model} 
+                  onChange={(e) => setForm({ ...form, model: e.target.value })} 
+                  placeholder="Camry" 
+                />
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={handleSubmit}>Add Vehicle</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+
+            <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="v-year">Рік</Label>
+                  <Input 
+                    id="v-year" 
+                    type="number"
+                    value={form.year} 
+                    onChange={(e) => setForm({ ...form, year: e.target.value })} 
+                    placeholder="2024" 
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="v-color">Колір</Label>
+                  <Input 
+                    id="v-color" 
+                    value={form.color} 
+                    onChange={(e) => setForm({ ...form, color: e.target.value })} 
+                    placeholder="Black" 
+                  />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                    <Label htmlFor="v-plate">Номерний знак</Label>
+                    <Input 
+                        id="v-plate" 
+                        value={form.plate} 
+                        onChange={(e) => setForm({ ...form, plate: e.target.value })} 
+                        placeholder="AР 7777 АР" 
+                    />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="v-vin">VIN</Label>
+                    <Input 
+                        id="v-vin" 
+                        value={form.vin} 
+                        onChange={(e) => setForm({ ...form, vin: e.target.value })} 
+                        placeholder="17 символів" 
+                    />
+                </div>
+            </div>
+            
+            <div className="grid gap-2">
+                <Label htmlFor="v-mileage">Пробіг (км)</Label>
+                <Input 
+                    id="v-mileage" 
+                    type="number"
+                    value={form.mileage} 
+                    onChange={(e) => setForm({ ...form, mileage: e.target.value })} 
+                    placeholder="0" 
+                />
+            </div>
+
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>Cancel</Button>
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+                {isSubmitting ? "Adding..." : "Add Vehicle"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

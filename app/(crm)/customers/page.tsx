@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
@@ -19,209 +19,254 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Plus, Mail, Phone } from "lucide-react"
-import { useCrm } from "@/lib/crm-context"
+import { Plus, Mail, Phone, Loader2 } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
+import { useCustomers } from "@/lib/customers-context"
+import { useVehicles } from "@/lib/vehicles-context"
+import { useOrders } from "@/lib/orders-context"
 
 export default function CustomersPage() {
-  const {
-    filteredCustomers,
-    vehicles,
-    serviceOrders,
-    addCustomer,
-    customers,
-    role,
-    canCreateCustomers,
-  } = useCrm()
+  const { user } = useAuth()
+  const { customers, createCustomer, isLoading: customersLoading } = useCustomers()
+  const { vehicles, isLoading: vehiclesLoading } = useVehicles()
+  const { orders, isLoading: ordersLoading } = useOrders()
+  
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const [form, setForm] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
-    address: "",
   })
 
-  // Redirect clients away from this page
   useEffect(() => {
-    if (role === "client") {
+    if (user?.role === "CLIENT") {
       router.replace("/")
     }
-  }, [role, router])
+  }, [user, router])
 
-  if (role === "client") return null
-
-  const filtered = filteredCustomers.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.email.toLowerCase().includes(search.toLowerCase()) ||
-      c.phone.includes(search)
-  )
-
-  function handleSubmit() {
-    if (!form.name || !form.email) return
-    addCustomer({
-      id: `C${String(customers.length + 1).padStart(3, "0")}`,
-      name: form.name,
-      email: form.email,
-      phone: form.phone,
-      address: form.address,
-      createdAt: new Date().toISOString().split("T")[0],
-      totalSpent: 0,
-      visitCount: 0,
+  // Оптимізована фільтрація клієнтів
+  const filtered = useMemo(() => {
+    return customers.filter((c) => {
+      const fullName = `${c.firstName} ${c.lastName}`.toLowerCase()
+      const searchLower = search.toLowerCase()
+      return (
+        fullName.includes(searchLower) ||
+        c.email.toLowerCase().includes(searchLower) ||
+        (c.phone && c.phone.includes(search))
+      )
     })
-    setForm({ name: "", email: "", phone: "", address: "" })
-    setOpen(false)
+  }, [customers, search])
+
+  async function handleSubmit() {
+    if (!form.firstName || !form.lastName || !form.email) return
+    setIsSubmitting(true)
+
+    const result = await createCustomer({
+        ...form
+    })
+    
+    setIsSubmitting(false)
+
+    if (result.success) {
+      setForm({ firstName: "", lastName: "", email: "", phone: "" })
+      setOpen(false)
+    } else {
+        alert(result.error || "Failed to add customer")
+    }
   }
+
+  if (!user || user.role === "CLIENT") return null
+
+  const isDataLoading = customersLoading || vehiclesLoading || ordersLoading
+  const canCreateCustomers = user.role === "ADMIN" || user.role === "MANAGER"
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <PageHeader title="Customers" description={role === "mechanic" ? "View customer information" : "Manage your customer database"}>
+      <PageHeader 
+        title="Customers" 
+        description={user.role === "MECHANIC" ? "View customer information" : "Manage your customer database"}
+      >
         {canCreateCustomers && (
-          <Button onClick={() => setOpen(true)} className="gap-2">
-            <Plus className="size-4" />
-            Add Customer
-          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button className="gap-2 shadow-sm">
+                    <Plus className="size-4" />
+                    Add Customer
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Add New Customer</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="first-name">First Name</Label>
+                        <Input
+                          id="first-name"
+                          value={form.firstName}
+                          onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                          placeholder="John"
+                        />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="last-name">Last Name</Label>
+                        <Input
+                          id="last-name"
+                          value={form.lastName}
+                          onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                          placeholder="Doe"
+                        />
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      placeholder="john@email.com"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input
+                      id="phone"
+                      value={form.phone}
+                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                      placeholder="+380..."
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSubmit} disabled={isSubmitting}>
+                      {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
+                      Add Customer
+                  </Button>
+                </DialogFooter>
+            </DialogContent>
+          </Dialog>
         )}
       </PageHeader>
 
       <div className="flex-1 overflow-auto p-6">
-        <Card className="border-border bg-card">
+        <Card className="border-border bg-card shadow-sm">
           <CardContent className="p-0">
             <div className="border-b border-border p-4">
               <Input
-                placeholder="Search customers by name, email, or phone..."
+                placeholder="Search customers..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="max-w-md bg-secondary"
+                className="max-w-md bg-secondary/50"
               />
             </div>
+            
+            {isDataLoading ? (
+                 <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
+                    <Loader2 className="mb-2 size-8 animate-spin" />
+                    <p>Loading customer data...</p>
+                 </div>
+            ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="pl-6 text-muted-foreground">Customer</TableHead>
-                  <TableHead className="text-muted-foreground">Contact</TableHead>
-                  <TableHead className="text-muted-foreground">Vehicles</TableHead>
-                  <TableHead className="text-muted-foreground">Orders</TableHead>
-                  <TableHead className="text-muted-foreground">Total Spent</TableHead>
-                  <TableHead className="pr-6 text-muted-foreground">Since</TableHead>
+                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                  <TableHead className="pl-6">Customer</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Vehicles</TableHead>
+                  <TableHead>Orders</TableHead>
+                  <TableHead>Total Spent</TableHead>
+                  <TableHead className="pr-6">Since</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map((customer) => {
-                  const vehicleCount = vehicles.filter(
-                    (v) => v.customerId === customer.id
-                  ).length
-                  const orderCount = serviceOrders.filter(
-                    (o) => o.customerId === customer.id
-                  ).length
+                  // Рахуємо машини клієнта
+                  const customerVehicles = vehicles.filter(v => v.userId === customer.id);
+                  const vehicleIds = new Set(customerVehicles.map(v => v.id));
+
+                  // Рахуємо замовлення
+                  const customerOrders = orders.filter(o => {
+                      // 1. Через carId, якщо він є в списку машин клієнта
+                      if (o.carId && vehicleIds.has(o.carId)) return true;
+                      // 2. Fallback для vehicleId
+                      if (o.vehicleId && vehicleIds.has(o.vehicleId)) return true;
+                      // 3. Через вкладений об'єкт car (якщо прийшов з беку)
+                      return o.car?.userId === customer.id;
+                  });
+                  
+                  const totalSpent = customerOrders.reduce((acc, curr) => {
+                      return acc + Number(curr.totalAmount || 0)
+                  }, 0);
+
                   return (
-                    <TableRow key={customer.id} className="border-border">
+                    <TableRow key={customer.id} className="group border-border transition-colors hover:bg-muted/30">
                       <TableCell className="pl-6">
                         <div className="flex items-center gap-3">
-                          <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-sm font-medium text-primary">
-                            {customer.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")}
+                          <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                            {customer.firstName?.[0]}{customer.lastName?.[0]}
                           </div>
                           <div>
-                            <p className="font-medium text-foreground">{customer.name}</p>
-                            <p className="text-xs text-muted-foreground">{customer.id}</p>
+                            <p className="font-semibold text-foreground">{customer.firstName} {customer.lastName}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">ID: {customer.id}</p>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="space-y-1">
+                        <div className="space-y-0.5">
                           <div className="flex items-center gap-1.5 text-sm text-foreground">
-                            <Mail className="size-3 text-muted-foreground" />
+                            <Mail className="size-3.5 text-muted-foreground" />
                             {customer.email}
                           </div>
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <Phone className="size-3" />
-                            {customer.phone}
-                          </div>
+                          {customer.phone && (
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <Phone className="size-3.5" />
+                                {customer.phone}
+                            </div>
+                          )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-foreground">{vehicleCount}</TableCell>
-                      <TableCell className="text-foreground">{orderCount}</TableCell>
-                      <TableCell className="font-medium text-foreground">
-                        ${customer.totalSpent.toLocaleString()}
+                      <TableCell>
+                        <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
+                            {customerVehicles.length}
+                        </span>
                       </TableCell>
-                      <TableCell className="pr-6 text-muted-foreground">{customer.createdAt}</TableCell>
+                      <TableCell>
+                        <span className="text-sm">{customerOrders.length}</span>
+                      </TableCell>
+                      <TableCell className="font-semibold text-foreground">
+                        ${totalSpent.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell className="pr-6 text-xs text-muted-foreground">
+                        {new Date(customer.createdAt).toLocaleDateString()}
+                      </TableCell>
                     </TableRow>
                   )
                 })}
-                {filtered.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
-                      No customers found
-                    </TableCell>
-                  </TableRow>
-                )}
               </TableBody>
             </Table>
+            )}
+            
+            {!isDataLoading && filtered.length === 0 && (
+                <div className="py-20 text-center">
+                    <p className="text-muted-foreground">No customers found.</p>
+                </div>
+            )}
           </CardContent>
         </Card>
       </div>
-
-      {canCreateCustomers && (
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Add New Customer</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="John Doe"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="john@email.com"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="(555) 000-0000"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  value={form.address}
-                  onChange={(e) => setForm({ ...form, address: e.target.value })}
-                  placeholder="123 Main Street, City, State"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleSubmit}>Add Customer</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   )
 }

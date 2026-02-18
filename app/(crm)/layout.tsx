@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation"
 import { AppSidebar } from "@/components/app-sidebar"
 import { CrmProvider } from "@/lib/crm-context"
 import { AuthProvider, useAuth } from "@/lib/auth-context"
+import { VehiclesProvider } from "@/lib/vehicles-context" 
+import { OrdersProvider } from "@/lib/orders-context"
+import { EmployeesProvider } from "@/lib/employees-context"
+import { CustomersProvider } from "@/lib/customers-context"
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
@@ -28,10 +32,18 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <CrmProvider>
-      <div className="flex h-screen overflow-hidden bg-background">
-        <AppSidebar />
-        <main className="flex flex-1 flex-col overflow-hidden">{children}</main>
-      </div>
+      <CustomersProvider>
+      <VehiclesProvider>
+        <EmployeesProvider>
+        <OrdersProvider>
+        <div className="flex h-screen overflow-hidden bg-background">
+          <AppSidebar />
+          <main className="flex flex-1 flex-col overflow-hidden">{children}</main>
+          </div>
+        </OrdersProvider>
+      </EmployeesProvider>
+        </VehiclesProvider>
+        </CustomersProvider>
     </CrmProvider>
   )
 }

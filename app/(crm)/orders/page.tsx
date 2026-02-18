@@ -32,100 +32,100 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { StatusBadge } from "@/components/status-badge"
 import { Plus, ChevronDown } from "lucide-react"
-import { useCrm } from "@/lib/crm-context"
 import { useAuth } from "@/lib/auth-context"
+import { useOrders } from "@/lib/orders-context" 
+import { useVehicles } from "@/lib/vehicles-context" 
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import type { ServiceOrderStatus } from "@/lib/data"
 
 export default function OrdersPage() {
-  const {
-    filteredOrders,
-    customers,
-    vehicles,
-    serviceOrders,
-    addServiceOrder,
-    updateOrderStatus,
-    role,
-    canCreateOrders,
-    canEditOrderStatus,
-    filteredVehicles,
-    filteredCustomers,
-  } = useCrm()
   const { user } = useAuth()
+  const { orders, createOrder, updateStatus, isLoading } = useOrders()
+  const { vehicles } = useVehicles()
+  
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState("all")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const [form, setForm] = useState({
-    customerId: "",
     vehicleId: "",
     description: "",
-    services: "",
+    services: "", 
     totalCost: "",
-    assignedMechanic: "",
+    estimatedDate: "",
   })
 
-  const filtered =
-    tab === "all"
-      ? filteredOrders
-      : filteredOrders.filter((o) => o.status === tab)
+  if (!user) return null
+
+  const role = user.role
+  const canCreateOrders = role === "CLIENT" || role === "ADMIN" || role === "MANAGER"
+  const canEditOrderStatus = role === "ADMIN" || role === "MECHANIC" || role === "MANAGER"
+
+  const filtered = tab === "all"
+      ? orders
+      : orders.filter((o) => o.status === tab.toUpperCase())
 
   const sorted = [...filtered].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   )
 
-  // For client, auto-set customer & only show their vehicles
-  const availableCustomers = role === "client" ? filteredCustomers : customers
-  const selectedCustomerId = role === "client" ? (user?.customerId || "") : form.customerId
-  const customerVehicles = role === "client"
-    ? filteredVehicles
-    : vehicles.filter((v) => v.customerId === form.customerId)
+  async function handleSubmit() {
+    if (!form.vehicleId || !form.description) return
+    setIsSubmitting(true)
 
-  function handleSubmit() {
-    if (!selectedCustomerId || !form.vehicleId || !form.description) return
-    addServiceOrder({
-      id: `SO${String(serviceOrders.length + 1).padStart(3, "0")}`,
-      customerId: selectedCustomerId,
-      vehicleId: form.vehicleId,
-      status: "pending",
+    const selectedVehicle = vehicles.find(v => v.id.toString() === form.vehicleId)
+    
+    // Логика определения ID клиента
+    const customerId = role === "CLIENT" ? user!.id : (selectedVehicle?.userId || user!.id)
+
+    const result = await createOrder({
+      // 👇 Если это КЛИЕНТ, мы не шлем customerId (бекенд возьмет из токена)
+      // Если АДМИН - шлем.
+      customerId: role === "ADMIN" || role === "MANAGER" ? Number(customerId) : undefined,
+      
+      vehicleId: Number(form.vehicleId),
       description: form.description,
-      services: form.services
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
+      
+      services: form.services.split(",").map(s => s.trim()).filter(Boolean),
       totalCost: parseFloat(form.totalCost) || 0,
-      createdAt: new Date().toISOString().split("T")[0],
-      completedAt: null,
-      assignedMechanic: form.assignedMechanic || "Unassigned",
     })
-    setForm({ customerId: "", vehicleId: "", description: "", services: "", totalCost: "", assignedMechanic: "" })
-    setOpen(false)
+
+    setIsSubmitting(false)
+
+    if (result.success) {
+      setForm({ vehicleId: "", description: "", services: "", totalCost: "", estimatedDate: "" })
+      setOpen(false)
+    } else {
+        alert(result.error) 
+    }
   }
 
   const statusCounts = {
-    all: filteredOrders.length,
-    pending: filteredOrders.filter((o) => o.status === "pending").length,
-    "in-progress": filteredOrders.filter((o) => o.status === "in-progress").length,
-    completed: filteredOrders.filter((o) => o.status === "completed").length,
-    cancelled: filteredOrders.filter((o) => o.status === "cancelled").length,
+    all: orders.length,
+    pending: orders.filter((o) => o.status === "PENDING").length,
+    inProgress: orders.filter((o) => o.status === "IN_PROGRESS").length,
+    completed: orders.filter((o) => o.status === "COMPLETED").length,
+    cancelled: orders.filter((o) => o.status === "CANCELLED").length,
   }
 
   const descriptions: Record<string, string> = {
-    admin: "Manage work orders and service requests",
-    mechanic: "Your assigned work orders",
-    client: "Track your service requests",
+    ADMIN: "Manage work orders and service requests",
+    MANAGER: "Manage work orders and service requests",
+    MECHANIC: "Your assigned work orders",
+    CLIENT: "Track your service requests",
   }
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <PageHeader title={role === "client" ? "My Orders" : "Service Orders"} description={descriptions[role]}>
+      <PageHeader title={role === "CLIENT" ? "My Orders" : "Service Orders"} description={descriptions[role] || "Orders"}>
         {canCreateOrders && (
           <Button onClick={() => setOpen(true)} className="gap-2">
             <Plus className="size-4" />
-            {role === "client" ? "Request Service" : "New Order"}
+            {role === "CLIENT" ? "Request Service" : "New Order"}
           </Button>
         )}
       </PageHeader>
@@ -139,8 +139,8 @@ export default function OrdersPage() {
             <TabsTrigger value="pending">
               Pending <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.pending})</span>
             </TabsTrigger>
-            <TabsTrigger value="in-progress">
-              In Progress <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts["in-progress"]})</span>
+            <TabsTrigger value="in_progress">
+              In Progress <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.inProgress})</span>
             </TabsTrigger>
             <TabsTrigger value="completed">
               Completed <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.completed})</span>
@@ -150,14 +150,15 @@ export default function OrdersPage() {
           <TabsContent value={tab}>
             <Card className="border-border bg-card">
               <CardContent className="p-0">
+                {isLoading ? (
+                    <div className="p-8 text-center text-muted-foreground">Loading orders...</div>
+                ) : (
                 <Table>
                   <TableHeader>
                     <TableRow className="border-border hover:bg-transparent">
                       <TableHead className="pl-6 text-muted-foreground">Order ID</TableHead>
-                      {role !== "client" && <TableHead className="text-muted-foreground">Customer</TableHead>}
                       <TableHead className="text-muted-foreground">Vehicle</TableHead>
                       <TableHead className="text-muted-foreground">Description</TableHead>
-                      {role !== "client" && <TableHead className="text-muted-foreground">Mechanic</TableHead>}
                       <TableHead className="text-muted-foreground">Status</TableHead>
                       <TableHead className="text-muted-foreground">Cost</TableHead>
                       {canEditOrderStatus && (
@@ -167,40 +168,26 @@ export default function OrdersPage() {
                   </TableHeader>
                   <TableBody>
                     {sorted.map((order) => {
-                      const customer = customers.find(
-                        (c) => c.id === order.customerId
-                      )
-                      const vehicle = vehicles.find(
-                        (v) => v.id === order.vehicleId
-                      )
+                      
+                        const vehicleData = order.car                      
                       return (
                         <TableRow key={order.id} className="border-border">
                           <TableCell className="pl-6 font-medium font-mono text-foreground">
-                            {order.id}
+                            #{order.id}
                           </TableCell>
-                          {role !== "client" && (
-                            <TableCell className="text-foreground">
-                              {customer?.name}
-                            </TableCell>
-                          )}
                           <TableCell className="text-muted-foreground">
-                            {vehicle
-                              ? `${vehicle.year} ${vehicle.make} ${vehicle.model}`
-                              : "N/A"}
+                            {vehicleData
+                              ? `${vehicleData.brand} ${vehicleData.model} (${vehicleData.plate || 'No Plate'})`
+                              : `Vehicle #${order.vehicleId}`}
                           </TableCell>
                           <TableCell className="max-w-48 truncate text-foreground">
                             {order.description}
                           </TableCell>
-                          {role !== "client" && (
-                            <TableCell className="text-muted-foreground">
-                              {order.assignedMechanic}
-                            </TableCell>
-                          )}
                           <TableCell>
-                            <StatusBadge status={order.status} />
+                            <StatusBadge status={order.status.toLowerCase()} />
                           </TableCell>
                           <TableCell className="font-medium text-foreground">
-                            ${order.totalCost.toLocaleString()}
+                            ${Number(order.totalAmount || 0).toLocaleString()}
                           </TableCell>
                           {canEditOrderStatus && (
                             <TableCell className="pr-6">
@@ -211,15 +198,15 @@ export default function OrdersPage() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  {(["pending", "in-progress", "completed", "cancelled"] as ServiceOrderStatus[])
+                                  {["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"]
                                     .filter((s) => s !== order.status)
                                     .map((status) => (
                                       <DropdownMenuItem
                                         key={status}
-                                        onClick={() => updateOrderStatus(order.id, status)}
+                                        onClick={() => updateStatus(order.id, status)}
                                         className="capitalize"
                                       >
-                                        {status.replace("-", " ")}
+                                        {status.toLowerCase().replace("_", " ")}
                                       </DropdownMenuItem>
                                     ))}
                                 </DropdownMenuContent>
@@ -231,13 +218,14 @@ export default function OrdersPage() {
                     })}
                     {sorted.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={role === "client" ? 5 : canEditOrderStatus ? 8 : 7} className="py-12 text-center text-muted-foreground">
+                        <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
                           No orders found
                         </TableCell>
                       </TableRow>
                     )}
                   </TableBody>
                 </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -248,50 +236,34 @@ export default function OrdersPage() {
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
-              <DialogTitle>{role === "client" ? "Request Service" : "Create Service Order"}</DialogTitle>
+              <DialogTitle>{role === "CLIENT" ? "Request Service" : "Create Service Order"}</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              {role === "admin" && (
-                <div className="grid gap-2">
-                  <Label>Customer</Label>
-                  <Select
-                    value={form.customerId}
-                    onValueChange={(v) =>
-                      setForm({ ...form, customerId: v, vehicleId: "" })
-                    }
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select customer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {customers.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              
+              {/* ВИБІР МАШИНИ */}
               <div className="grid gap-2">
                 <Label>Vehicle</Label>
                 <Select
                   value={form.vehicleId}
                   onValueChange={(v) => setForm({ ...form, vehicleId: v })}
-                  disabled={role === "admin" && !form.customerId}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder={role === "admin" && !form.customerId ? "Select customer first" : "Select vehicle"} />
+                    <SelectValue placeholder="Select vehicle" />
                   </SelectTrigger>
                   <SelectContent>
-                    {customerVehicles.map((v) => (
-                      <SelectItem key={v.id} value={v.id}>
-                        {v.year} {v.make} {v.model} ({v.licensePlate})
+                    {/* Показуємо машини, які завантажив useVehicles */}
+                    {vehicles.map((v) => (
+                      <SelectItem key={v.id} value={v.id.toString()}>
+                        {v.brand} {v.model} ({v.plate})
                       </SelectItem>
                     ))}
+                    {vehicles.length === 0 && (
+                        <div className="p-2 text-sm text-muted-foreground">No vehicles found. Add a vehicle first.</div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
+
               <div className="grid gap-2">
                 <Label htmlFor="o-desc">Description</Label>
                 <Textarea
@@ -302,43 +274,40 @@ export default function OrdersPage() {
                   rows={3}
                 />
               </div>
+
               <div className="grid gap-2">
                 <Label htmlFor="o-services">Services (comma separated)</Label>
                 <Input
                   id="o-services"
                   value={form.services}
                   onChange={(e) => setForm({ ...form, services: e.target.value })}
-                  placeholder="Oil Change, Tire Rotation, Brake Inspection"
+                  placeholder="Oil Change, Tire Rotation"
                 />
               </div>
-              {role === "admin" && (
+
+              {/* Поля вартості тільки для Адміна/Менеджера */}
+              {(role === "ADMIN" || role === "MANAGER") && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="o-cost">Estimated Cost ($)</Label>
                     <Input
                       id="o-cost"
+                      type="number"
                       value={form.totalCost}
                       onChange={(e) => setForm({ ...form, totalCost: e.target.value })}
                       placeholder="0.00"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="o-mech">Assigned Mechanic</Label>
-                    <Input
-                      id="o-mech"
-                      value={form.assignedMechanic}
-                      onChange={(e) => setForm({ ...form, assignedMechanic: e.target.value })}
-                      placeholder="Mike Torres"
                     />
                   </div>
                 </div>
               )}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>
+              <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>
                 Cancel
               </Button>
-              <Button onClick={handleSubmit}>{role === "client" ? "Submit Request" : "Create Order"}</Button>
+              <Button onClick={handleSubmit} disabled={isSubmitting}>
+                  {isSubmitting ? "Processing..." : (role === "CLIENT" ? "Submit Request" : "Create Order")}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

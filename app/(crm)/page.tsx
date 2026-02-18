@@ -6,14 +6,16 @@ import { RevenueChart } from "@/components/dashboard/revenue-chart"
 import { ServiceBreakdown } from "@/components/dashboard/service-breakdown"
 import { RecentOrders } from "@/components/dashboard/recent-orders"
 import { UpcomingAppointments } from "@/components/dashboard/upcoming-appointments"
-import { useCrm } from "@/lib/crm-context"
+import { useAuth } from "@/lib/auth-context" // 👈 Використовуємо правильний контекст
 import { MechanicDashboard } from "@/components/dashboard/mechanic-dashboard"
 import { ClientDashboard } from "@/components/dashboard/client-dashboard"
 
 export default function DashboardPage() {
-  const { role } = useCrm()
+  const { user } = useAuth() 
 
-  if (role === "mechanic") {
+  if (!user) return null
+
+  if (user.role === "MECHANIC") {
     return (
       <div className="flex flex-1 flex-col overflow-hidden">
         <PageHeader title="Dashboard" description="Your assigned work overview" />
@@ -24,7 +26,7 @@ export default function DashboardPage() {
     )
   }
 
-  if (role === "client") {
+  if (user.role === "CLIENT") {
     return (
       <div className="flex flex-1 flex-col overflow-hidden">
         <PageHeader title="Dashboard" description="Your service overview" />
@@ -35,7 +37,6 @@ export default function DashboardPage() {
     )
   }
 
-  // Admin dashboard - full view
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <PageHeader title="Dashboard" description="Overview of your car service operations" />
