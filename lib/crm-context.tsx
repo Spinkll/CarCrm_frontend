@@ -41,6 +41,7 @@ export interface Appointment {
   time: string
   status: string
   carId: number
+  notes?: string
 }
 
 type CrmContextType = {
@@ -55,6 +56,9 @@ type CrmContextType = {
   refreshData: () => Promise<void>
   addVehicle: (data: any) => Promise<{ success: boolean; error?: string }>
   updateOrderStatus: (id: number, status: string) => Promise<void>
+  // 👇 ДОДАНО НОВІ ТИПИ
+  addAppointment: (data: any) => Promise<{ success: boolean; error?: string }>
+  updateAppointmentStatus: (id: number, status: string) => Promise<void>
 }
 
 const CrmContext = createContext<CrmContextType | undefined>(undefined)
@@ -144,6 +148,28 @@ export function CrmProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // 👇 ДОДАНО НОВІ ФУНКЦІЇ ДЛЯ APPOINTMENTS
+
+  const addAppointment = async (payload: any) => {
+    try {
+      const { data } = await api.post('/appointments', payload)
+      setAppointments(prev => [...prev, data])
+      return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.response?.data?.message || "Error scheduling appointment" }
+    }
+  }
+
+  const updateAppointmentStatus = async (id: number, status: string) => {
+    try {
+      // Переконайся, що ендпоінт на бекенді саме такий (або просто /appointments/${id})
+      await api.patch(`/appointments/${id}/status`, { status })
+      setAppointments(prev => prev.map(a => a.id === id ? { ...a, status } : a))
+    } catch (err) {
+      console.error("Appointment status update failed", err)
+    }
+  }
+
   return (
     <CrmContext.Provider
       value={{
@@ -158,6 +184,8 @@ export function CrmProvider({ children }: { children: React.ReactNode }) {
         refreshData,
         addVehicle,
         updateOrderStatus,
+        addAppointment,
+        updateAppointmentStatus,
       }}
     >
       {children}

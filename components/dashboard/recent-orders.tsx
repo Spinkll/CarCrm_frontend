@@ -53,7 +53,6 @@ export function RecentOrders() {
                 </TableRow>
               ) : (
                 recent.map((order) => {
-                  // Знаходимо авто та клієнта за новими ключами carId та userId
                   const vehicle = vehicles.find((v) => v.id === order.carId)
                   const customer = customers.find((c) => 
                     c.id === (order.carId || vehicle?.userId)
