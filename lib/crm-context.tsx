@@ -1,176 +1,163 @@
 "use client"
 
-import React, { createContext, useContext, useState, useCallback, useMemo } from "react"
-import {
-  customers as initialCustomers,
-  vehicles as initialVehicles,
-  serviceOrders as initialOrders,
-  appointments as initialAppointments,
-  type Customer,
-  type Vehicle,
-  type ServiceOrder,
-  type Appointment,
-  type UserRole,
-} from "./data"
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from "react"
 import { useAuth } from "./auth-context"
+import { api } from "./api" 
+
+export interface Customer {
+  id: number
+  firstName: string
+  lastName: string
+  email: string
+  phone?: string
+  createdAt: string
+}
+
+export interface Vehicle {
+  id: number
+  brand: string
+  model: string
+  year: number
+  plate: string
+  mileage: number
+  color: string
+  userId: number 
+}
+
+export interface ServiceOrder {
+  id: number
+  status: string
+  description: string
+  totalAmount: number
+  carId: number
+  createdAt: string
+  car?: Vehicle
+}
+
+export interface Appointment {
+  id: number
+  service: string
+  date: string
+  time: string
+  status: string
+  carId: number
+}
 
 type CrmContextType = {
-  // raw data
   customers: Customer[]
   vehicles: Vehicle[]
-  serviceOrders: ServiceOrder[]
+  orders: ServiceOrder[]
   appointments: Appointment[]
-  // filtered by role
-  filteredCustomers: Customer[]
   filteredVehicles: Vehicle[]
   filteredOrders: ServiceOrder[]
   filteredAppointments: Appointment[]
-  // role info
-  role: UserRole
-  // actions
-  addCustomer: (customer: Customer) => void
-  addVehicle: (vehicle: Vehicle) => void
-  addServiceOrder: (order: ServiceOrder) => void
-  addAppointment: (appointment: Appointment) => void
-  updateOrderStatus: (id: string, status: ServiceOrder["status"]) => void
-  updateAppointmentStatus: (id: string, status: Appointment["status"]) => void
-  // permissions
-  canCreateOrders: boolean
-  canEditOrderStatus: boolean
-  canCreateCustomers: boolean
-  canCreateVehicles: boolean
-  canCreateAppointments: boolean
+  isLoading: boolean
+  refreshData: () => Promise<void>
+  addVehicle: (data: any) => Promise<{ success: boolean; error?: string }>
+  updateOrderStatus: (id: number, status: string) => Promise<void>
 }
 
 const CrmContext = createContext<CrmContextType | undefined>(undefined)
 
 export function CrmProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
-  const role = user?.role || "client"
+  
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [orders, setOrders] = useState<ServiceOrder[]>([])
+  const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const [customers, setCustomers] = useState<Customer[]>(initialCustomers)
-  const [vehicles, setVehicles] = useState<Vehicle[]>(initialVehicles)
-  const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>(initialOrders)
-  const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments)
+  const userRole = user?.role?.toUpperCase() 
+  const currentUserId = user?.id 
 
-  // Role-based filtered data
-  const filteredCustomers = useMemo(() => {
-    if (role === "admin") return customers
-    if (role === "mechanic") return customers // mechanics can view all customers (read-only)
-    // client: return only the customer record linked to this user
-    if (user?.customerId) {
-      return customers.filter((c) => c.id === user.customerId)
+  const refreshData = useCallback(async () => {
+    if (!user) return
+    setIsLoading(true)
+    try {
+      const [custRes, vehRes, ordRes, appRes] = await Promise.all([
+        api.get('/users/customers').catch(() => ({ data: [] })), 
+        api.get('/cars').catch(() => ({ data: [] })),
+        api.get('/orders').catch(() => ({ data: [] })),
+        api.get('/appointments').catch(() => ({ data: [] })),
+      ])
+
+      setCustomers(custRes.data)
+      setVehicles(vehRes.data)
+      setOrders(ordRes.data)
+      setAppointments(appRes.data)
+    } catch (err) {
+      console.error("CRM Data fetch error:", err)
+    } finally {
+      setIsLoading(false)
     }
-    return []
-  }, [role, customers, user?.customerId])
+  }, [user])
 
+  useEffect(() => {
+    refreshData()
+  }, [refreshData])
+
+  
   const filteredOrders = useMemo(() => {
-    if (role === "admin") return serviceOrders
-    if (role === "mechanic") {
-      return serviceOrders.filter((o) => o.assignedMechanic === user?.mechanicName)
+    if (userRole === "ADMIN" || userRole === "MANAGER") return orders
+    if (userRole === "MECHANIC") {
+      return orders.filter(o => o.status !== "completed") 
     }
-    // client: only their own orders
-    if (user?.customerId) {
-      return serviceOrders.filter((o) => o.customerId === user.customerId)
-    }
-    return []
-  }, [role, serviceOrders, user?.mechanicName, user?.customerId])
+    return orders.filter(o => o.car?.userId === currentUserId || (vehicles.find(v => v.id === o.carId)?.userId === currentUserId))
+  }, [orders, userRole, currentUserId, vehicles])
 
   const filteredVehicles = useMemo(() => {
-    if (role === "admin") return vehicles
-    if (role === "mechanic") {
-      // vehicles from assigned orders
-      const vehicleIds = new Set(filteredOrders.map((o) => o.vehicleId))
-      return vehicles.filter((v) => vehicleIds.has(v.id))
+    if (userRole === "ADMIN" || userRole === "MANAGER") return vehicles
+    if (userRole === "MECHANIC") {
+      const activeVehicleIds = new Set(filteredOrders.map(o => o.carId))
+      return vehicles.filter(v => activeVehicleIds.has(v.id))
     }
-    // client: only own vehicles
-    if (user?.customerId) {
-      return vehicles.filter((v) => v.customerId === user.customerId)
-    }
-    return []
-  }, [role, vehicles, filteredOrders, user?.customerId])
+    return vehicles.filter(v => Number(v.userId) === Number(currentUserId))
+  }, [vehicles, userRole, currentUserId, filteredOrders])
 
   const filteredAppointments = useMemo(() => {
-    if (role === "admin") return appointments
-    if (role === "mechanic") {
-      // Mechanic sees appointments for vehicles from their assigned orders
-      const customerIds = new Set(filteredOrders.map((o) => o.customerId))
-      return appointments.filter((a) => customerIds.has(a.customerId))
+    if (userRole === "ADMIN" || userRole === "MANAGER") return appointments
+    return appointments.filter(a => {
+        const vehicle = vehicles.find(v => v.id === a.carId)
+        return Number(vehicle?.userId) === Number(currentUserId)
+    })
+  }, [appointments, userRole, currentUserId, vehicles])
+
+  // --- Екшни (Actions) ---
+
+  const addVehicle = async (payload: any) => {
+    try {
+      const { data } = await api.post('/cars', payload)
+      setVehicles(prev => [...prev, data])
+      return { success: true }
+    } catch (err: any) {
+      return { success: false, error: err.response?.data?.message || "Error adding vehicle" }
     }
-    // client
-    if (user?.customerId) {
-      return appointments.filter((a) => a.customerId === user.customerId)
+  }
+
+  const updateOrderStatus = async (id: number, status: string) => {
+    try {
+      await api.patch(`/orders/${id}/status`, { status })
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o))
+    } catch (err) {
+      console.error("Status update failed", err)
     }
-    return []
-  }, [role, appointments, filteredOrders, user?.customerId])
-
-  // Permissions
-  const canCreateOrders = role === "admin" || role === "client"
-  const canEditOrderStatus = role === "admin" || role === "mechanic"
-  const canCreateCustomers = role === "admin"
-  const canCreateVehicles = role === "admin" || role === "client"
-  const canCreateAppointments = role === "admin" || role === "client"
-
-  const addCustomer = useCallback((customer: Customer) => {
-    setCustomers((prev) => [customer, ...prev])
-  }, [])
-
-  const addVehicle = useCallback((vehicle: Vehicle) => {
-    setVehicles((prev) => [vehicle, ...prev])
-  }, [])
-
-  const addServiceOrder = useCallback((order: ServiceOrder) => {
-    setServiceOrders((prev) => [order, ...prev])
-  }, [])
-
-  const addAppointment = useCallback((appointment: Appointment) => {
-    setAppointments((prev) => [appointment, ...prev])
-  }, [])
-
-  const updateOrderStatus = useCallback((id: string, status: ServiceOrder["status"]) => {
-    setServiceOrders((prev) =>
-      prev.map((o) =>
-        o.id === id
-          ? {
-              ...o,
-              status,
-              completedAt:
-                status === "completed"
-                  ? new Date().toISOString().split("T")[0]
-                  : o.completedAt,
-            }
-          : o
-      )
-    )
-  }, [])
-
-  const updateAppointmentStatus = useCallback((id: string, status: Appointment["status"]) => {
-    setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)))
-  }, [])
+  }
 
   return (
     <CrmContext.Provider
       value={{
         customers,
         vehicles,
-        serviceOrders,
+        orders,
         appointments,
-        filteredCustomers,
         filteredVehicles,
         filteredOrders,
         filteredAppointments,
-        role,
-        addCustomer,
+        isLoading,
+        refreshData,
         addVehicle,
-        addServiceOrder,
-        addAppointment,
         updateOrderStatus,
-        updateAppointmentStatus,
-        canCreateOrders,
-        canEditOrderStatus,
-        canCreateCustomers,
-        canCreateVehicles,
-        canCreateAppointments,
       }}
     >
       {children}
@@ -178,7 +165,7 @@ export function CrmProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function useCrm() {
+export const useCrm = () => {
   const context = useContext(CrmContext)
   if (!context) throw new Error("useCrm must be used within CrmProvider")
   return context
