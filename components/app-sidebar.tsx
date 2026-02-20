@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   UserCog,
+  MessageSquare,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
@@ -33,6 +34,12 @@ const navItems: NavItem[] = [
     roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"] 
   },
   { 
+    label: "Вхідні заявки", 
+    href: "/requests", 
+    icon: MessageSquare, 
+    roles: ["ADMIN", "MANAGER"] 
+  },
+  { 
     label: "Клієнти", 
     href: "/customers", 
     icon: Users, 
@@ -51,7 +58,7 @@ const navItems: NavItem[] = [
     roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"] 
   },
   { 
-    label: "Записи", 
+    label: "Календар", 
     href: "/appointments", 
     icon: CalendarDays, 
     roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"] 

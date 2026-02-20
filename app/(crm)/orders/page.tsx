@@ -37,6 +37,10 @@ import { useAuth } from "@/lib/auth-context"
 import { useOrders } from "@/lib/orders-context" 
 import { useVehicles } from "@/lib/vehicles-context" 
 import { useCrm } from "@/lib/crm-context"
+
+// ДОБАВЛЯЕМ ИМПОРТ НОВОГО ХУКА ЗАЯВОК:
+import { useServiceRequests } from "@/lib/service-requests-context" 
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,7 +49,6 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 
-// Словник для перекладу статусів у випадаючому списку
 const statusTranslations: Record<string, string> = {
   PENDING: "Очікує",
   CONFIRMED: "Підтверджено",
@@ -62,6 +65,9 @@ export default function OrdersPage() {
   const { orders, createOrder, updateStatus, isLoading } = useOrders()
   const { vehicles } = useVehicles()
   const { customers } = useCrm()
+  
+  // ДОСТАЕМ ФУНКЦИЮ СОЗДАНИЯ ЗАЯВКИ
+  const { createRequest } = useServiceRequests() 
   
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState("all")
@@ -88,34 +94,60 @@ export default function OrdersPage() {
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   )
 
+  // ПОЛНОСТЬЮ ОБНОВЛЕННАЯ ФУНКЦИЯ SUBMIT
   async function handleSubmit() {
-  if (!form.vehicleId || !form.description) return
-  setIsSubmitting(true)
+    if (!form.vehicleId || !form.description) return
+    setIsSubmitting(true)
 
-  const finalDescription = form.services.trim() 
-    ? `${form.description}\n\nПослуги до виконання: ${form.services}` 
-    : form.description;
+    // --- ЛОГИКА ДЛЯ КЛИЕНТА (СОЗДАЕТ ServiceRequest) ---
+    if (role === "CLIENT") {
+      // Если клиент выбрал дату, добавляем её в причину обращения
+      let reason = form.description;
+      if (form.estimatedDate) {
+        reason = `Бажана дата: ${form.estimatedDate}\n\n${form.description}`;
+      }
 
-  const payload: any = {
-    vehicleId: Number(form.vehicleId),
-    description: finalDescription,
+      const result = await createRequest(Number(form.vehicleId), reason);
+
+      setIsSubmitting(false);
+
+      if (result.success) {
+        setForm({ vehicleId: "", description: "", services: "", estimatedDate: "" });
+        setOpen(false);
+        alert("Вашу заявку успішно надіслано! Менеджер зв'яжеться з вами.");
+      } else {
+        alert(result.error || "Не вдалося надіслати заявку");
+      }
+      
+      return; // Выходим из функции, чтобы заказ не создавался!
+    }
+
+    // --- ЛОГИКА ДЛЯ МЕНЕДЖЕРА/АДМИНА (СОЗДАЕТ ПРЯМОЙ ЗАКАЗ) ---
+    const finalDescription = form.services.trim() 
+      ? `${form.description}\n\nПослуги до виконання: ${form.services}` 
+      : form.description;
+
+    const payload: any = {
+      vehicleId: Number(form.vehicleId),
+      description: finalDescription,
+    }
+
+    // Если менеджер выбрал дату, она пойдет в Appointment (согласно нашему бекенду OrdersService)
+    if (form.estimatedDate) {
+      payload.scheduledAt = new Date(form.estimatedDate).toISOString()
+    }
+
+    const result = await createOrder(payload)
+
+    setIsSubmitting(false)
+
+    if (result.success) {
+      setForm({ vehicleId: "", description: "", services: "", estimatedDate: "" })
+      setOpen(false)
+    } else {
+      alert(result.error || "Не вдалося створити замовлення") 
+    }
   }
-
-  if (form.estimatedDate) {
-    payload.scheduledAt = new Date(form.estimatedDate).toISOString()
-  }
-
-  const result = await createOrder(payload)
-
-  setIsSubmitting(false)
-
-  if (result.success) {
-    setForm({ vehicleId: "", description: "", services: "", estimatedDate: "" })
-    setOpen(false)
-  } else {
-    alert(result.error || "Не вдалося створити замовлення") 
-  }
-}
 
   const statusCounts = {
     all: orders.length,
@@ -318,6 +350,7 @@ export default function OrdersPage() {
                   type="date"
                   value={form.estimatedDate}
                   onChange={(e) => setForm({ ...form, estimatedDate: e.target.value })}
+                  min={new Date().toISOString().split('T')[0]} // Не разрешаем выбирать прошедшие дни
                 />
               </div>
 

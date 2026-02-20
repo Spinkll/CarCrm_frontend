@@ -10,6 +10,8 @@ import { OrdersProvider } from "@/lib/orders-context"
 import { EmployeesProvider } from "@/lib/employees-context"
 import { CustomersProvider } from "@/lib/customers-context"
 import { NotificationsProvider } from "@/lib/notifications-context"
+import { AppointmentsProvider } from "@/lib/appointments-context"
+import { ServiceRequestsProvider } from "@/lib/service-requests-context"
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
@@ -33,6 +35,8 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <CrmProvider>
+      <ServiceRequestsProvider>
+      <AppointmentsProvider>
       <NotificationsProvider>
       <CustomersProvider>
       <VehiclesProvider>
@@ -47,6 +51,8 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
         </VehiclesProvider>
         </CustomersProvider>
         </NotificationsProvider>
+        </AppointmentsProvider>
+        </ServiceRequestsProvider>
     </CrmProvider>
   )
 }

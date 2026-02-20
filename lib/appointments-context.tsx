@@ -1,7 +1,8 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react"
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react"
 import { useAuth } from "./auth-context"
+import api from "./api"
 
 export interface Appointment {
   id: number
@@ -29,63 +30,57 @@ interface AppointmentsContextType {
 const AppointmentsContext = createContext<AppointmentsContextType | undefined>(undefined)
 
 export function AppointmentsProvider({ children }: { children: React.ReactNode }) {
-  const { token, user } = useAuth()
+  const { user } = useAuth()
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
   const fetchAppointments = useCallback(async () => {
-    if (!token || !user) return
+    if (!user) return
     setIsLoading(true)
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/appointments`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (res.ok) {
-        setAppointments(await res.json())
-      }
+      const res = await api.get("/appointments")
+      setAppointments(res.data)
     } catch (error) {
       console.error("Помилка завантаження записів", error)
     } finally {
       setIsLoading(false)
     }
-  }, [token, user])
+  }, [user])
 
   useEffect(() => {
     fetchAppointments()
   }, [fetchAppointments])
 
-  const updateStatus = async (id: number, status: string) => {
+  const updateStatus = useCallback(async (id: number, status: string) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/appointments/${id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ status }),
-      })
-      if (!res.ok) throw new Error("Помилка зміни статусу")
+      await api.patch(`/appointments/${id}/status`, { status })
       await fetchAppointments()
       return { success: true }
     } catch (error: any) {
-      return { success: false, error: error.message }
+      return { success: false, error: error.response?.data?.message || error.message }
     }
-  }
+  }, [fetchAppointments])
 
-  const reschedule = async (id: number, scheduledAt: string, estimatedMin?: number) => {
+  const reschedule = useCallback(async (id: number, scheduledAt: string, estimatedMin?: number) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/appointments/${id}/reschedule`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ scheduledAt, estimatedMin }),
-      })
-      if (!res.ok) throw new Error("Помилка перенесення запису")
+      await api.patch(`/appointments/${id}/reschedule`, { scheduledAt, estimatedMin })
       await fetchAppointments()
       return { success: true }
     } catch (error: any) {
-      return { success: false, error: error.message }
+      return { success: false, error: error.response?.data?.message || error.message }
     }
-  }
+  }, [fetchAppointments])
+
+  const value = useMemo(() => ({
+    appointments,
+    isLoading,
+    fetchAppointments,
+    updateStatus,
+    reschedule,
+  }), [appointments, isLoading, fetchAppointments, updateStatus, reschedule])
 
   return (
-    <AppointmentsContext.Provider value={{ appointments, isLoading, fetchAppointments, updateStatus, reschedule }}>
+    <AppointmentsContext.Provider value={value}>
       {children}
     </AppointmentsContext.Provider>
   )
