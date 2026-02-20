@@ -11,13 +11,13 @@ export function ClientDashboard() {
 
   const totalSpent = useMemo(() => {
     return filteredOrders
-      .filter((o) => o.status?.toLowerCase() === "completed")
+      .filter((o) => o.status?.toLowerCase() === "completed" || o.status?.toLowerCase() === "paid")
       .reduce((sum, o) => sum + Number(o.totalAmount || 0), 0)
   }, [filteredOrders])
 
   // 2. Активні замовлення (додаємо статус 'received' та 'pending')
   const activeOrdersCount = useMemo(() => {
-    const activeStatuses = ["in-progress", "pending", "received", "scheduled"]
+    const activeStatuses = ["in_progress", "pending", "received", "scheduled", "confirmed", "waiting_parts"]
     return filteredOrders.filter((o) => 
       activeStatuses.includes(o.status?.toLowerCase())
     ).length
@@ -39,10 +39,10 @@ export function ClientDashboard() {
   }
 
   const kpis = [
-    { label: "My Vehicles", value: filteredVehicles.length, icon: Car },
-    { label: "Active Orders", value: activeOrdersCount, icon: ClipboardList },
-    { label: "Upcoming Appointments", value: upcomingAppointments.length, icon: CalendarDays },
-    { label: "Total Spent", value: `$${totalSpent.toLocaleString()}`, icon: DollarSign },
+    { label: "Мої автомобілі", value: filteredVehicles.length, icon: Car },
+    { label: "Активні замовлення", value: activeOrdersCount, icon: ClipboardList },
+    { label: "Заплановані візити", value: upcomingAppointments.length, icon: CalendarDays },
+    { label: "Всього витрачено", value: `${totalSpent.toLocaleString()} ₴`, icon: DollarSign },
   ]
 
   return (
@@ -69,14 +69,14 @@ export function ClientDashboard() {
         {/* Секція автомобілів */}
         <Card className="border-border bg-card">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-foreground">My Vehicles</CardTitle>
+            <CardTitle className="text-sm font-medium text-foreground">Мої автомобілі</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {filteredVehicles.length === 0 ? (
                 <div className="flex flex-col items-center py-8 text-muted-foreground opacity-50">
                   <Car className="size-8" />
-                  <p className="mt-2 text-sm">No vehicles registered</p>
+                  <p className="mt-2 text-sm">Немає зареєстрованих автомобілів</p>
                 </div>
               ) : (
                 filteredVehicles.map((vehicle) => (
@@ -92,12 +92,13 @@ export function ClientDashboard() {
                         {vehicle.year} {vehicle.brand} {vehicle.model}
                       </p>
                       <p className="text-xs text-muted-foreground uppercase">
-                        {vehicle.plate} • {vehicle.mileage?.toLocaleString()} km
+                        {vehicle.plate} • {vehicle.mileage?.toLocaleString()} км
                       </p>
                     </div>
                     <div
                       className="size-4 shrink-0 rounded-full border border-black/10 shadow-sm"
                       style={{ backgroundColor: vehicle.color?.toLowerCase() || '#ccc' }}
+                      title={vehicle.color}
                     />
                   </div>
                 ))
@@ -109,14 +110,14 @@ export function ClientDashboard() {
         {/* Секція записів */}
         <Card className="border-border bg-card">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-foreground">Next Visits</CardTitle>
+            <CardTitle className="text-sm font-medium text-foreground">Наступні візити</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {upcomingAppointments.length === 0 ? (
                 <div className="flex flex-col items-center py-8 text-muted-foreground opacity-50">
                   <CalendarDays className="size-8" />
-                  <p className="mt-2 text-sm">No upcoming appointments</p>
+                  <p className="mt-2 text-sm">Немає запланованих візитів</p>
                 </div>
               ) : (
                 upcomingAppointments.slice(0, 5).map((appt) => {
@@ -132,7 +133,7 @@ export function ClientDashboard() {
                           <StatusBadge status={appt.status} />
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {vehicle ? `${vehicle.brand} ${vehicle.model}` : "Vehicle Info N/A"}
+                          {vehicle ? `${vehicle.brand} ${vehicle.model}` : "Дані про авто відсутні"}
                         </p>
                         <div className="mt-1 flex items-center gap-3 text-[10px] font-medium text-muted-foreground uppercase">
                           <span className="flex items-center gap-1">
@@ -157,14 +158,14 @@ export function ClientDashboard() {
       {/* Історія обслуговування */}
       <Card className="border-border bg-card">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-foreground">Service History</CardTitle>
+          <CardTitle className="text-sm font-medium text-foreground">Історія обслуговування</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             {filteredOrders.length === 0 ? (
               <div className="flex flex-col items-center py-8 text-muted-foreground opacity-50">
                 <ClipboardList className="size-8" />
-                <p className="mt-2 text-sm">No service history yet</p>
+                <p className="mt-2 text-sm">Історія обслуговування порожня</p>
               </div>
             ) : (
               [...filteredOrders]
@@ -179,16 +180,16 @@ export function ClientDashboard() {
                           <ClipboardList className="size-5 text-primary" />
                         </div>
                         <div className="overflow-hidden">
-                          <p className="truncate text-sm font-medium text-foreground">{order.description || "Auto Service"}</p>
+                          <p className="truncate text-sm font-medium text-foreground">{order.description || "Обслуговування авто"}</p>
                           <p className="text-xs text-muted-foreground">
-                            {vehicle ? `${vehicle.brand} ${vehicle.model}` : "Vehicle"} • {new Date(order.createdAt).toLocaleDateString()}
+                            {vehicle ? `${vehicle.brand} ${vehicle.model}` : "Автомобіль"} • {new Date(order.createdAt).toLocaleDateString()}
                           </p>
                         </div>
                       </div>
                       <div className="flex shrink-0 items-center gap-3">
                         <StatusBadge status={order.status} />
-                        <span className="text-sm font-bold text-foreground">
-                          ${Number(order.totalAmount || 0).toLocaleString()}
+                        <span className="text-sm font-bold text-foreground whitespace-nowrap">
+                          {Number(order.totalAmount || 0).toLocaleString()} ₴
                         </span>
                       </div>
                     </div>

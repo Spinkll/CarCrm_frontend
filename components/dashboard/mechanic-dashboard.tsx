@@ -10,16 +10,16 @@ import { useMemo } from "react"
 export function MechanicDashboard() {
   const { filteredOrders, filteredAppointments, customers, vehicles, isLoading } = useCrm()
 
-  // 1. Фільтрація замовлень (враховуємо можливий регістр з БД)
+  // 1. Фільтрація активних замовлень
   const activeOrders = useMemo(() => {
     return filteredOrders.filter((o) => {
       const s = o.status?.toLowerCase()
-      return s === "in_progress" || s === "pending" || s === "received"
+      return s === "in_progress" || s === "pending" || s === "received" || s === "waiting_parts" || s === "confirmed"
     })
   }, [filteredOrders])
 
   const completedOrders = useMemo(() => {
-    return filteredOrders.filter((o) => o.status?.toLowerCase() === "completed")
+    return filteredOrders.filter((o) => o.status?.toLowerCase() === "completed" || o.status?.toLowerCase() === "paid")
   }, [filteredOrders])
 
   // 2. Сьогоднішні записи
@@ -29,10 +29,10 @@ export function MechanicDashboard() {
   }, [filteredAppointments])
 
   const kpis = [
-    { label: "Active Orders", value: activeOrders.length, icon: ClipboardList },
-    { label: "Completed", value: completedOrders.length, icon: CheckCircle2 },
-    { label: "Today's Appointments", value: todayAppointments.length, icon: CalendarDays },
-    { label: "Total Assigned", value: filteredOrders.length, icon: Wrench },
+    { label: "В роботі", value: activeOrders.length, icon: ClipboardList },
+    { label: "Завершено", value: completedOrders.length, icon: CheckCircle2 },
+    { label: "Записи на сьогодні", value: todayAppointments.length, icon: CalendarDays },
+    { label: "Всього призначено", value: filteredOrders.length, icon: Wrench },
   ]
 
   if (isLoading) {
@@ -45,7 +45,7 @@ export function MechanicDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* KPI Cards */}
+      {/* KPI Картки */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi) => (
           <Card key={kpi.label} className="border-border bg-card">
@@ -65,21 +65,21 @@ export function MechanicDashboard() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Active Orders Table */}
+        {/* Таблиця активних замовлень */}
         <Card className="border-border bg-card">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-foreground">My Active Orders</CardTitle>
+            <CardTitle className="text-sm font-medium text-foreground">Мої активні замовлення</CardTitle>
           </CardHeader>
           <CardContent className="px-0">
             <div className="relative overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="border-border hover:bg-transparent">
-                    <TableHead className="pl-6 text-muted-foreground">ID</TableHead>
-                    <TableHead className="text-muted-foreground">Customer</TableHead>
-                    <TableHead className="text-muted-foreground">Vehicle</TableHead>
-                    <TableHead className="text-muted-foreground">Status</TableHead>
-                    <TableHead className="pr-6 text-right text-muted-foreground">Amount</TableHead>
+                    <TableHead className="pl-6 text-muted-foreground">№</TableHead>
+                    <TableHead className="text-muted-foreground">Клієнт</TableHead>
+                    <TableHead className="text-muted-foreground">Автомобіль</TableHead>
+                    <TableHead className="text-muted-foreground">Статус</TableHead>
+                    <TableHead className="pr-6 text-right text-muted-foreground">Сума</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -93,16 +93,16 @@ export function MechanicDashboard() {
                           #{order.id}
                         </TableCell>
                         <TableCell className="text-foreground">
-                          {customer ? `${customer.firstName} ${customer.lastName}` : "Unknown"}
+                          {customer ? `${customer.firstName} ${customer.lastName}` : "Невідомо"}
                         </TableCell>
                         <TableCell className="text-muted-foreground text-xs">
-                          {vehicle ? `${vehicle.brand} ${vehicle.model}` : "N/A"}
+                          {vehicle ? `${vehicle.brand} ${vehicle.model}` : "Немає даних"}
                         </TableCell>
                         <TableCell>
                           <StatusBadge status={order.status} />
                         </TableCell>
                         <TableCell className="pr-6 text-right font-medium text-foreground">
-                          ${Number(order.totalAmount || 0).toLocaleString()}
+                          {Number(order.totalAmount || 0).toLocaleString()} ₴
                         </TableCell>
                       </TableRow>
                     )
@@ -110,7 +110,7 @@ export function MechanicDashboard() {
                   {activeOrders.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                        No active orders assigned to you
+                        У вас немає активних замовлень
                       </TableCell>
                     </TableRow>
                   )}
@@ -120,17 +120,17 @@ export function MechanicDashboard() {
           </CardContent>
         </Card>
 
-        {/* Today's Appointments */}
+        {/* Записи на сьогодні */}
         <Card className="border-border bg-card">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-foreground">Today's Schedule</CardTitle>
+            <CardTitle className="text-sm font-medium text-foreground">Розклад на сьогодні</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {todayAppointments.length === 0 ? (
                 <div className="flex flex-col items-center py-8 text-muted-foreground">
                   <CalendarDays className="size-8 opacity-20" />
-                  <p className="mt-2 text-sm">No appointments for today</p>
+                  <p className="mt-2 text-sm">На сьогодні записів немає</p>
                 </div>
               ) : (
                 todayAppointments
@@ -149,12 +149,12 @@ export function MechanicDashboard() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-2">
                             <p className="text-sm font-medium text-foreground truncate">
-                              {appt.time} - {customer ? `${customer.firstName}` : "Customer"}
+                              {appt.time} - {customer ? `${customer.firstName}` : "Клієнт"}
                             </p>
                             <StatusBadge status={appt.status} />
                           </div>
                           <p className="text-xs text-muted-foreground truncate">
-                            {vehicle ? `${vehicle.brand} ${vehicle.model}` : "Unknown Car"} — {appt.service}
+                            {vehicle ? `${vehicle.brand} ${vehicle.model}` : "Невідоме авто"} — {appt.service}
                           </p>
                         </div>
                       </div>

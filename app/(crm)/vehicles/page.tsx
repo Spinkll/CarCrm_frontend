@@ -19,15 +19,24 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Plus, Car } from "lucide-react"
+import { Plus, Car, User, Loader2, Wrench } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useVehicles } from "@/lib/vehicles-context"
+import { useCrm } from "@/lib/crm-context"
 
 export default function VehiclesPage() {
   const { user } = useAuth()
   const { vehicles, addVehicle, isLoading } = useVehicles()
+  const { customers, filteredOrders } = useCrm() 
 
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState("")
@@ -41,24 +50,43 @@ export default function VehiclesPage() {
     plate: "",  
     color: "",
     mileage: "",
+    userId: "", 
   })
 
   if (!user) return null
 
+  const role = user.role?.toLowerCase()
+  const canAssignOwner = role === "admin" || role === "manager"
+
   const filtered = vehicles.filter(
-    (v: any) =>
-      `${v.brand} ${v.model}`.toLowerCase().includes(search.toLowerCase()) ||
-      (v.plate && v.plate.toLowerCase().includes(search.toLowerCase())) ||
-      v.vin.toLowerCase().includes(search.toLowerCase())
+    (v: any) => {
+      const owner = customers.find(c => c.id === v.userId)
+      const ownerName = owner ? `${owner.firstName} ${owner.lastName}`.toLowerCase() : ""
+      const searchLower = search.toLowerCase()
+
+      return (
+        `${v.brand} ${v.model}`.toLowerCase().includes(searchLower) ||
+        (v.plate && v.plate.toLowerCase().includes(searchLower)) ||
+        v.vin.toLowerCase().includes(searchLower) ||
+        ownerName.includes(searchLower) 
+      )
+    }
   )
 
   async function handleSubmit() {
     if (!form.brand || !form.model || !form.plate || !form.vin) {
-        alert("Please fill in all required fields");
+        alert("Будь ласка, заповніть усі обов'язкові поля (Марка, Модель, Номер, VIN)");
+        return;
+    }
+
+    if (canAssignOwner && !form.userId) {
+        alert("Будь ласка, оберіть власника для цього автомобіля");
         return;
     }
     
     setIsSubmitting(true)
+
+    const ownerId = canAssignOwner ? Number(form.userId) : user?.id
 
     const payload = {
       brand: form.brand,
@@ -67,7 +95,8 @@ export default function VehiclesPage() {
       vin: form.vin,
       plate: form.plate,
       color: form.color, 
-      mileage: parseInt(form.mileage) || 0, 
+      mileage: parseInt(form.mileage) || 0,
+      userId: ownerId, 
     }
 
     const result = await addVehicle(payload as any)
@@ -75,7 +104,7 @@ export default function VehiclesPage() {
     setIsSubmitting(false)
 
     if (result.success) {
-      setForm({ brand: "", model: "", year: "", vin: "", plate: "", color: "", mileage: "" })
+      setForm({ brand: "", model: "", year: "", vin: "", plate: "", color: "", mileage: "", userId: "" })
       setOpen(false)
     } else {
       alert(typeof result.error === 'string' ? result.error : JSON.stringify(result.error))
@@ -84,10 +113,10 @@ export default function VehiclesPage() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <PageHeader title="Vehicles" description="Manage your vehicles">
+      <PageHeader title="Автомобілі" description="Управління транспортними засобами">
         <Button onClick={() => setOpen(true)} className="gap-2">
           <Plus className="size-4" />
-          Add Vehicle
+          Додати авто
         </Button>
       </PageHeader>
 
@@ -96,7 +125,7 @@ export default function VehiclesPage() {
           <CardContent className="p-0">
             <div className="border-b border-border p-4">
               <Input
-                placeholder="Search by brand, model, plate or VIN..."
+                placeholder="Пошук за маркою, моделлю, номером, VIN або власником..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="max-w-md bg-secondary"
@@ -104,19 +133,31 @@ export default function VehiclesPage() {
             </div>
             
             {isLoading ? (
-               <div className="p-8 text-center text-muted-foreground">Loading vehicles...</div>
+               <div className="flex justify-center p-8">
+                  <Loader2 className="size-8 animate-spin text-muted-foreground" />
+               </div>
             ) : (
             <Table>
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="pl-6 text-muted-foreground">Транспортний засіб</TableHead>
+                  <TableHead className="pl-6 text-muted-foreground">Автомобіль</TableHead>
                   <TableHead className="text-muted-foreground">Номерний знак</TableHead>
+                  {role !== "client" && <TableHead className="text-muted-foreground">Власник</TableHead>}
                   <TableHead className="text-muted-foreground">Колір</TableHead>
                   <TableHead className="text-muted-foreground">Пробіг</TableHead>
+                  <TableHead className="pr-6 text-muted-foreground">Історія сервісу</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((vehicle: any) => (
+                {filtered.map((vehicle: any) => {
+                  const owner = customers.find(c => c.id === vehicle.userId)
+                  
+                  const vehicleOrders = filteredOrders.filter(o => o.carId === vehicle.id)
+                  const lastOrder = [...vehicleOrders].sort((a, b) => 
+                    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                  )[0]
+                  
+                  return (
                     <TableRow key={vehicle.id} className="border-border">
                       <TableCell className="pl-6">
                         <div className="flex items-center gap-3">
@@ -127,31 +168,72 @@ export default function VehiclesPage() {
                             <p className="font-medium text-foreground">
                               {vehicle.year} {vehicle.brand} {vehicle.model}
                             </p>
-                            <p className="text-xs text-muted-foreground">{vehicle.vin}</p>
+                            <p className="text-xs text-muted-foreground uppercase">{vehicle.vin}</p>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="rounded-md bg-secondary px-2 py-1 text-sm font-mono text-foreground">
+                        <span className="rounded-md bg-secondary px-2 py-1 text-sm font-mono text-foreground uppercase tracking-widest">
                           {vehicle.plate}
                         </span>
                       </TableCell>
+                      
+                      {role !== "client" && (
+                        <TableCell>
+                          {owner ? (
+                            <div className="flex items-center gap-2">
+                              <User className="size-4 text-muted-foreground" />
+                              <span className="text-sm font-medium text-foreground">
+                                {owner.firstName} {owner.lastName}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground italic">Без власника</span>
+                          )}
+                        </TableCell>
+                      )}
+
                       <TableCell>
                          <div className="flex items-center gap-2">
-                            <div className="h-3 w-3 rounded-full border border-gray-500" style={{ backgroundColor: vehicle.color }}></div>
-                            <span className="text-sm text-foreground">{vehicle.color}</span>
+                            <div 
+                              className="h-3 w-3 rounded-full border border-black/20 shadow-sm" 
+                              style={{ backgroundColor: vehicle.color || '#ccc' }}
+                              title={vehicle.color}
+                            />
+                            <span className="text-sm text-foreground capitalize">{vehicle.color || 'Невідомо'}</span>
                          </div>
                       </TableCell>
+
                       <TableCell className="text-foreground">
-                        {vehicle.mileage?.toLocaleString()} km
+                        {vehicle.mileage?.toLocaleString()} км
+                      </TableCell>
+
+                      <TableCell className="pr-6">
+                        {vehicleOrders.length > 0 ? (
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1.5">
+                              <Wrench className="size-3 text-primary" />
+                              <span className="text-sm font-medium text-foreground">
+                                {vehicleOrders.length} {vehicleOrders.length === 1 ? 'візит' : 'візитів'}
+                              </span>
+                            </div>
+                            {lastOrder && (
+                              <span className="text-xs text-muted-foreground">
+                                Останній: {new Date(lastOrder.createdAt).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">Немає історії</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   )
-                )}
+                })}
                 {filtered.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4} className="py-12 text-center text-muted-foreground">
-                      No vehicles found
+                    <TableCell colSpan={role !== "client" ? 6 : 5} className="py-12 text-center text-muted-foreground">
+                      Автомобілів за вашим запитом не знайдено
                     </TableCell>
                   </TableRow>
                 )}
@@ -165,10 +247,31 @@ export default function VehiclesPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Додати транспортний засіб</DialogTitle>
+            <DialogTitle>Додати новий автомобіль</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             
+            {canAssignOwner && (
+              <div className="grid gap-2">
+                <Label>Призначити клієнту</Label>
+                <Select
+                  value={form.userId}
+                  onValueChange={(v) => setForm({ ...form, userId: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Оберіть клієнта..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {customers.map((c) => (
+                      <SelectItem key={c.id} value={String(c.id)}>
+                        {c.firstName} {c.lastName} ({c.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="v-brand">Марка</Label>
@@ -207,7 +310,7 @@ export default function VehiclesPage() {
                     id="v-color" 
                     value={form.color} 
                     onChange={(e) => setForm({ ...form, color: e.target.value })} 
-                    placeholder="Black" 
+                    placeholder="Чорний" 
                   />
                 </div>
             </div>
@@ -218,17 +321,18 @@ export default function VehiclesPage() {
                     <Input 
                         id="v-plate" 
                         value={form.plate} 
-                        onChange={(e) => setForm({ ...form, plate: e.target.value })} 
-                        placeholder="AР 7777 АР" 
+                        onChange={(e) => setForm({ ...form, plate: e.target.value.toUpperCase() })} 
+                        placeholder="АЕ 7777 ХХ" 
                     />
                 </div>
                 <div className="grid gap-2">
-                    <Label htmlFor="v-vin">VIN</Label>
+                    <Label htmlFor="v-vin">VIN-код</Label>
                     <Input 
                         id="v-vin" 
                         value={form.vin} 
-                        onChange={(e) => setForm({ ...form, vin: e.target.value })} 
+                        onChange={(e) => setForm({ ...form, vin: e.target.value.toUpperCase() })} 
                         placeholder="17 символів" 
+                        maxLength={17}
                     />
                 </div>
             </div>
@@ -246,9 +350,10 @@ export default function VehiclesPage() {
 
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>Cancel</Button>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>Скасувати</Button>
             <Button onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? "Adding..." : "Add Vehicle"}
+                {isSubmitting ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
+                {isSubmitting ? "Додавання..." : "Додати авто"}
             </Button>
           </DialogFooter>
         </DialogContent>

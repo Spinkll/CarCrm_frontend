@@ -41,32 +41,32 @@ export function KpiCards() {
 
   const kpis = [
     {
-      label: "Total Customers",
+      label: "Всього клієнтів",
       value: customers.length.toString(),
-      change: "+12%", // Можна винести в бекенд пізніше
+      change: "+12%", 
       trend: "up" as const,
       icon: Users,
     },
     {
-      label: "Vehicles Registered",
+      label: "Зареєстровано авто",
       value: vehicles.length.toString(),
       change: "+8%",
       trend: "up" as const,
       icon: Car,
     },
     {
-      label: "Active Orders",
+      label: "Активні замовлення",
       value: stats.active.toString(),
       change: "-3%",
       trend: "down" as const,
       icon: ClipboardList,
     },
     {
-      label: "Total Revenue",
-      value: `$${stats.revenue.toLocaleString()}`,
+      label: "Загальний дохід",
+      value: `${stats.revenue.toLocaleString()} ₴`, 
       change: "+18%",
       trend: "up" as const,
-      icon: DollarSign,
+      icon: DollarSign, 
     },
   ]
 

@@ -29,7 +29,7 @@ export function RecentOrders() {
     <Card className="border-border bg-card">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-foreground">
-          Recent Service Orders
+          Останні замовлення
         </CardTitle>
       </CardHeader>
       <CardContent className="px-0">
@@ -37,18 +37,18 @@ export function RecentOrders() {
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="pl-6 text-muted-foreground">Order ID</TableHead>
-                <TableHead className="text-muted-foreground">Customer</TableHead>
-                <TableHead className="text-muted-foreground">Vehicle</TableHead>
-                <TableHead className="text-muted-foreground">Status</TableHead>
-                <TableHead className="pr-6 text-right text-muted-foreground">Cost</TableHead>
+                <TableHead className="pl-6 text-muted-foreground">№</TableHead>
+                <TableHead className="text-muted-foreground">Клієнт</TableHead>
+                <TableHead className="text-muted-foreground">Автомобіль</TableHead>
+                <TableHead className="text-muted-foreground">Статус</TableHead>
+                <TableHead className="pr-6 text-right text-muted-foreground">Сума</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {recent.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                    No orders found
+                    Замовлень не знайдено
                   </TableCell>
                 </TableRow>
               ) : (
@@ -64,16 +64,16 @@ export function RecentOrders() {
                         #{order.id}
                       </TableCell>
                       <TableCell className="text-foreground text-sm">
-                        {customer ? `${customer.firstName} ${customer.lastName}` : "N/A"}
+                        {customer ? `${customer.firstName} ${customer.lastName}` : "Невідомо"}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
-                        {vehicle ? `${vehicle.brand} ${vehicle.model}` : "Unknown Car"}
+                        {vehicle ? `${vehicle.brand} ${vehicle.model}` : "Невідоме авто"}
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={order.status} />
                       </TableCell>
                       <TableCell className="pr-6 text-right font-medium text-foreground text-sm">
-                        ${Number(order.totalAmount || 0).toLocaleString()}
+                        {Number(order.totalAmount || 0).toLocaleString()} ₴
                       </TableCell>
                     </TableRow>
                   )

@@ -24,14 +24,17 @@ export function RevenueChart() {
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
       const key = `${d.getFullYear()}-${d.getMonth()}` 
-      const monthName = d.toLocaleString('en-US', { month: 'short' }) 
+      const monthName = d.toLocaleString('uk-UA', { month: 'short' }) 
       
-      dataMap.set(key, { month: monthName, revenue: 0 })
+      const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+      
+      dataMap.set(key, { month: capitalizedMonth, revenue: 0 })
     }
 
     if (orders && orders.length > 0) {
       orders.forEach((order) => {
-        if (order.status?.toLowerCase() === "completed") {
+        const status = order.status?.toLowerCase()
+        if (status === "completed" || status === "paid") {
           const d = new Date(order.createdAt)
           const key = `${d.getFullYear()}-${d.getMonth()}`
           
@@ -51,7 +54,7 @@ export function RevenueChart() {
       <Card className="border-border bg-card">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-foreground">
-            Monthly Revenue
+            Щомісячний дохід
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -67,7 +70,7 @@ export function RevenueChart() {
     <Card className="border-border bg-card">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-foreground">
-          Monthly Revenue (Last 6 Months)
+          Дохід за останні 6 місяців
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -87,7 +90,7 @@ export function RevenueChart() {
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(v) => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`}
+                tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k ₴` : `${v} ₴`}
               />
               <Tooltip
                 cursor={{ fill: "oklch(0.22 0.005 260 / 0.5)" }}
@@ -98,7 +101,7 @@ export function RevenueChart() {
                   color: "oklch(0.95 0 0)",
                   fontSize: 13,
                 }}
-                formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]}
+                formatter={(value: number) => [`${value.toLocaleString()} ₴`, "Дохід"]}
               />
               <Bar dataKey="revenue" fill="oklch(0.65 0.18 220)" radius={[4, 4, 0, 0]} />
             </BarChart>

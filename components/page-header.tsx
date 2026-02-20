@@ -1,6 +1,9 @@
+"use client"
+
 import { Input } from "@/components/ui/input"
-import { Search, Bell } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Search } from "lucide-react"
+import { NotificationsList } from "./ui/notifications-list"
+
 
 export function PageHeader({
   title,
@@ -23,15 +26,13 @@ export function PageHeader({
         <div className="relative">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search..."
+            placeholder="Пошук..."
             className="h-9 w-48 bg-secondary pl-9 text-sm lg:w-64"
           />
         </div>
-        <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
-          <Bell className="size-5" />
-          <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-primary" />
-          <span className="sr-only">Notifications</span>
-        </Button>
+        
+        <NotificationsList />
+
         {children}
       </div>
     </div>

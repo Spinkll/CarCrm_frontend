@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { PageHeader } from "@/components/page-header"
 import { useAuth } from "@/lib/auth-context"
-import { useEmployees } from "@/lib/employees-context" // 👈 Використовуємо новий хук
+import { useEmployees } from "@/lib/employees-context" 
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -46,16 +46,15 @@ import {
 import { UserPlus, Shield, Settings, Search, Trash2, Briefcase } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-// Конфігурація для бейджів ролей
+// Конфігурація для бейджів ролей (Перекладено)
 const roleConfig = {
-  ADMIN: { label: "Administrator", icon: Shield, className: "bg-primary/15 text-primary border-primary/30" },
-  MANAGER: { label: "Manager", icon: Briefcase, className: "bg-purple-100 text-purple-700 border-purple-200" },
-  MECHANIC: { label: "Mechanic", icon: Settings, className: "bg-orange-100 text-orange-700 border-orange-200" },
+  ADMIN: { label: "Адміністратор", icon: Shield, className: "bg-primary/15 text-primary border-primary/30" },
+  MANAGER: { label: "Менеджер", icon: Briefcase, className: "bg-purple-100 text-purple-700 border-purple-200" },
+  MECHANIC: { label: "Механік", icon: Settings, className: "bg-orange-100 text-orange-700 border-orange-200" },
 }
 
 export default function EmployeesPage() {
   const { user } = useAuth()
-  // 👇 Беремо дані з нового контексту
   const { employees, createEmployee, deleteEmployee, isLoading } = useEmployees() 
   const router = useRouter()
 
@@ -94,12 +93,12 @@ export default function EmployeesPage() {
     setError("")
 
     if (!form.firstName || !form.lastName || !form.email || !form.password || !form.role) {
-      setError("Please fill in all fields")
+      setError("Будь ласка, заповніть усі поля")
       return
     }
 
     if (form.password.length < 8) {
-      setError("Password must be at least 8 characters")
+      setError("Пароль має містити щонайменше 8 символів")
       return
     }
 
@@ -121,7 +120,7 @@ export default function EmployeesPage() {
       setForm({ firstName: "", lastName: "", email: "", password: "", phone: "", role: "" })
       setDialogOpen(false)
     } else {
-      setError(result.error || "Failed to add employee")
+      setError(result.error || "Не вдалося додати працівника")
     }
   }
 
@@ -137,17 +136,17 @@ export default function EmployeesPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <PageHeader title="Employees" description="Manage access and roles">
+      <PageHeader title="Персонал" description="Управління доступом та ролями">
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <UserPlus className="size-4" />
-              Add Employee
+              Додати працівника
             </Button>
           </DialogTrigger>
           <DialogContent className="border-border bg-card sm:max-w-md">
             <DialogHeader>
-              <DialogTitle className="text-foreground">Add New Employee</DialogTitle>
+              <DialogTitle className="text-foreground">Новий працівник</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               {error && (
@@ -158,22 +157,22 @@ export default function EmployeesPage() {
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                    <Label htmlFor="emp-first">First Name</Label>
+                    <Label htmlFor="emp-first">Ім'я</Label>
                     <Input
                     id="emp-first"
                     value={form.firstName}
                     onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-                    placeholder="John"
+                    placeholder="Іван"
                     className="bg-secondary"
                     />
                 </div>
                 <div className="grid gap-2">
-                    <Label htmlFor="emp-last">Last Name</Label>
+                    <Label htmlFor="emp-last">Прізвище</Label>
                     <Input
                     id="emp-last"
                     value={form.lastName}
                     onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-                    placeholder="Doe"
+                    placeholder="Іванов"
                     className="bg-secondary"
                     />
                 </div>
@@ -192,7 +191,7 @@ export default function EmployeesPage() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="emp-phone">Phone</Label>
+                <Label htmlFor="emp-phone">Телефон</Label>
                 <Input
                   id="emp-phone"
                   value={form.phone}
@@ -203,37 +202,37 @@ export default function EmployeesPage() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="emp-password">Password</Label>
+                <Label htmlFor="emp-password">Пароль</Label>
                 <Input
                   id="emp-password"
                   type="password"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  placeholder="At least 8 characters"
+                  placeholder="Мінімум 8 символів"
                   className="bg-secondary"
                 />
               </div>
               <div className="grid gap-2">
-                <Label>Role</Label>
+                <Label>Роль</Label>
                 <Select
                   value={form.role}
                   onValueChange={(v) => setForm({ ...form, role: v as any })}
                 >
                   <SelectTrigger className="w-full bg-secondary">
-                    <SelectValue placeholder="Select role" />
+                    <SelectValue placeholder="Оберіть роль" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="MECHANIC">Mechanic</SelectItem>
-                    <SelectItem value="MANAGER">Manager</SelectItem>
-                    <SelectItem value="ADMIN">Administrator</SelectItem>
+                    <SelectItem value="MECHANIC">Механік</SelectItem>
+                    <SelectItem value="MANAGER">Менеджер</SelectItem>
+                    <SelectItem value="ADMIN">Адміністратор</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <Button onClick={handleAdd} disabled={isSubmitting} className="gap-2">
-                {isSubmitting ? "Saving..." : (
+                {isSubmitting ? "Збереження..." : (
                     <>
                         <UserPlus className="size-4" />
-                        Add Employee
+                        Додати працівника
                     </>
                 )}
               </Button>
@@ -243,7 +242,7 @@ export default function EmployeesPage() {
       </PageHeader>
 
       <div className="flex-1 space-y-6 p-6">
-        {/* Stats */}
+        {/* Статистика */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Card className="border-border bg-card">
             <CardContent className="flex items-center gap-4 p-5">
@@ -252,7 +251,7 @@ export default function EmployeesPage() {
               </div>
               <div>
                 <p className="text-2xl font-semibold text-foreground">{employees.length}</p>
-                <p className="text-sm text-muted-foreground">Total Employees</p>
+                <p className="text-sm text-muted-foreground">Всього працівників</p>
               </div>
             </CardContent>
           </Card>
@@ -263,7 +262,7 @@ export default function EmployeesPage() {
                </div>
                <div>
                  <p className="text-2xl font-semibold text-foreground">{mechanicCount}</p>
-                 <p className="text-sm text-muted-foreground">Mechanics</p>
+                 <p className="text-sm text-muted-foreground">Механіки</p>
                </div>
              </CardContent>
            </Card>
@@ -274,43 +273,43 @@ export default function EmployeesPage() {
                </div>
                <div>
                  <p className="text-2xl font-semibold text-foreground">{managerCount}</p>
-                 <p className="text-sm text-muted-foreground">Managers</p>
+                 <p className="text-sm text-muted-foreground">Менеджери</p>
                </div>
              </CardContent>
            </Card>
         </div>
 
-        {/* Search */}
+        {/* Пошук */}
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search employees..."
+            placeholder="Пошук працівників..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="bg-secondary pl-9"
           />
         </div>
 
-        {/* Table */}
+        {/* Таблиця */}
         <Card className="border-border bg-card">
           <CardContent className="p-0">
             {isLoading ? (
-                <div className="p-8 text-center text-muted-foreground">Loading employees...</div>
+                <div className="p-8 text-center text-muted-foreground">Завантаження персоналу...</div>
             ) : (
             <Table>
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="text-muted-foreground">Employee</TableHead>
+                  <TableHead className="text-muted-foreground">Працівник</TableHead>
                   <TableHead className="text-muted-foreground">Email</TableHead>
-                  <TableHead className="text-muted-foreground">Role</TableHead>
-                  <TableHead className="text-right text-muted-foreground">Actions</TableHead>
+                  <TableHead className="text-muted-foreground">Роль</TableHead>
+                  <TableHead className="text-right text-muted-foreground">Дії</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
-                      No employees found
+                      Працівників не знайдено
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -328,7 +327,7 @@ export default function EmployeesPage() {
                               <p className="font-medium text-foreground">
                                 {emp.firstName} {emp.lastName}
                                 {isSelf && (
-                                  <span className="ml-2 text-xs text-muted-foreground">(You)</span>
+                                  <span className="ml-2 text-xs text-muted-foreground">(Ви)</span>
                                 )}
                               </p>
                               <p className="text-xs text-muted-foreground">ID: {emp.id}</p>
@@ -358,23 +357,23 @@ export default function EmployeesPage() {
                               <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive">
                                   <Trash2 className="size-4" />
-                                  <span className="sr-only">Remove employee</span>
+                                  <span className="sr-only">Видалити працівника</span>
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent className="border-border bg-card">
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle className="text-foreground">Remove Employee</AlertDialogTitle>
+                                  <AlertDialogTitle className="text-foreground">Видалити працівника</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Are you sure you want to remove <strong>{emp.firstName} {emp.lastName}</strong> from the system?
+                                    Ви впевнені, що хочете видалити <strong>{emp.firstName} {emp.lastName}</strong> із системи? Цю дію неможливо скасувати.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel className="border-border bg-secondary text-foreground hover:bg-accent">Cancel</AlertDialogCancel>
+                                  <AlertDialogCancel className="border-border bg-secondary text-foreground hover:bg-accent">Скасувати</AlertDialogCancel>
                                   <AlertDialogAction
                                     onClick={() => handleRemove(emp.id)}
                                     className="bg-destructive text-foreground hover:bg-destructive/90"
                                   >
-                                    Remove
+                                    Видалити
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>

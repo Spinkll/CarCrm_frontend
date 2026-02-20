@@ -17,7 +17,7 @@ export function ServiceBreakdown() {
     orders.forEach((order) => {
       // Якщо у тебе є окреме поле для типу послуги, заміни description на нього
       // Робимо trim і capitalize, щоб "Oil change" і "oil change" рахувались як одне
-      const rawName = order.description || "General Service"
+      const rawName = order.description || "Загальний сервіс"
       const name = rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase().trim()
 
       if (!serviceMap.has(name)) {
@@ -26,8 +26,10 @@ export function ServiceBreakdown() {
 
       const entry = serviceMap.get(name)!
       entry.count += 1
-      // Додаємо в дохід тільки завершені замовлення (або можеш прибрати цю перевірку, якщо хочеш бачити потенційний дохід)
-      if (order.status?.toLowerCase() === "completed") {
+      
+      // Додаємо в дохід тільки завершені або оплачені замовлення
+      const status = order.status?.toLowerCase()
+      if (status === "completed" || status === "paid") {
         entry.revenue += Number(order.totalAmount || 0)
       }
     })
@@ -54,13 +56,13 @@ export function ServiceBreakdown() {
     <Card className="border-border bg-card">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-foreground">
-          Top Services Breakdown
+          Популярні послуги
         </CardTitle>
       </CardHeader>
       <CardContent>
         {breakdownData.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
-            No service data available yet.
+            Дані про послуги наразі відсутні.
           </div>
         ) : (
           <div className="space-y-4">
@@ -69,9 +71,11 @@ export function ServiceBreakdown() {
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium text-foreground truncate pr-4">{service.name}</span>
                   <div className="flex shrink-0 items-center gap-3 text-muted-foreground">
-                    <span className="text-xs">{service.count} jobs</span>
+                    <span className="text-xs">
+                      {service.count} {service.count === 1 ? 'раз' : service.count >= 2 && service.count <= 4 ? 'рази' : 'разів'}
+                    </span>
                     <span className="font-bold text-foreground">
-                      ${service.revenue.toLocaleString()}
+                      {service.revenue.toLocaleString()} ₴
                     </span>
                   </div>
                 </div>

@@ -27,37 +27,37 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { 
-    label: "Dashboard", 
+    label: "Головна", 
     href: "/", 
     icon: LayoutDashboard, 
     roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"] 
   },
   { 
-    label: "Customers", 
+    label: "Клієнти", 
     href: "/customers", 
     icon: Users, 
     roles: ["ADMIN", "MECHANIC", "MANAGER"] 
   },
   { 
-    label: "Vehicles", 
+    label: "Автомобілі", 
     href: "/vehicles", 
     icon: Car, 
     roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"] 
   },
   { 
-    label: "Service Orders", 
+    label: "Замовлення", 
     href: "/orders", 
     icon: ClipboardList, 
     roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"] 
   },
   { 
-    label: "Appointments", 
+    label: "Записи", 
     href: "/appointments", 
     icon: CalendarDays, 
     roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"] 
   },
   { 
-    label: "Employees", 
+    label: "Персонал", 
     href: "/employees", 
     icon: UserCog, 
     roles: ["ADMIN", "MANAGER"] 
@@ -88,8 +88,8 @@ export function AppSidebar() {
         </div>
         {!collapsed && (
           <div className="flex flex-col">
-            <span className="text-sm font-semibold text-sidebar-foreground">AutoCare</span>
-            <span className="text-xs text-muted-foreground">Service CRM</span>
+            <span className="text-sm font-semibold text-sidebar-foreground">WagGarage</span>
+            <span className="text-xs text-muted-foreground">CRM Автосервісу</span>
           </div>
         )}
       </div>
@@ -123,10 +123,10 @@ export function AppSidebar() {
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={collapsed ? "Розгорнути панель" : "Згорнути панель"}
         >
           {collapsed ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
-          {!collapsed && <span>Collapse</span>}
+          {!collapsed && <span>Згорнути</span>}
         </button>
       </div>
     </aside>

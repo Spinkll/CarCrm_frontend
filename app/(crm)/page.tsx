@@ -6,7 +6,7 @@ import { RevenueChart } from "@/components/dashboard/revenue-chart"
 import { ServiceBreakdown } from "@/components/dashboard/service-breakdown"
 import { RecentOrders } from "@/components/dashboard/recent-orders"
 import { UpcomingAppointments } from "@/components/dashboard/upcoming-appointments"
-import { useAuth } from "@/lib/auth-context" // 👈 Використовуємо правильний контекст
+import { useAuth } from "@/lib/auth-context" 
 import { MechanicDashboard } from "@/components/dashboard/mechanic-dashboard"
 import { ClientDashboard } from "@/components/dashboard/client-dashboard"
 
@@ -18,7 +18,10 @@ export default function DashboardPage() {
   if (user.role === "MECHANIC") {
     return (
       <div className="flex flex-1 flex-col overflow-hidden">
-        <PageHeader title="Dashboard" description="Your assigned work overview" />
+        <PageHeader 
+          title="Панель керування" 
+          description="Огляд призначених вам робіт та завдань" 
+        />
         <div className="flex-1 overflow-auto p-6">
           <MechanicDashboard />
         </div>
@@ -29,7 +32,10 @@ export default function DashboardPage() {
   if (user.role === "CLIENT") {
     return (
       <div className="flex flex-1 flex-col overflow-hidden">
-        <PageHeader title="Dashboard" description="Your service overview" />
+        <PageHeader 
+          title="Панель керування" 
+          description="Огляд сервісного обслуговування ваших авто" 
+        />
         <div className="flex-1 overflow-auto p-6">
           <ClientDashboard />
         </div>
@@ -39,7 +45,10 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <PageHeader title="Dashboard" description="Overview of your car service operations" />
+      <PageHeader 
+        title="Панель керування" 
+        description="Загальний огляд роботи автосервісу" 
+      />
       <div className="flex-1 overflow-auto p-6">
         <div className="space-y-6">
           <KpiCards />
