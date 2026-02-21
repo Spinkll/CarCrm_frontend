@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { toast } from "@/hooks/use-toast"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -36,7 +37,9 @@ import { Plus, ChevronDown, Eye } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useOrders } from "@/lib/orders-context"
 import { useVehicles } from "@/lib/vehicles-context"
+import { useAppointments } from "@/lib/appointments-context"
 import { useCrm } from "@/lib/crm-context"
+import { useNotifications } from "@/lib/notifications-context"
 
 // ДОБАВЛЯЕМ ИМПОРТ НОВОГО ХУКА ЗАЯВОК:
 import { useServiceRequests } from "@/lib/service-requests-context"
@@ -64,10 +67,12 @@ export default function OrdersPage() {
   const router = useRouter()
   const { orders, createOrder, updateStatus, isLoading } = useOrders()
   const { vehicles } = useVehicles()
-  const { customers } = useCrm()
+  const { customers, refreshData } = useCrm()
 
   // ДОСТАЕМ ФУНКЦИЮ СОЗДАНИЯ ЗАЯВКИ
   const { createRequest } = useServiceRequests()
+  const { fetchAppointments } = useAppointments()
+  const { fetchNotifications } = useNotifications()
 
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState("all")
@@ -78,6 +83,7 @@ export default function OrdersPage() {
     description: "",
     services: "",
     estimatedDate: "",
+    estimatedTime: "",
   })
 
   if (!user) return null
@@ -104,55 +110,49 @@ export default function OrdersPage() {
   // ПОЛНОСТЬЮ ОБНОВЛЕННАЯ ФУНКЦИЯ SUBMIT
   async function handleSubmit() {
     if (!form.vehicleId || !form.description) return
+    if (role !== "CLIENT" && (!form.estimatedDate || !form.estimatedTime)) {
+      toast({ title: "Будь ласка, вкажіть дату та час запису", variant: "destructive" })
+      return
+    }
     setIsSubmitting(true)
 
     // --- ЛОГИКА ДЛЯ КЛИЕНТА (СОЗДАЕТ ServiceRequest) ---
     if (role === "CLIENT") {
-      // Если клиент выбрал дату, добавляем её в причину обращения
-      let reason = form.description;
-      if (form.estimatedDate) {
-        reason = `Бажана дата: ${form.estimatedDate}\n\n${form.description}`;
-      }
-
-      const result = await createRequest(Number(form.vehicleId), reason);
+      const result = await createRequest(Number(form.vehicleId), form.description);
 
       setIsSubmitting(false);
 
       if (result.success) {
-        setForm({ vehicleId: "", description: "", services: "", estimatedDate: "" });
+        setForm({ vehicleId: "", description: "", services: "", estimatedDate: "", estimatedTime: "" });
         setOpen(false);
-        alert("Вашу заявку успішно надіслано! Менеджер зв'яжеться з вами.");
+        toast({ title: "Заявку надіслано", description: "Менеджер зв'яжеться з вами.", variant: "success" });
       } else {
-        alert(result.error || "Не вдалося надіслати заявку");
+        toast({ title: result.error || "Не вдалося надіслати заявку", variant: "destructive" });
       }
 
       return; // Выходим из функции, чтобы заказ не создавался!
     }
 
     // --- ЛОГИКА ДЛЯ МЕНЕДЖЕРА/АДМИНА (СОЗДАЕТ ПРЯМОЙ ЗАКАЗ) ---
-    const finalDescription = form.services.trim()
-      ? `${form.description}\n\nПослуги до виконання: ${form.services}`
-      : form.description;
-
     const payload: any = {
       vehicleId: Number(form.vehicleId),
-      description: finalDescription,
+      description: form.description,
     }
 
-    // Если менеджер выбрал дату, она пойдет в Appointment (согласно нашему бекенду OrdersService)
-    if (form.estimatedDate) {
-      payload.scheduledAt = new Date(form.estimatedDate).toISOString()
-    }
+    // Дата + час для створення запису в календарі
+    payload.scheduledAt = new Date(`${form.estimatedDate}T${form.estimatedTime}:00`).toISOString()
 
     const result = await createOrder(payload)
 
     setIsSubmitting(false)
 
     if (result.success) {
-      setForm({ vehicleId: "", description: "", services: "", estimatedDate: "" })
+      setForm({ vehicleId: "", description: "", services: "", estimatedDate: "", estimatedTime: "" })
       setOpen(false)
+      toast({ title: "Замовлення створено", variant: "success" })
+      await Promise.all([fetchAppointments(), fetchNotifications()])
     } else {
-      alert(result.error || "Не вдалося створити замовлення")
+      toast({ title: result.error || "Не вдалося створити замовлення", variant: "destructive" })
     }
   }
 
@@ -190,9 +190,6 @@ export default function OrdersPage() {
             <TabsTrigger value="all">
               Всі <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.all})</span>
             </TabsTrigger>
-            <TabsTrigger value="pending">
-              Очікують <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.pending})</span>
-            </TabsTrigger>
             <TabsTrigger value="in_progress">
               В роботі <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.inProgress})</span>
             </TabsTrigger>
@@ -216,7 +213,7 @@ export default function OrdersPage() {
                         <TableHead className="text-muted-foreground">Опис</TableHead>
                         <TableHead className="text-muted-foreground">Статус</TableHead>
                         <TableHead className="text-muted-foreground">Сума</TableHead>
-                        <TableHead className="pr-6 text-right text-muted-foreground">Дії</TableHead>
+                        <TableHead className="pr-6 text-right text-muted-foreground"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -245,46 +242,49 @@ export default function OrdersPage() {
                               {order.description}
                             </TableCell>
                             <TableCell>
-                              <StatusBadge status={order.status.toLowerCase()} />
+                              {canEditOrderStatus ? (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <button className="inline-flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity">
+                                      <StatusBadge status={order.status.toLowerCase()} />
+                                      <ChevronDown className="size-3 text-muted-foreground" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="start" className="w-48">
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                                      Змінити статус
+                                    </div>
+                                    {["CONFIRMED", "IN_PROGRESS", "WAITING_PARTS", "COMPLETED", "PAID", "CANCELLED"]
+                                      .filter((s) => s !== order.status)
+                                      .map((status) => (
+                                        <DropdownMenuItem
+                                          key={status}
+                                          onClick={async () => { await updateStatus(order.id, status); refreshData(); fetchNotifications(); toast({ title: "Статус оновлено", variant: "success" }) }}
+                                          className="cursor-pointer"
+                                        >
+                                          {statusTranslations[status] || status}
+                                        </DropdownMenuItem>
+                                      ))}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              ) : (
+                                <StatusBadge status={order.status.toLowerCase()} />
+                              )}
                             </TableCell>
                             <TableCell className="font-medium text-foreground">
                               {Number(order.totalAmount || 0).toLocaleString()} ₴
                             </TableCell>
 
                             <TableCell className="pr-6 text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="gap-1 text-xs">
-                                    Дії <ChevronDown className="size-3" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48">
-                                  <DropdownMenuItem onClick={() => router.push(`/orders-detail/${order.id}`)} className="font-medium cursor-pointer">
-                                    <Eye className="size-4 mr-2" />
-                                    Деталі
-                                  </DropdownMenuItem>
-
-                                  {canEditOrderStatus && (
-                                    <>
-                                      <DropdownMenuSeparator />
-                                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                                        Змінити статус
-                                      </div>
-                                      {["PENDING", "CONFIRMED", "IN_PROGRESS", "WAITING_PARTS", "COMPLETED", "PAID", "CANCELLED"]
-                                        .filter((s) => s !== order.status)
-                                        .map((status) => (
-                                          <DropdownMenuItem
-                                            key={status}
-                                            onClick={() => updateStatus(order.id, status)}
-                                            className="capitalize cursor-pointer"
-                                          >
-                                            {statusTranslations[status] || status}
-                                          </DropdownMenuItem>
-                                        ))}
-                                    </>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="gap-1.5 text-xs"
+                                onClick={() => router.push(`/orders-detail/${order.id}`)}
+                              >
+                                <Eye className="size-4" />
+                                Деталі
+                              </Button>
                             </TableCell>
                           </TableRow>
                         )
@@ -350,31 +350,30 @@ export default function OrdersPage() {
 
               <div className="grid gap-2">
                 <Label htmlFor="o-date">
-                  {role === "CLIENT" ? "Бажана дата (необов'язково)" : "Запланована дата (необов'язково)"}
+                  {role === "CLIENT" ? "Бажана дата (необов'язково)" : "Дата запису *"}
                 </Label>
-                <Input
-                  id="o-date"
-                  type="date"
-                  value={form.estimatedDate}
-                  onChange={(e) => setForm({ ...form, estimatedDate: e.target.value })}
-                  min={new Date().toISOString().split('T')[0]} // Не разрешаем выбирать прошедшие дни
-                />
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    id="o-date"
+                    type="date"
+                    value={form.estimatedDate}
+                    onChange={(e) => setForm({ ...form, estimatedDate: e.target.value })}
+                    min={new Date().toISOString().split('T')[0]}
+                    required={role !== "CLIENT"}
+                  />
+                  {role !== "CLIENT" && (
+                    <Input
+                      id="o-time"
+                      type="time"
+                      value={form.estimatedTime}
+                      onChange={(e) => setForm({ ...form, estimatedTime: e.target.value })}
+                      placeholder="Час"
+                      required
+                    />
+                  )}
+                </div>
               </div>
 
-              {(role === "ADMIN" || role === "MANAGER") && (
-                <div className="grid gap-2">
-                  <Label htmlFor="o-services">Швидкі послуги (через кому)</Label>
-                  <Input
-                    id="o-services"
-                    value={form.services}
-                    onChange={(e) => setForm({ ...form, services: e.target.value })}
-                    placeholder="Заміна мастила, Діагностика"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Це буде додано до опису. Ви зможете додати точні позиції/запчастини та ціни пізніше в деталях замовлення.
-                  </p>
-                </div>
-              )}
             </div>
 
             <DialogFooter>

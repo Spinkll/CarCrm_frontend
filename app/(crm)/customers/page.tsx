@@ -28,13 +28,14 @@ import { useAuth } from "@/lib/auth-context"
 import { useCustomers } from "@/lib/customers-context"
 import { useVehicles } from "@/lib/vehicles-context"
 import { useOrders } from "@/lib/orders-context"
+import { toast } from "@/hooks/use-toast"
 
 export default function CustomersPage() {
   const { user } = useAuth()
   const { customers, createCustomer, isLoading: customersLoading } = useCustomers()
   const { vehicles, isLoading: vehiclesLoading } = useVehicles()
   const { orders, isLoading: ordersLoading } = useOrders()
-  
+
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState("")
@@ -71,16 +72,17 @@ export default function CustomersPage() {
     setIsSubmitting(true)
 
     const result = await createCustomer({
-        ...form
+      ...form
     })
-    
+
     setIsSubmitting(false)
 
     if (result.success) {
       setForm({ firstName: "", lastName: "", email: "", phone: "" })
       setOpen(false)
+      toast({ title: "Клієнта додано", variant: "success" })
     } else {
-        alert(result.error || "Не вдалося додати клієнта")
+      toast({ title: result.error || "Не вдалося додати клієнта", variant: "destructive" })
     }
   }
 
@@ -91,72 +93,72 @@ export default function CustomersPage() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <PageHeader 
-        title="Клієнти" 
+      <PageHeader
+        title="Клієнти"
         description={user.role === "MECHANIC" ? "Перегляд інформації про клієнтів" : "Управління базою клієнтів"}
       >
         {canCreateCustomers && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="gap-2 shadow-sm">
-                    <Plus className="size-4" />
-                    Додати клієнта
-                </Button>
+              <Button className="gap-2 shadow-sm">
+                <Plus className="size-4" />
+                Додати клієнта
+              </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Новий клієнт</DialogTitle>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                        <Label htmlFor="first-name">Ім'я</Label>
-                        <Input
-                          id="first-name"
-                          value={form.firstName}
-                          onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-                          placeholder="Іван"
-                        />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="last-name">Прізвище</Label>
-                        <Input
-                          id="last-name"
-                          value={form.lastName}
-                          onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-                          placeholder="Іванов"
-                        />
-                    </div>
-                  </div>
+              <DialogHeader>
+                <DialogTitle>Новий клієнт</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="first-name">Ім'я</Label>
                     <Input
-                      id="email"
-                      type="email"
-                      value={form.email}
-                      onChange={(e) => setForm({ ...form, email: e.target.value })}
-                      placeholder="ivan@email.com"
+                      id="first-name"
+                      value={form.firstName}
+                      onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                      placeholder="Іван"
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="phone">Телефон</Label>
+                    <Label htmlFor="last-name">Прізвище</Label>
                     <Input
-                      id="phone"
-                      value={form.phone}
-                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                      placeholder="+380..."
+                      id="last-name"
+                      value={form.lastName}
+                      onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                      placeholder="Іванов"
                     />
                   </div>
                 </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>
-                    Скасувати
-                  </Button>
-                  <Button onClick={handleSubmit} disabled={isSubmitting}>
-                      {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
-                      Додати клієнта
-                  </Button>
-                </DialogFooter>
+                <div className="grid gap-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    placeholder="ivan@email.com"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="phone">Телефон</Label>
+                  <Input
+                    id="phone"
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    placeholder="+380..."
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>
+                  Скасувати
+                </Button>
+                <Button onClick={handleSubmit} disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
+                  Додати клієнта
+                </Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         )}
@@ -173,98 +175,98 @@ export default function CustomersPage() {
                 className="max-w-md bg-secondary/50"
               />
             </div>
-            
-            {isDataLoading ? (
-                 <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
-                    <Loader2 className="mb-2 size-8 animate-spin" />
-                    <p>Завантаження даних клієнтів...</p>
-                 </div>
-            ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead className="pl-6">Клієнт</TableHead>
-                  <TableHead>Контакти</TableHead>
-                  <TableHead>Автомобілі</TableHead>
-                  <TableHead>Замовлення</TableHead>
-                  <TableHead>Всього витрачено</TableHead>
-                  <TableHead className="pr-6">В системі з</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((customer) => {
-                  // Рахуємо машини клієнта
-                  const customerVehicles = vehicles.filter(v => v.userId === customer.id);
-                  const vehicleIds = new Set(customerVehicles.map(v => v.id));
 
-                  // Рахуємо замовлення
-                  const customerOrders = orders.filter(o => {
+            {isDataLoading ? (
+              <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
+                <Loader2 className="mb-2 size-8 animate-spin" />
+                <p>Завантаження даних клієнтів...</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50 hover:bg-muted/50">
+                    <TableHead className="pl-6">Клієнт</TableHead>
+                    <TableHead>Контакти</TableHead>
+                    <TableHead>Автомобілі</TableHead>
+                    <TableHead>Замовлення</TableHead>
+                    <TableHead>Всього витрачено</TableHead>
+                    <TableHead className="pr-6">В системі з</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((customer) => {
+                    // Рахуємо машини клієнта
+                    const customerVehicles = vehicles.filter(v => v.userId === customer.id);
+                    const vehicleIds = new Set(customerVehicles.map(v => v.id));
+
+                    // Рахуємо замовлення
+                    const customerOrders = orders.filter(o => {
                       if (o.carId && vehicleIds.has(o.carId)) return true;
                       if (o.vehicleId && vehicleIds.has(o.vehicleId)) return true;
                       return o.car?.userId === customer.id;
-                  });
-                  
-                  // Вважаємо витраченими тільки ті гроші, замовлення яких Completed або Paid
-                  const totalSpent = customerOrders.reduce((acc, curr) => {
+                    });
+
+                    // Вважаємо витраченими тільки ті гроші, замовлення яких Completed або Paid
+                    const totalSpent = customerOrders.reduce((acc, curr) => {
                       const status = curr.status?.toLowerCase();
                       if (status === 'completed' || status === 'paid') {
                         return acc + Number(curr.totalAmount || 0)
                       }
                       return acc;
-                  }, 0);
+                    }, 0);
 
-                  return (
-                    <TableRow key={customer.id} className="group border-border transition-colors hover:bg-muted/30">
-                      <TableCell className="pl-6">
-                        <div className="flex items-center gap-3">
-                          <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                            {customer.firstName?.[0]}{customer.lastName?.[0]}
+                    return (
+                      <TableRow key={customer.id} className="group border-border transition-colors hover:bg-muted/30">
+                        <TableCell className="pl-6">
+                          <div className="flex items-center gap-3">
+                            <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                              {customer.firstName?.[0]}{customer.lastName?.[0]}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-foreground">{customer.firstName} {customer.lastName}</p>
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">ID: {customer.id}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-semibold text-foreground">{customer.firstName} {customer.lastName}</p>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">ID: {customer.id}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-0.5">
-                          <div className="flex items-center gap-1.5 text-sm text-foreground">
-                            <Mail className="size-3.5 text-muted-foreground" />
-                            {customer.email}
-                          </div>
-                          {customer.phone && (
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-1.5 text-sm text-foreground">
+                              <Mail className="size-3.5 text-muted-foreground" />
+                              {customer.email}
+                            </div>
+                            {customer.phone && (
+                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                 <Phone className="size-3.5" />
                                 {customer.phone}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
                             {customerVehicles.length}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm">{customerOrders.length}</span>
-                      </TableCell>
-                      <TableCell className="font-semibold text-foreground">
-                        {totalSpent.toLocaleString(undefined, { minimumFractionDigits: 0 })} ₴
-                      </TableCell>
-                      <TableCell className="pr-6 text-xs text-muted-foreground">
-                        {new Date(customer.createdAt).toLocaleDateString()}
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm">{customerOrders.length}</span>
+                        </TableCell>
+                        <TableCell className="font-semibold text-foreground">
+                          {totalSpent.toLocaleString(undefined, { minimumFractionDigits: 0 })} ₴
+                        </TableCell>
+                        <TableCell className="pr-6 text-xs text-muted-foreground">
+                          {new Date(customer.createdAt).toLocaleDateString()}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
             )}
-            
+
             {!isDataLoading && filtered.length === 0 && (
-                <div className="py-20 text-center">
-                    <p className="text-muted-foreground">Клієнтів не знайдено.</p>
-                </div>
+              <div className="py-20 text-center">
+                <p className="text-muted-foreground">Клієнтів не знайдено.</p>
+              </div>
             )}
           </CardContent>
         </Card>

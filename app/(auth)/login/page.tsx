@@ -7,17 +7,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Wrench, LogIn } from "lucide-react" 
+import { Wrench, LogIn } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 
 export default function LoginPage() {
   const { login } = useAuth()
   const router = useRouter()
-  
+
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
-  const [isLoading, setIsLoading] = useState(false) 
+  const [isLoading, setIsLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -25,7 +25,7 @@ export default function LoginPage() {
     setIsLoading(true)
 
     const result = await login(email, password)
-    
+
     if (result.success) {
       router.replace("/")
     } else {
@@ -40,10 +40,10 @@ export default function LoginPage() {
         <div className="flex size-12 items-center justify-center rounded-xl bg-primary">
           <Wrench className="size-6 text-primary-foreground" />
         </div>
-        <h1 className="text-2xl font-bold text-foreground">WagGarage CRM</h1> 
+        <h1 className="text-2xl font-bold text-foreground">WagGarage CRM</h1>
         <p className="text-sm text-muted-foreground">Увійдіть, щоб керувати роботою вашого автосервісу</p>
       </div>
-      
+
       <Card className="border-border bg-card">
         <CardHeader className="pb-4">
           <CardTitle className="text-base text-foreground">Вхід</CardTitle>
@@ -69,7 +69,12 @@ export default function LoginPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="password">Пароль</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Пароль</Label>
+                <Link href="/forgot-password" className="text-xs text-primary underline-offset-4 hover:underline">
+                  Забули пароль?
+                </Link>
+              </div>
               <Input
                 id="password"
                 type="password"

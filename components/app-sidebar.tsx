@@ -16,58 +16,58 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
-import { useAuth, type UserRole } from "@/lib/auth-context" 
+import { useAuth, type UserRole } from "@/lib/auth-context"
 import { UserNav } from "@/components/user-nav"
 
 type NavItem = {
   label: string
   href: string
   icon: typeof LayoutDashboard
-  roles: UserRole[] 
+  roles: UserRole[]
 }
 
 const navItems: NavItem[] = [
-  { 
-    label: "Головна", 
-    href: "/", 
-    icon: LayoutDashboard, 
-    roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"] 
+  {
+    label: "Головна",
+    href: "/",
+    icon: LayoutDashboard,
+    roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"]
   },
-  { 
-    label: "Вхідні заявки", 
-    href: "/requests", 
-    icon: MessageSquare, 
-    roles: ["ADMIN", "MANAGER"] 
+  {
+    label: "Вхідні заявки",
+    href: "/requests",
+    icon: MessageSquare,
+    roles: ["ADMIN", "MANAGER"]
   },
-  { 
-    label: "Клієнти", 
-    href: "/customers", 
-    icon: Users, 
-    roles: ["ADMIN", "MECHANIC", "MANAGER"] 
+  {
+    label: "Клієнти",
+    href: "/customers",
+    icon: Users,
+    roles: ["ADMIN", "MECHANIC", "MANAGER"]
   },
-  { 
-    label: "Автомобілі", 
-    href: "/vehicles", 
-    icon: Car, 
-    roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"] 
+  {
+    label: "Автомобілі",
+    href: "/vehicles",
+    icon: Car,
+    roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"]
   },
-  { 
-    label: "Замовлення", 
-    href: "/orders", 
-    icon: ClipboardList, 
-    roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"] 
+  {
+    label: "Замовлення",
+    href: "/orders",
+    icon: ClipboardList,
+    roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"]
   },
-  { 
-    label: "Календар", 
-    href: "/appointments", 
-    icon: CalendarDays, 
-    roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"] 
+  {
+    label: "Календар",
+    href: "/appointments",
+    icon: CalendarDays,
+    roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"]
   },
-  { 
-    label: "Персонал", 
-    href: "/employees", 
-    icon: UserCog, 
-    roles: ["ADMIN", "MANAGER"] 
+  {
+    label: "Персонал",
+    href: "/employees",
+    icon: UserCog,
+    roles: ["ADMIN", "MANAGER"]
   },
 ]
 
@@ -85,7 +85,7 @@ export function AppSidebar() {
   return (
     <aside
       className={cn(
-        "flex h-screen flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300",
+        "flex h-full flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300",
         collapsed ? "w-16" : "w-64"
       )}
     >

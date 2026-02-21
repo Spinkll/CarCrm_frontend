@@ -31,8 +31,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   return (
     <AuthProvider>
       <AuthGuard>
-        <div className="flex min-h-screen items-center justify-center bg-background p-4">
-          {children}
+        <div className="fixed inset-0 flex justify-center overflow-y-auto bg-background px-4 py-8">
+          <div className="m-auto">
+            {children}
+          </div>
         </div>
       </AuthGuard>
     </AuthProvider>

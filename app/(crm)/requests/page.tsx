@@ -25,6 +25,10 @@ import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, XCircle, Clock, Loader2, MessageSquare } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useServiceRequests } from "@/lib/service-requests-context"
+import { useOrders } from "@/lib/orders-context"
+import { useAppointments } from "@/lib/appointments-context"
+import { useNotifications } from "@/lib/notifications-context"
+import { toast } from "@/hooks/use-toast"
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   NEW: { label: "Нова", color: "bg-blue-100 text-blue-700 border-blue-200" },
@@ -36,6 +40,9 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 export default function ServiceRequestsPage() {
   const { user } = useAuth()
   const { requests, isLoading, approveRequest, rejectRequest } = useServiceRequests()
+  const { refreshOrders } = useOrders()
+  const { fetchAppointments } = useAppointments()
+  const { fetchNotifications } = useNotifications()
 
   const [approveOpen, setApproveOpen] = useState(false)
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null)
@@ -60,7 +67,7 @@ export default function ServiceRequestsPage() {
 
   const handleApprove = async () => {
     if (!selectedRequestId || !approveForm.date || !approveForm.time) {
-      alert("Будь ласка, оберіть дату та час")
+      toast({ title: "Будь ласка, оберіть дату та час", variant: "destructive" })
       return
     }
 
@@ -80,22 +87,25 @@ export default function ServiceRequestsPage() {
       setApproveOpen(false)
       setSelectedRequestId(null)
       setApproveForm({ date: "", time: "10:00", estimatedMin: 60 })
+      toast({ title: "Заявку схвалено", description: "Створено замовлення та запис в календарі.", variant: "success" })
+      await Promise.all([refreshOrders(), fetchAppointments(), fetchNotifications()])
     } else {
-      alert(result.error || "Не вдалося схвалити заявку")
+      toast({ title: result.error || "Не вдалося схвалити заявку", variant: "destructive" })
     }
   }
 
   const handleReject = async (id: number) => {
     if (confirm("Ви впевнені, що хочете відхилити цю заявку?")) {
       await rejectRequest(id)
+      toast({ title: "Заявку відхилено", variant: "default" })
     }
   }
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <PageHeader 
-        title="Вхідні заявки" 
-        description="Обробка нових звернень від клієнтів" 
+      <PageHeader
+        title="Вхідні заявки"
+        description="Обробка нових звернень від клієнтів"
       />
 
       <div className="flex-1 overflow-auto p-6">
@@ -157,18 +167,18 @@ export default function ServiceRequestsPage() {
                           </TableCell>
                           <TableCell className="pr-6 text-right">
                             <div className="flex justify-end gap-2">
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
+                              <Button
+                                size="sm"
+                                variant="outline"
                                 className="border-green-200 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800"
                                 onClick={() => openApproveModal(req.id)}
                               >
                                 <CheckCircle2 className="mr-1 size-4" />
                                 Одобрити
                               </Button>
-                              <Button 
-                                size="sm" 
-                                variant="ghost" 
+                              <Button
+                                size="sm"
+                                variant="ghost"
                                 className="text-muted-foreground hover:bg-red-50 hover:text-red-600"
                                 onClick={() => handleReject(req.id)}
                               >

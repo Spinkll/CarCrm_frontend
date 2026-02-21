@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { toast } from "@/hooks/use-toast"
+import { useNotifications } from "@/lib/notifications-context"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -88,10 +90,15 @@ export default function AppointmentsPage() {
     return d.toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })
   }
 
+  const { fetchNotifications } = useNotifications()
+
   async function handleStatusUpdate(id: number, status: string) {
     const result = await updateStatus(id, status)
-    if (!result.success) {
-      console.error("Помилка зміни статусу:", result.error)
+    if (result.success) {
+      toast({ title: "Статус оновлено", variant: "success" })
+      fetchNotifications()
+    } else {
+      toast({ title: "Помилка зміни статусу", description: result.error, variant: "destructive" })
     }
   }
 
@@ -113,8 +120,10 @@ export default function AppointmentsPage() {
     const result = await reschedule(rescheduleTarget.id, scheduledAt, estimatedMin)
     if (result.success) {
       setRescheduleOpen(false)
+      toast({ title: "Запис перенесено", variant: "success" })
+      fetchNotifications()
     } else {
-      console.error("Помилка перенесення:", result.error)
+      toast({ title: "Помилка перенесення", description: result.error, variant: "destructive" })
     }
   }
 
@@ -132,13 +141,13 @@ export default function AppointmentsPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <div className="flex h-full flex-1 flex-col overflow-hidden">
       <PageHeader
         title={role === "client" ? "Мої записи" : "Записи на сервіс"}
         description={descriptions[role] || ""}
       />
 
-      <div className="flex-1 overflow-auto p-6">
+      <div className="min-h-0 flex-1 overflow-auto p-6">
         {isLoading ? (
           <div className="flex h-64 items-center justify-center">
             <Loader2 className="size-8 animate-spin text-primary" />
@@ -211,7 +220,7 @@ export default function AppointmentsPage() {
                             </div>
 
                             <div className="mt-4 rounded-lg bg-secondary/30 p-3 flex-1 flex flex-col">
-                              
+
                               {/* --- БЛОК ІЗ ПРОБЛЕМОЮ --- */}
                               <div className="mb-3">
                                 <div className="flex items-center gap-1.5 mb-1">
@@ -221,10 +230,10 @@ export default function AppointmentsPage() {
                                   </p>
                                 </div>
                                 <p className="text-sm font-medium text-foreground whitespace-pre-wrap line-clamp-3" title={appt.order?.description}>
-                                  {appt.order?.description || "Опис відсутній"}
+                                  {(appt.order?.description || "Опис відсутній").replace(/^Бажана дата:\s*\S+\s*/i, "").trim() || "Опис відсутній"}
                                 </p>
                               </div>
-                              
+
                               {/* --- БЛОК ІЗ ДЕТАЛЯМИ --- */}
                               <div className="mt-auto pt-3 space-y-2 border-t border-border/50">
                                 {role !== "client" && owner && (
@@ -252,7 +261,7 @@ export default function AppointmentsPage() {
                                   </div>
                                 )}
                               </div>
-                              
+
                               {appt.note && (
                                 <p className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground italic">
                                   &ldquo;{appt.note}&rdquo;

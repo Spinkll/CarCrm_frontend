@@ -14,6 +14,9 @@ import { StatusBadge } from "@/components/status-badge"
 import { ArrowLeft, Plus, Trash2, Wrench, Clock, ShieldCheck, Loader2 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/api"
+import { toast } from "@/hooks/use-toast"
+import { useOrders } from "@/lib/orders-context"
+import { useNotifications } from "@/lib/notifications-context"
 
 // Локальні типи
 interface OrderDetails {
@@ -43,14 +46,16 @@ export default function OrderDetailsPage() {
   const params = useParams()
   const router = useRouter()
   const { user } = useAuth()
-  
+
   const orderId = Number(params.id)
-  
+  const { refreshOrders } = useOrders()
+  const { fetchNotifications } = useNotifications()
+
   const [order, setOrder] = useState<OrderDetails | null>(null)
   const [employees, setEmployees] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  
+
   const [itemModalOpen, setItemModalOpen] = useState(false)
   const [itemForm, setItemForm] = useState({ name: "", price: "", quantity: "1" })
 
@@ -58,7 +63,7 @@ export default function OrderDetailsPage() {
   const [assignForm, setAssignForm] = useState({ mechanicId: "", managerId: "" })
 
   const role = user?.role?.toUpperCase() || "CLIENT"
-  
+
   // ЗМІНЕНО ТУТ: Додано MECHANIC до прав управління позиціями
   const canManageItems = role === "ADMIN" || role === "MANAGER" || role === "MECHANIC"
   const canAssign = role === "ADMIN" || role === "MANAGER"
@@ -100,10 +105,13 @@ export default function OrderDetailsPage() {
         quantity: Number(itemForm.quantity),
       })
       await fetchOrderDetails()
+      refreshOrders()
       setItemModalOpen(false)
       setItemForm({ name: "", price: "", quantity: "1" })
+      toast({ title: "Позицію додано", variant: "success" })
+      fetchNotifications()
     } catch (error) {
-      alert("Не вдалося додати позицію")
+      toast({ title: "Не вдалося додати позицію", variant: "destructive" })
     } finally {
       setIsSubmitting(false)
     }
@@ -114,14 +122,17 @@ export default function OrderDetailsPage() {
     try {
       await api.delete(`/orders/${orderId}/items/${itemId}`)
       await fetchOrderDetails()
+      refreshOrders()
+      toast({ title: "Позицію видалено", variant: "success" })
+      fetchNotifications()
     } catch (error) {
-      alert("Не вдалося видалити позицію")
+      toast({ title: "Не вдалося видалити позицію", variant: "destructive" })
     }
   }
 
   const handleAssign = async () => {
     const payload: any = {}
-    
+
     if (assignForm.managerId && assignForm.managerId !== "none") {
       payload.managerId = Number(assignForm.managerId)
     }
@@ -130,7 +141,7 @@ export default function OrderDetailsPage() {
     }
 
     if (Object.keys(payload).length === 0) {
-      alert("Будь ласка, оберіть менеджера або механіка.")
+      toast({ title: "Будь ласка, оберіть менеджера або механіка.", variant: "destructive" })
       return
     }
 
@@ -139,8 +150,11 @@ export default function OrderDetailsPage() {
       await api.patch(`/orders/${orderId}/assign`, payload)
       await fetchOrderDetails()
       setAssignModalOpen(false)
+      refreshOrders()
+      toast({ title: "Команду призначено", variant: "success" })
+      fetchNotifications()
     } catch (error) {
-      alert("Не вдалося призначити команду")
+      toast({ title: "Не вдалося призначити команду", variant: "destructive" })
     } finally {
       setIsSubmitting(false)
     }
@@ -172,7 +186,7 @@ export default function OrderDetailsPage() {
 
       <div className="flex-1 overflow-auto p-6">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          
+
           <div className="col-span-1 lg:col-span-2 space-y-6">
             <Card className="border-border bg-card">
               <CardHeader className="pb-3 border-b border-border">
@@ -346,16 +360,16 @@ export default function OrderDetailsPage() {
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label htmlFor="i-name">Назва / Опис</Label>
-                <Input id="i-name" value={itemForm.name} onChange={(e) => setItemForm({...itemForm, name: e.target.value})} placeholder="Напр. Масляний фільтр, Діагностика" />
+                <Input id="i-name" value={itemForm.name} onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })} placeholder="Напр. Масляний фільтр, Діагностика" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="i-price">Ціна (₴)</Label>
-                  <Input id="i-price" type="number" value={itemForm.price} onChange={(e) => setItemForm({...itemForm, price: e.target.value})} placeholder="0.00" />
+                  <Input id="i-price" type="number" value={itemForm.price} onChange={(e) => setItemForm({ ...itemForm, price: e.target.value })} placeholder="0.00" />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="i-qty">Кількість</Label>
-                  <Input id="i-qty" type="number" min="1" value={itemForm.quantity} onChange={(e) => setItemForm({...itemForm, quantity: e.target.value})} />
+                  <Input id="i-qty" type="number" min="1" value={itemForm.quantity} onChange={(e) => setItemForm({ ...itemForm, quantity: e.target.value })} />
                 </div>
               </div>
             </div>
@@ -374,7 +388,7 @@ export default function OrderDetailsPage() {
               <DialogTitle>Призначити команду</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              
+
               <div className="grid gap-2">
                 <Label>Менеджер</Label>
                 <Select value={assignForm.managerId} onValueChange={(v) => setAssignForm({ ...assignForm, managerId: v })}>

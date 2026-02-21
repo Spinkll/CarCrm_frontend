@@ -32,11 +32,12 @@ import { Plus, Car, User, Loader2, Wrench } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useVehicles } from "@/lib/vehicles-context"
 import { useCrm } from "@/lib/crm-context"
+import { toast } from "@/hooks/use-toast"
 
 export default function VehiclesPage() {
   const { user } = useAuth()
   const { vehicles, addVehicle, isLoading } = useVehicles()
-  const { customers, filteredOrders } = useCrm() 
+  const { customers, filteredOrders } = useCrm()
 
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState("")
@@ -47,17 +48,17 @@ export default function VehiclesPage() {
     model: "",
     year: "",
     vin: "",
-    plate: "",  
+    plate: "",
     color: "",
     mileage: "",
-    userId: "", 
+    userId: "",
   })
 
   if (!user) return null
 
   const role = user.role?.toLowerCase()
   const canAssignOwner = role === "admin" || role === "manager"
-  
+
   // Дозволяємо створювати авто всім, крім механіків
   const canCreateVehicle = role === "client" || role === "admin" || role === "manager"
 
@@ -71,22 +72,22 @@ export default function VehiclesPage() {
         `${v.brand} ${v.model}`.toLowerCase().includes(searchLower) ||
         (v.plate && v.plate.toLowerCase().includes(searchLower)) ||
         v.vin.toLowerCase().includes(searchLower) ||
-        ownerName.includes(searchLower) 
+        ownerName.includes(searchLower)
       )
     }
   )
 
   async function handleSubmit() {
     if (!form.brand || !form.model || !form.plate || !form.vin) {
-        alert("Будь ласка, заповніть усі обов'язкові поля (Марка, Модель, Номер, VIN)");
-        return;
+      toast({ title: "Будь ласка, заповніть усі обов'язкові поля", description: "Марка, Модель, Номер, VIN", variant: "destructive" });
+      return;
     }
 
     if (canAssignOwner && !form.userId) {
-        alert("Будь ласка, оберіть власника для цього автомобіля");
-        return;
+      toast({ title: "Будь ласка, оберіть власника для цього автомобіля", variant: "destructive" });
+      return;
     }
-    
+
     setIsSubmitting(true)
 
     const ownerId = canAssignOwner ? Number(form.userId) : user?.id
@@ -97,9 +98,9 @@ export default function VehiclesPage() {
       year: parseInt(form.year) || new Date().getFullYear(),
       vin: form.vin,
       plate: form.plate.toUpperCase(),
-      color: form.color, 
+      color: form.color,
       mileage: parseInt(form.mileage) || 0,
-      userId: ownerId, 
+      userId: ownerId,
     }
 
     const result = await addVehicle(payload as any)
@@ -109,8 +110,9 @@ export default function VehiclesPage() {
     if (result.success) {
       setForm({ brand: "", model: "", year: "", vin: "", plate: "", color: "", mileage: "", userId: "" })
       setOpen(false)
+      toast({ title: "Автомобіль додано", variant: "success" })
     } else {
-      alert(typeof result.error === 'string' ? result.error : JSON.stringify(result.error))
+      toast({ title: typeof result.error === 'string' ? result.error : JSON.stringify(result.error), variant: "destructive" })
     }
   }
 
@@ -140,114 +142,114 @@ export default function VehiclesPage() {
                 className="max-w-md bg-secondary"
               />
             </div>
-            
-            {isLoading ? (
-               <div className="flex justify-center p-8">
-                  <Loader2 className="size-8 animate-spin text-muted-foreground" />
-               </div>
-            ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="pl-6 text-muted-foreground">Автомобіль</TableHead>
-                  <TableHead className="text-muted-foreground">Номерний знак</TableHead>
-                  {role !== "client" && <TableHead className="text-muted-foreground">Власник</TableHead>}
-                  <TableHead className="text-muted-foreground">Колір</TableHead>
-                  <TableHead className="text-muted-foreground">Пробіг</TableHead>
-                  <TableHead className="pr-6 text-muted-foreground">Історія сервісу</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((vehicle: any) => {
-                  const owner = customers.find(c => c.id === vehicle.userId)
-                  
-                  const vehicleOrders = filteredOrders.filter(o => o.carId === vehicle.id)
-                  const lastOrder = [...vehicleOrders].sort((a, b) => 
-                    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-                  )[0]
-                  
-                  return (
-                    <TableRow key={vehicle.id} className="border-border">
-                      <TableCell className="pl-6">
-                        <div className="flex items-center gap-3">
-                          <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">
-                            <Car className="size-4 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-foreground">
-                              {vehicle.year} {vehicle.brand} {vehicle.model}
-                            </p>
-                            <p className="text-xs text-muted-foreground uppercase">{vehicle.vin}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="rounded-md bg-secondary px-2 py-1 text-sm font-mono text-foreground uppercase tracking-widest">
-                          {vehicle.plate}
-                        </span>
-                      </TableCell>
-                      
-                      {role !== "client" && (
-                        <TableCell>
-                          {owner ? (
-                            <div className="flex items-center gap-2">
-                              <User className="size-4 text-muted-foreground" />
-                              <span className="text-sm font-medium text-foreground">
-                                {owner.firstName} {owner.lastName}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground italic">Без власника</span>
-                          )}
-                        </TableCell>
-                      )}
 
-                      <TableCell>
-                         <div className="flex items-center gap-2">
-                            <div 
-                              className="h-3 w-3 rounded-full border border-black/20 shadow-sm" 
+            {isLoading ? (
+              <div className="flex justify-center p-8">
+                <Loader2 className="size-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableHead className="pl-6 text-muted-foreground">Автомобіль</TableHead>
+                    <TableHead className="text-muted-foreground">Номерний знак</TableHead>
+                    {role !== "client" && <TableHead className="text-muted-foreground">Власник</TableHead>}
+                    <TableHead className="text-muted-foreground">Колір</TableHead>
+                    <TableHead className="text-muted-foreground">Пробіг</TableHead>
+                    <TableHead className="pr-6 text-muted-foreground">Історія сервісу</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((vehicle: any) => {
+                    const owner = customers.find(c => c.id === vehicle.userId)
+
+                    const vehicleOrders = filteredOrders.filter(o => o.carId === vehicle.id)
+                    const lastOrder = [...vehicleOrders].sort((a, b) =>
+                      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                    )[0]
+
+                    return (
+                      <TableRow key={vehicle.id} className="border-border">
+                        <TableCell className="pl-6">
+                          <div className="flex items-center gap-3">
+                            <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">
+                              <Car className="size-4 text-primary" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-foreground">
+                                {vehicle.year} {vehicle.brand} {vehicle.model}
+                              </p>
+                              <p className="text-xs text-muted-foreground uppercase">{vehicle.vin}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="rounded-md bg-secondary px-2 py-1 text-sm font-mono text-foreground uppercase tracking-widest">
+                            {vehicle.plate}
+                          </span>
+                        </TableCell>
+
+                        {role !== "client" && (
+                          <TableCell>
+                            {owner ? (
+                              <div className="flex items-center gap-2">
+                                <User className="size-4 text-muted-foreground" />
+                                <span className="text-sm font-medium text-foreground">
+                                  {owner.firstName} {owner.lastName}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground italic">Без власника</span>
+                            )}
+                          </TableCell>
+                        )}
+
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="h-3 w-3 rounded-full border border-black/20 shadow-sm"
                               style={{ backgroundColor: vehicle.color || '#ccc' }}
                               title={vehicle.color}
                             />
                             <span className="text-sm text-foreground capitalize">{vehicle.color || 'Невідомо'}</span>
-                         </div>
-                      </TableCell>
-
-                      <TableCell className="text-foreground">
-                        {vehicle.mileage?.toLocaleString()} км
-                      </TableCell>
-
-                      <TableCell className="pr-6">
-                        {vehicleOrders.length > 0 ? (
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-1.5">
-                              <Wrench className="size-3 text-primary" />
-                              <span className="text-sm font-medium text-foreground">
-                                {vehicleOrders.length} {vehicleOrders.length === 1 ? 'візит' : 'візитів'}
-                              </span>
-                            </div>
-                            {lastOrder && (
-                              <span className="text-xs text-muted-foreground">
-                                Останній: {new Date(lastOrder.createdAt).toLocaleDateString()}
-                              </span>
-                            )}
                           </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground italic">Немає історії</span>
-                        )}
+                        </TableCell>
+
+                        <TableCell className="text-foreground">
+                          {vehicle.mileage?.toLocaleString()} км
+                        </TableCell>
+
+                        <TableCell className="pr-6">
+                          {vehicleOrders.length > 0 ? (
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-1.5">
+                                <Wrench className="size-3 text-primary" />
+                                <span className="text-sm font-medium text-foreground">
+                                  {vehicleOrders.length} {vehicleOrders.length === 1 ? 'візит' : 'візитів'}
+                                </span>
+                              </div>
+                              {lastOrder && (
+                                <span className="text-xs text-muted-foreground">
+                                  Останній: {new Date(lastOrder.createdAt).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground italic">Немає історії</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                  {filtered.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={role !== "client" ? 6 : 5} className="py-12 text-center text-muted-foreground">
+                        Автомобілів за вашим запитом не знайдено
                       </TableCell>
                     </TableRow>
-                  )
-                })}
-                {filtered.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={role !== "client" ? 6 : 5} className="py-12 text-center text-muted-foreground">
-                      Автомобілів за вашим запитом не знайдено
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                  )}
+                </TableBody>
+              </Table>
             )}
           </CardContent>
         </Card>
@@ -259,7 +261,7 @@ export default function VehiclesPage() {
             <DialogTitle>Додати новий автомобіль</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            
+
             {canAssignOwner && (
               <div className="grid gap-2">
                 <Label>Призначити клієнту</Label>
@@ -284,85 +286,85 @@ export default function VehiclesPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="v-brand">Марка</Label>
-                <Input 
-                  id="v-brand" 
-                  value={form.brand} 
-                  onChange={(e) => setForm({ ...form, brand: e.target.value })} 
-                  placeholder="Toyota" 
+                <Input
+                  id="v-brand"
+                  value={form.brand}
+                  onChange={(e) => setForm({ ...form, brand: e.target.value })}
+                  placeholder="Toyota"
                 />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="v-model">Модель</Label>
-                <Input 
-                  id="v-model" 
-                  value={form.model} 
-                  onChange={(e) => setForm({ ...form, model: e.target.value })} 
-                  placeholder="Camry" 
+                <Input
+                  id="v-model"
+                  value={form.model}
+                  onChange={(e) => setForm({ ...form, model: e.target.value })}
+                  placeholder="Camry"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="v-year">Рік</Label>
-                  <Input 
-                    id="v-year" 
-                    type="number"
-                    value={form.year} 
-                    onChange={(e) => setForm({ ...form, year: e.target.value })} 
-                    placeholder="2024" 
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="v-color">Колір</Label>
-                  <Input 
-                    id="v-color" 
-                    value={form.color} 
-                    onChange={(e) => setForm({ ...form, color: e.target.value })} 
-                    placeholder="Чорний" 
-                  />
-                </div>
+              <div className="grid gap-2">
+                <Label htmlFor="v-year">Рік</Label>
+                <Input
+                  id="v-year"
+                  type="number"
+                  value={form.year}
+                  onChange={(e) => setForm({ ...form, year: e.target.value })}
+                  placeholder="2024"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="v-color">Колір</Label>
+                <Input
+                  id="v-color"
+                  value={form.color}
+                  onChange={(e) => setForm({ ...form, color: e.target.value })}
+                  placeholder="Чорний"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                    <Label htmlFor="v-plate">Номерний знак</Label>
-                    <Input 
-                        id="v-plate" 
-                        value={form.plate} 
-                        onChange={(e) => setForm({ ...form, plate: e.target.value.toUpperCase() })} 
-                        placeholder="АЕ 7777 ХХ" 
-                    />
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="v-vin">VIN-код</Label>
-                    <Input 
-                        id="v-vin" 
-                        value={form.vin} 
-                        onChange={(e) => setForm({ ...form, vin: e.target.value.toUpperCase() })} 
-                        placeholder="17 символів" 
-                        maxLength={17}
-                    />
-                </div>
-            </div>
-            
-            <div className="grid gap-2">
-                <Label htmlFor="v-mileage">Пробіг (км)</Label>
-                <Input 
-                    id="v-mileage" 
-                    type="number"
-                    value={form.mileage} 
-                    onChange={(e) => setForm({ ...form, mileage: e.target.value })} 
-                    placeholder="0" 
+              <div className="grid gap-2">
+                <Label htmlFor="v-plate">Номерний знак</Label>
+                <Input
+                  id="v-plate"
+                  value={form.plate}
+                  onChange={(e) => setForm({ ...form, plate: e.target.value.toUpperCase() })}
+                  placeholder="АЕ 7777 ХХ"
                 />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="v-vin">VIN-код</Label>
+                <Input
+                  id="v-vin"
+                  value={form.vin}
+                  onChange={(e) => setForm({ ...form, vin: e.target.value.toUpperCase() })}
+                  placeholder="17 символів"
+                  maxLength={17}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="v-mileage">Пробіг (км)</Label>
+              <Input
+                id="v-mileage"
+                type="number"
+                value={form.mileage}
+                onChange={(e) => setForm({ ...form, mileage: e.target.value })}
+                placeholder="0"
+              />
             </div>
 
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>Скасувати</Button>
             <Button onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
-                {isSubmitting ? "Додавання..." : "Додати авто"}
+              {isSubmitting ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
+              {isSubmitting ? "Додавання..." : "Додати авто"}
             </Button>
           </DialogFooter>
         </DialogContent>

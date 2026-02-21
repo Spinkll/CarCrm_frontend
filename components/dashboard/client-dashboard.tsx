@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { StatusBadge } from "@/components/status-badge"
 import { useCrm } from "@/lib/crm-context"
 import { useAppointments } from "@/lib/appointments-context"
-import { Car, ClipboardList, CalendarDays, DollarSign, Clock, Loader2 } from "lucide-react"
+import { Car, ClipboardList, CalendarDays, DollarSign, Clock, Loader2, Wrench } from "lucide-react"
 import { useMemo } from "react"
 
 export function ClientDashboard() {
@@ -144,9 +144,10 @@ export function ClientDashboard() {
                           {vehicle ? `${vehicle.brand} ${vehicle.model} • ${vehicle.plate}` : "Дані про авто відсутні"}
                         </p>
                         {mechanic && (
-                          <p className="text-xs text-muted-foreground">
-                            🔧 Механік: {mechanic.firstName} {mechanic.lastName}
-                          </p>
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Wrench className="size-3.5 shrink-0" />
+                            <span>Механік: {mechanic.firstName} {mechanic.lastName}</span>
+                          </div>
                         )}
                         <div className="mt-1 flex items-center gap-3 text-[10px] font-medium text-muted-foreground uppercase">
                           <span className="flex items-center gap-1">
