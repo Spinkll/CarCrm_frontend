@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from "react"
 import { useAuth } from "./auth-context"
-import { api } from "./api" 
+import { api } from "./api"
 
 export interface Customer {
   id: number
@@ -21,7 +21,7 @@ export interface Vehicle {
   plate: string
   mileage: number
   color: string
-  userId: number 
+  userId: number
 }
 
 export interface ServiceOrder {
@@ -36,12 +36,17 @@ export interface ServiceOrder {
 
 export interface Appointment {
   id: number
-  service: string
-  date: string
-  time: string
+  orderId: number
+  scheduledAt: string
+  estimatedMin: number | null
   status: string
-  carId: number
-  notes?: string
+  note: string | null
+  order: {
+    carId: number
+    description: string
+    car: { brand: string; model: string; plate: string; userId?: number; user?: { firstName: string; lastName: string } }
+    mechanic?: { firstName: string; lastName: string }
+  }
 }
 
 type CrmContextType = {
@@ -65,22 +70,22 @@ const CrmContext = createContext<CrmContextType | undefined>(undefined)
 
 export function CrmProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
-  
+
   const [customers, setCustomers] = useState<Customer[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [orders, setOrders] = useState<ServiceOrder[]>([])
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  const userRole = user?.role?.toUpperCase() 
-  const currentUserId = user?.id 
+  const userRole = user?.role?.toUpperCase()
+  const currentUserId = user?.id
 
   const refreshData = useCallback(async () => {
     if (!user) return
     setIsLoading(true)
     try {
       const [custRes, vehRes, ordRes, appRes] = await Promise.all([
-        api.get('/users/customers').catch(() => ({ data: [] })), 
+        api.get('/users/customers').catch(() => ({ data: [] })),
         api.get('/cars').catch(() => ({ data: [] })),
         api.get('/orders').catch(() => ({ data: [] })),
         api.get('/appointments').catch(() => ({ data: [] })),
@@ -101,11 +106,11 @@ export function CrmProvider({ children }: { children: React.ReactNode }) {
     refreshData()
   }, [refreshData])
 
-  
+
   const filteredOrders = useMemo(() => {
     if (userRole === "ADMIN" || userRole === "MANAGER") return orders
     if (userRole === "MECHANIC") {
-      return orders.filter(o => o.status !== "completed") 
+      return orders.filter(o => o.status !== "completed")
     }
     return orders.filter(o => o.car?.userId === currentUserId || (vehicles.find(v => v.id === o.carId)?.userId === currentUserId))
   }, [orders, userRole, currentUserId, vehicles])
@@ -122,10 +127,10 @@ export function CrmProvider({ children }: { children: React.ReactNode }) {
   const filteredAppointments = useMemo(() => {
     if (userRole === "ADMIN" || userRole === "MANAGER") return appointments
     return appointments.filter(a => {
-        const vehicle = vehicles.find(v => v.id === a.carId)
-        return Number(vehicle?.userId) === Number(currentUserId)
+      const carUserId = a.order?.car?.userId
+      return Number(carUserId) === Number(currentUserId)
     })
-  }, [appointments, userRole, currentUserId, vehicles])
+  }, [appointments, userRole, currentUserId])
 
   // --- Екшни (Actions) ---
 

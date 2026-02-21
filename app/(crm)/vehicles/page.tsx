@@ -57,6 +57,9 @@ export default function VehiclesPage() {
 
   const role = user.role?.toLowerCase()
   const canAssignOwner = role === "admin" || role === "manager"
+  
+  // Дозволяємо створювати авто всім, крім механіків
+  const canCreateVehicle = role === "client" || role === "admin" || role === "manager"
 
   const filtered = vehicles.filter(
     (v: any) => {
@@ -93,7 +96,7 @@ export default function VehiclesPage() {
       model: form.model,
       year: parseInt(form.year) || new Date().getFullYear(),
       vin: form.vin,
-      plate: form.plate,
+      plate: form.plate.toUpperCase(),
       color: form.color, 
       mileage: parseInt(form.mileage) || 0,
       userId: ownerId, 
@@ -111,13 +114,19 @@ export default function VehiclesPage() {
     }
   }
 
+  // Динамічні заголовки (для зручності)
+  const pageTitle = role === "client" ? "Мій гараж" : (role === "mechanic" ? "Автомобілі в ремонті" : "Автомобілі")
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <PageHeader title="Автомобілі" description="Управління транспортними засобами">
-        <Button onClick={() => setOpen(true)} className="gap-2">
-          <Plus className="size-4" />
-          Додати авто
-        </Button>
+      <PageHeader title={pageTitle} description="Управління транспортними засобами">
+        {/* ОСЬ ТУТ БУЛА ВТРАЧЕНА КНОПКА */}
+        {canCreateVehicle && (
+          <Button onClick={() => setOpen(true)} className="gap-2">
+            <Plus className="size-4" />
+            Додати авто
+          </Button>
+        )}
       </PageHeader>
 
       <div className="flex-1 overflow-auto p-6">

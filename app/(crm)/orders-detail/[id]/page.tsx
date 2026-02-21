@@ -58,7 +58,9 @@ export default function OrderDetailsPage() {
   const [assignForm, setAssignForm] = useState({ mechanicId: "", managerId: "" })
 
   const role = user?.role?.toUpperCase() || "CLIENT"
-  const canManageItems = role === "ADMIN" || role === "MANAGER"
+  
+  // ЗМІНЕНО ТУТ: Додано MECHANIC до прав управління позиціями
+  const canManageItems = role === "ADMIN" || role === "MANAGER" || role === "MECHANIC"
   const canAssign = role === "ADMIN" || role === "MANAGER"
 
   const managers = employees.filter(e => e.role === "MANAGER" || e.role === "ADMIN")

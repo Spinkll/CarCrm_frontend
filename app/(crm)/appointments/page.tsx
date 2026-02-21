@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { StatusBadge } from "@/components/status-badge"
-import { CalendarDays, Clock, User, Car, ChevronDown, Loader2, Wrench } from "lucide-react"
+import { CalendarDays, Clock, User, Car, ChevronDown, Loader2, Wrench, AlertCircle } from "lucide-react"
 import { useAppointments } from "@/lib/appointments-context"
 import { useAuth } from "@/lib/auth-context"
 import {
@@ -162,8 +162,8 @@ export default function AppointmentsPage() {
                       const mechanic = appt.order?.mechanic
 
                       return (
-                        <Card key={appt.id} className="border-border bg-card hover:shadow-sm transition-shadow">
-                          <CardContent className="p-4">
+                        <Card key={appt.id} className="border-border bg-card hover:shadow-sm transition-shadow flex flex-col">
+                          <CardContent className="p-4 flex flex-col h-full">
                             <div className="flex items-start justify-between">
                               <div className="flex items-center gap-3">
                                 <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10">
@@ -210,11 +210,23 @@ export default function AppointmentsPage() {
                               </div>
                             </div>
 
-                            <div className="mt-4 rounded-lg bg-secondary/30 p-3">
-                              <p className="text-sm font-semibold text-foreground">
-                                {appt.order?.description || "Без опису"}
-                              </p>
-                              <div className="mt-2 space-y-1.5">
+                            <div className="mt-4 rounded-lg bg-secondary/30 p-3 flex-1 flex flex-col">
+                              
+                              {/* --- БЛОК ІЗ ПРОБЛЕМОЮ --- */}
+                              <div className="mb-3">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <AlertCircle className="size-3.5 text-muted-foreground" />
+                                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                                    Опис проблеми
+                                  </p>
+                                </div>
+                                <p className="text-sm font-medium text-foreground whitespace-pre-wrap line-clamp-3" title={appt.order?.description}>
+                                  {appt.order?.description || "Опис відсутній"}
+                                </p>
+                              </div>
+                              
+                              {/* --- БЛОК ІЗ ДЕТАЛЯМИ --- */}
+                              <div className="mt-auto pt-3 space-y-2 border-t border-border/50">
                                 {role !== "client" && owner && (
                                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                     <User className="size-3.5 shrink-0" />
@@ -226,7 +238,7 @@ export default function AppointmentsPage() {
                                 {car && (
                                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                     <Car className="size-3.5 shrink-0" />
-                                    <span className="truncate">
+                                    <span className="truncate font-medium text-foreground/80">
                                       {car.brand} {car.model} • {car.plate}
                                     </span>
                                   </div>
@@ -240,6 +252,7 @@ export default function AppointmentsPage() {
                                   </div>
                                 )}
                               </div>
+                              
                               {appt.note && (
                                 <p className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground italic">
                                   &ldquo;{appt.note}&rdquo;

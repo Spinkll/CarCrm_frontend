@@ -3,11 +3,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { StatusBadge } from "@/components/status-badge"
 import { useCrm } from "@/lib/crm-context"
+import { useAppointments } from "@/lib/appointments-context"
 import { Car, ClipboardList, CalendarDays, DollarSign, Clock, Loader2 } from "lucide-react"
 import { useMemo } from "react"
 
 export function ClientDashboard() {
-  const { filteredOrders, filteredVehicles, filteredAppointments, isLoading } = useCrm()
+  const { filteredOrders, filteredVehicles, isLoading } = useCrm()
+  const { appointments, isLoading: appointmentsLoading } = useAppointments()
 
   const totalSpent = useMemo(() => {
     return filteredOrders
@@ -18,17 +20,17 @@ export function ClientDashboard() {
   // 2. Активні замовлення (додаємо статус 'received' та 'pending')
   const activeOrdersCount = useMemo(() => {
     const activeStatuses = ["in_progress", "pending", "received", "scheduled", "confirmed", "waiting_parts"]
-    return filteredOrders.filter((o) => 
+    return filteredOrders.filter((o) =>
       activeStatuses.includes(o.status?.toLowerCase())
     ).length
   }, [filteredOrders])
 
-  // 3. Сортування майбутніх візитів
+  // 3. Сортування майбутніх візитів (використовуємо новий контекст з scheduledAt)
   const upcomingAppointments = useMemo(() => {
-    return [...filteredAppointments]
-      .filter((a) => !["cancelled", "completed"].includes(a.status?.toLowerCase()))
-      .sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime())
-  }, [filteredAppointments])
+    return [...appointments]
+      .filter((a) => !["CANCELLED", "COMPLETED", "NO_SHOW"].includes(a.status))
+      .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
+  }, [appointments])
 
   if (isLoading) {
     return (
@@ -121,7 +123,13 @@ export function ClientDashboard() {
                 </div>
               ) : (
                 upcomingAppointments.slice(0, 5).map((appt) => {
-                  const vehicle = filteredVehicles.find((v) => v.id === appt.carId)
+                  const vehicle = appt.order?.car
+                  const mechanic = appt.order?.mechanic
+                  const description = appt.order?.description || "Сервісне обслуговування"
+                  const dateObj = new Date(appt.scheduledAt)
+                  const formattedDate = dateObj.toLocaleDateString("uk-UA", { day: '2-digit', month: '2-digit', year: 'numeric' })
+                  const formattedTime = dateObj.toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })
+
                   return (
                     <div key={appt.id} className="flex items-center gap-4 rounded-lg border border-border bg-secondary/30 p-3">
                       <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
@@ -129,21 +137,31 @@ export function ClientDashboard() {
                       </div>
                       <div className="flex-1 overflow-hidden">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="truncate text-sm font-medium text-foreground">{appt.service}</p>
+                          <p className="truncate text-sm font-medium text-foreground">{description}</p>
                           <StatusBadge status={appt.status} />
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {vehicle ? `${vehicle.brand} ${vehicle.model}` : "Дані про авто відсутні"}
+                          {vehicle ? `${vehicle.brand} ${vehicle.model} • ${vehicle.plate}` : "Дані про авто відсутні"}
                         </p>
+                        {mechanic && (
+                          <p className="text-xs text-muted-foreground">
+                            🔧 Механік: {mechanic.firstName} {mechanic.lastName}
+                          </p>
+                        )}
                         <div className="mt-1 flex items-center gap-3 text-[10px] font-medium text-muted-foreground uppercase">
                           <span className="flex items-center gap-1">
                             <CalendarDays className="size-3" />
-                            {new Date(appt.date).toLocaleDateString()}
+                            {formattedDate}
                           </span>
                           <span className="flex items-center gap-1">
                             <Clock className="size-3" />
-                            {appt.time}
+                            {formattedTime}
                           </span>
+                          {appt.estimatedMin && (
+                            <span className="flex items-center gap-1">
+                              ~{appt.estimatedMin} хв
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

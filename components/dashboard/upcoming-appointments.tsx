@@ -3,32 +3,31 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CalendarDays, Clock, Loader2 } from "lucide-react"
 import { StatusBadge } from "@/components/status-badge"
-import { useCrm } from "@/lib/crm-context"
+import { useAppointments } from "@/lib/appointments-context"
 
 export function UpcomingAppointments() {
-  const { appointments, customers, vehicles, isLoading } = useCrm()
+  // Використовуємо новий хук для записів
+  const { appointments, isLoading } = useAppointments()
 
-  // 1. Нормалізуємо статуси (бо з бази вони можуть прийти як CANCELLED чи COMPLETED)
+  // 1. Фільтруємо та сортуємо записи за новим полем scheduledAt
   const upcoming = [...appointments]
     .filter((a) => {
-      const s = a.status?.toLowerCase() || ""
-      return s !== "cancelled" && s !== "completed"
+      const s = a.status?.toUpperCase() || ""
+      // Відкидаємо завершені, скасовані та ті, де клієнт не з'явився
+      return s !== "CANCELLED" && s !== "COMPLETED" && s !== "NO_SHOW"
     })
     .sort((a, b) => {
-      // Запобіжник: якщо date або time прийдуть пустими з бази, не даємо сортуванню впасти
-      const dateA = new Date(`${a.date}T${a.time || '00:00'}`).getTime()
-      const dateB = new Date(`${b.date}T${b.time || '00:00'}`).getTime()
-      return dateA - dateB
+      // Сортуємо за датою (від найближчих)
+      return new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
     })
     .slice(0, 4)
 
-  // 2. Додаємо стан завантаження
   if (isLoading) {
     return (
       <Card className="border-border bg-card">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-foreground">
-            Upcoming Appointments
+            Майбутні візити
           </CardTitle>
         </CardHeader>
         <CardContent className="flex h-48 items-center justify-center">
@@ -42,21 +41,27 @@ export function UpcomingAppointments() {
     <Card className="border-border bg-card">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-foreground">
-          Upcoming Appointments
+          Майбутні візити
         </CardTitle>
       </CardHeader>
       <CardContent>
         {upcoming.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
-            No upcoming appointments scheduled.
+            Немає запланованих зустрічей на найближчий час.
           </div>
         ) : (
           <div className="space-y-3">
             {upcoming.map((appt) => {
-              // 3. Зв'язки за ключами бази даних (carId -> userId)
-              const vehicle = vehicles.find((v) => v.id === appt.carId)
-              const customer = customers.find((c) => c.id === vehicle?.userId)
+              // 2. Дістаємо авто та власника через вкладений об'єкт order
+              const vehicle = appt.order?.car
+              const customer = vehicle?.user
+              const description = appt.order?.description || "Сервісне обслуговування"
               
+              // 3. Форматуємо дату та час з scheduledAt
+              const dateObj = new Date(appt.scheduledAt)
+              const formattedDate = dateObj.toLocaleDateString("uk-UA", { day: '2-digit', month: '2-digit', year: 'numeric' })
+              const formattedTime = dateObj.toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })
+
               return (
                 <div
                   key={appt.id}
@@ -68,25 +73,27 @@ export function UpcomingAppointments() {
                   <div className="flex-1 overflow-hidden">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-medium text-foreground truncate">
-                        {/* 4. Використовуємо firstName та lastName */}
-                        {customer ? `${customer.firstName} ${customer.lastName}` : "Unknown Client"}
+                        {customer ? `${customer.firstName} ${customer.lastName}` : "Клієнт невідомий"}
                       </p>
                       <StatusBadge status={appt.status} />
                     </div>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {/* 5. Використовуємо brand замість make */}
-                      {vehicle ? `${vehicle.year} ${vehicle.brand} ${vehicle.model}` : "N/A"} • {appt.service}
+                    <p className="text-xs text-muted-foreground truncate" title={description}>
+                      {vehicle ? `${vehicle.brand} ${vehicle.model}` : "Авто не вказано"} • {description}
                     </p>
                     <div className="mt-1 flex items-center gap-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <CalendarDays className="size-3" />
-                        {/* 6. Форматуємо дату для читабельності */}
-                        {new Date(appt.date).toLocaleDateString()}
+                        {formattedDate}
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="size-3" />
-                        {appt.time}
+                        {formattedTime}
                       </span>
+                      {appt.estimatedMin && (
+                        <span className="flex items-center gap-1">
+                          ~{appt.estimatedMin} хв
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
