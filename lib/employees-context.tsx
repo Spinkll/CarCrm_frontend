@@ -10,7 +10,7 @@ export interface Employee {
   firstName: string
   lastName: string
   role: "ADMIN" | "MANAGER" | "MECHANIC"
-  phone: string 
+  phone: string
 }
 
 type EmployeesContextType = {
@@ -29,10 +29,10 @@ export function EmployeesProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
 
   const fetchEmployees = useCallback(async () => {
-    if (user?.role !== "ADMIN") return
+    if (!user || (user.role !== "ADMIN" && user.role !== "MANAGER")) return
     try {
       setIsLoading(true)
-      const { data } = await api.get("/users/employees") 
+      const { data } = await api.get("/users/employees")
       setEmployees(data)
     } catch (error) {
       console.error("Failed to fetch employees:", error)

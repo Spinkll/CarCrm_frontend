@@ -177,7 +177,20 @@ export default function OrdersPage() {
         description={descriptions[role] || "Замовлення"}
       >
         {canCreateOrders && (
-          <Button onClick={() => setOpen(true)} className="gap-2">
+          <Button
+            onClick={() => {
+              if (role === "CLIENT" && !user?.isVerified) {
+                toast({
+                  title: "Необхідна верифікація",
+                  description: "Будь ласка, підтвердіть вашу електронну пошту, щоб залишити заявку.",
+                  variant: "destructive"
+                });
+                return;
+              }
+              setOpen(true);
+            }}
+            className="gap-2"
+          >
             <Plus className="size-4" />
             {role === "CLIENT" ? "Залишити заявку" : "Нове замовлення"}
           </Button>

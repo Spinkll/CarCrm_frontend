@@ -3,17 +3,18 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PhoneInput } from "@/components/ui/phone-input"
 import { Label } from "@/components/ui/label"
-import { Wrench, UserPlus } from "lucide-react"
+import { Wrench, UserPlus, MailCheck, ArrowRight } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 
 export default function RegisterPage() {
   const { register } = useAuth()
   const router = useRouter()
-  
+
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -22,9 +23,10 @@ export default function RegisterPage() {
     confirmPassword: "",
     phone: ""
   })
-  
+
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -50,26 +52,55 @@ export default function RegisterPage() {
     }
 
     const result = await register(
-      form.firstName, 
-      form.lastName, 
-      form.email, 
-      form.password, 
+      form.firstName,
+      form.lastName,
+      form.email,
+      form.password,
       form.phone
     )
-    
+
     if (result.success) {
-      router.replace("/")
+      setIsSuccess(true)
     } else {
       setError(result.error || "Registration failed")
     }
     setIsLoading(false)
-    
-    if (result.success) {
-      router.replace("/")
-    } else {
-      setError(result.error || "Registration failed")
-    }
-    setIsLoading(false)
+  }
+
+  if (isSuccess) {
+    return (
+      <div className="flex w-full max-w-md flex-col gap-6">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <div className="flex size-16 items-center justify-center rounded-full bg-primary/10 mb-4">
+            <MailCheck className="size-8 text-primary" />
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Перевірте пошту</h1>
+          <p className="text-muted-foreground whitespace-pre-line">
+            Ми надіслали лист із підтвердженням на адресу
+            <span className="font-semibold text-foreground d-block mt-1">{form.email}</span>
+          </p>
+        </div>
+
+        <Card className="border-border bg-card">
+          <CardContent className="pt-6">
+            <div className="flex flex-col gap-4 text-center">
+              <p className="text-sm text-muted-foreground">
+                Будь ласка, перейдіть за посиланням у листі, щоб активувати свій обліковий запис і отримати повний доступ до системи.
+              </p>
+              <div className="rounded-lg bg-muted p-4 text-sm">
+                <p>Не отримали лист? Перевірте папку "Спам" або зачекайте кілька хвилин.</p>
+              </div>
+              <Button asChild className="w-full mt-2 gap-2" variant="outline">
+                <Link href="/login">
+                  Повернутися до входу
+                  <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -93,7 +124,7 @@ export default function RegisterPage() {
                 {error}
               </div>
             )}
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="firstName">Ім'я</Label>
@@ -104,6 +135,7 @@ export default function RegisterPage() {
                   placeholder="Іван"
                   className="bg-secondary"
                   required
+                  disabled={isLoading}
                 />
               </div>
               <div className="grid gap-2">
@@ -115,6 +147,7 @@ export default function RegisterPage() {
                   placeholder="Шевченко"
                   className="bg-secondary"
                   required
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -129,19 +162,18 @@ export default function RegisterPage() {
                 placeholder="you@email.com"
                 className="bg-secondary"
                 required
+                disabled={isLoading}
               />
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="phone">Номер телефону</Label>
-              <Input
+              <PhoneInput
                 id="phone"
-                type="tel"
                 value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="+380XXXXXXXXX" 
-                className="bg-secondary"
+                onValueChange={(val) => setForm({ ...form, phone: val })}
                 required
+                disabled={isLoading}
               />
             </div>
 
@@ -155,6 +187,7 @@ export default function RegisterPage() {
                 placeholder="Принаймні 8 символів"
                 className="bg-secondary"
                 required
+                disabled={isLoading}
               />
             </div>
 
@@ -168,16 +201,17 @@ export default function RegisterPage() {
                 placeholder="Введіть свій пароль ще раз"
                 className="bg-secondary"
                 required
+                disabled={isLoading}
               />
             </div>
 
             <p className="text-xs text-muted-foreground">
               Реєструючись, ви створите обліковий запис клієнта. Облікові записи співробітників створюються адміністраторами.
             </p>
-            
+
             <Button type="submit" className="gap-2" disabled={isLoading}>
               <UserPlus className="size-4" />
-              {isLoading ? "Creating..." : "Створити обліковий запис"}
+              {isLoading ? "Створення..." : "Створити обліковий запис"}
             </Button>
           </form>
 

@@ -1,35 +1,46 @@
 "use client"
 
+import { useState } from "react"
 import { useAuth } from "@/lib/auth-context"
-import { LogOut, Shield, Settings, User, Briefcase } from "lucide-react"
+import { LogOut, Shield, Settings, User, Briefcase, MoreVertical, KeyRound, UserCog, CheckCircle, XCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ChangePasswordDialog } from "@/components/change-password-dialog"
+import { ProfileEditDialog } from "@/components/profile-edit-dialog"
 import { cn } from "@/lib/utils"
 
 const roleConfig = {
-  ADMIN: { 
-    label: "Admin", 
-    icon: Shield, 
-    className: "bg-primary/20 text-primary border-primary/30" 
+  ADMIN: {
+    label: "Admin",
+    icon: Shield,
+    className: "bg-primary/20 text-primary border-primary/30"
   },
-  MANAGER: { 
-    label: "Manager", 
-    icon: Briefcase, 
-    className: "bg-orange-500/20 text-orange-600 border-orange-500/30" 
+  MANAGER: {
+    label: "Manager",
+    icon: Briefcase,
+    className: "bg-orange-500/20 text-orange-600 border-orange-500/30"
   },
-  MECHANIC: { 
-    label: "Mechanic", 
-    icon: Settings, 
-    className: "bg-blue-500/20 text-blue-600 border-blue-500/30" 
+  MECHANIC: {
+    label: "Mechanic",
+    icon: Settings,
+    className: "bg-blue-500/20 text-blue-600 border-blue-500/30"
   },
-  CLIENT: { 
-    label: "Client", 
-    icon: User, 
-    className: "bg-green-500/20 text-green-600 border-green-500/30" 
+  CLIENT: {
+    label: "Client",
+    icon: User,
+    className: "bg-green-500/20 text-green-600 border-green-500/30"
   },
 }
 
 export function UserNav({ collapsed }: { collapsed: boolean }) {
   const { user, logout } = useAuth()
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false)
+  const [profileEditOpen, setProfileEditOpen] = useState(false)
 
   if (!user) return null
 
@@ -40,48 +51,106 @@ export function UserNav({ collapsed }: { collapsed: boolean }) {
   const fullName = `${user.firstName} ${user.lastName}`
 
   return (
-    <div className="border-t border-sidebar-border p-2">
-      <div
-        className={cn(
-          "flex items-center gap-3 rounded-lg px-3 py-2",
-          collapsed && "justify-center px-0"
-        )}
-      >
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-          {initials}
-        </div>
-        {!collapsed && (
-          <div className="flex flex-1 flex-col overflow-hidden">
-            <span className="truncate text-sm font-medium text-sidebar-foreground">
-              {fullName} 
-            </span>
-            <div className="flex items-center gap-1.5">
-              <role.icon className="size-3 opacity-70" /> 
-              <Badge variant="outline" className={cn("h-4 rounded px-1 text-[10px] font-medium leading-none", role.className)}>
-                {role.label}
-              </Badge>
+    <>
+      <div className="border-t border-sidebar-border p-2">
+        <div
+          className={cn(
+            "flex items-center gap-3 rounded-lg px-3 py-2 relative",
+            collapsed && "justify-center px-0"
+          )}
+        >
+          <div className="relative flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+            {initials}
+            {!collapsed && user.role === "CLIENT" && (
+              <div className="absolute -bottom-1 -right-1 rounded-full bg-background" title={user.isVerified ? "Пошта підтверджена" : "Пошта не підтверджена"}>
+                {user.isVerified ? (
+                  <CheckCircle className="size-3.5 text-green-500" />
+                ) : (
+                  <XCircle className="size-3.5 text-destructive" />
+                )}
+              </div>
+            )}
+          </div>
+          {!collapsed && (
+            <div className="flex flex-1 flex-col overflow-hidden">
+              <span className="truncate text-sm font-medium text-sidebar-foreground">
+                {fullName}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <role.icon className="size-3 opacity-70" />
+                <Badge variant="outline" className={cn("h-4 rounded px-1 text-[10px] font-medium leading-none", role.className)}>
+                  {role.label}
+                </Badge>
+              </div>
             </div>
+          )}
+          {!collapsed && (
+            <div className="flex shrink-0 items-center gap-0.5">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="flex size-7 items-center justify-center rounded-md text-sidebar-foreground/50 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                    aria-label="Меню дій"
+                  >
+                    <MoreVertical className="size-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="top" align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => setProfileEditOpen(true)}>
+                    <UserCog className="mr-2 size-4" />
+                    Мій профіль
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setChangePasswordOpen(true)}>
+                    <KeyRound className="mr-2 size-4" />
+                    Змінити пароль
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <button
+                onClick={logout}
+                className="flex size-7 items-center justify-center rounded-md text-sidebar-foreground/50 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                aria-label="Sign out"
+              >
+                <LogOut className="size-4" />
+              </button>
+            </div>
+          )}
+        </div>
+        {collapsed && (
+          <div className="mt-1 flex flex-col items-center gap-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="flex w-full items-center justify-center rounded-lg px-3 py-2 text-sidebar-foreground/50 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  aria-label="Меню дій"
+                >
+                  <MoreVertical className="size-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="right" align="end" className="w-48">
+                <DropdownMenuItem onClick={() => setProfileEditOpen(true)}>
+                  <UserCog className="mr-2 size-4" />
+                  Мій профіль
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setChangePasswordOpen(true)}>
+                  <KeyRound className="mr-2 size-4" />
+                  Змінити пароль
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <button
+              onClick={logout}
+              className="flex w-full items-center justify-center rounded-lg px-3 py-2 text-sidebar-foreground/50 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              aria-label="Sign out"
+            >
+              <LogOut className="size-4" />
+            </button>
           </div>
         )}
-        {!collapsed && (
-          <button
-            onClick={logout}
-            className="flex size-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/50 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-            aria-label="Sign out"
-          >
-            <LogOut className="size-4" />
-          </button>
-        )}
       </div>
-      {collapsed && (
-        <button
-          onClick={logout}
-          className="mt-1 flex w-full items-center justify-center rounded-lg px-3 py-2 text-sidebar-foreground/50 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-          aria-label="Sign out"
-        >
-          <LogOut className="size-4" />
-        </button>
-      )}
-    </div>
+
+      <ChangePasswordDialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen} />
+      <ProfileEditDialog open={profileEditOpen} onOpenChange={setProfileEditOpen} />
+    </>
   )
 }

@@ -27,6 +27,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { VinInput } from "@/components/ui/vin-input"
+import { LicensePlateInput } from "@/components/ui/license-plate-input"
 import { Label } from "@/components/ui/label"
 import { Plus, Car, User, Loader2, Wrench } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
@@ -124,7 +126,20 @@ export default function VehiclesPage() {
       <PageHeader title={pageTitle} description="Управління транспортними засобами">
         {/* ОСЬ ТУТ БУЛА ВТРАЧЕНА КНОПКА */}
         {canCreateVehicle && (
-          <Button onClick={() => setOpen(true)} className="gap-2">
+          <Button
+            onClick={() => {
+              if (role === "client" && !user?.isVerified) {
+                toast({
+                  title: "Необхідна верифікація",
+                  description: "Будь ласка, підтвердіть вашу електронну пошту, щоб додати автомобіль.",
+                  variant: "destructive"
+                });
+                return;
+              }
+              setOpen(true);
+            }}
+            className="gap-2"
+          >
             <Plus className="size-4" />
             Додати авто
           </Button>
@@ -329,21 +344,18 @@ export default function VehiclesPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="v-plate">Номерний знак</Label>
-                <Input
+                <LicensePlateInput
                   id="v-plate"
                   value={form.plate}
-                  onChange={(e) => setForm({ ...form, plate: e.target.value.toUpperCase() })}
-                  placeholder="АЕ 7777 ХХ"
+                  onValueChange={(val) => setForm({ ...form, plate: val.toUpperCase() })}
                 />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="v-vin">VIN-код</Label>
-                <Input
+                <VinInput
                   id="v-vin"
                   value={form.vin}
-                  onChange={(e) => setForm({ ...form, vin: e.target.value.toUpperCase() })}
-                  placeholder="17 символів"
-                  maxLength={17}
+                  onValueChange={(val) => setForm({ ...form, vin: val.toUpperCase() })}
                 />
               </div>
             </div>

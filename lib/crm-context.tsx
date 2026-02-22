@@ -84,8 +84,9 @@ export function CrmProvider({ children }: { children: React.ReactNode }) {
     if (!user) return
     setIsLoading(true)
     try {
+      const isClient = user.role === "CLIENT"
       const [custRes, vehRes, ordRes, appRes] = await Promise.all([
-        api.get('/users/customers').catch(() => ({ data: [] })),
+        isClient ? { data: [] } : api.get('/users/customers').catch(() => ({ data: [] })),
         api.get('/cars').catch(() => ({ data: [] })),
         api.get('/orders').catch(() => ({ data: [] })),
         api.get('/appointments').catch(() => ({ data: [] })),

@@ -22,6 +22,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { PhoneInput } from "@/components/ui/phone-input"
 import { Label } from "@/components/ui/label"
 import { Plus, Mail, Phone, Loader2 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
@@ -142,11 +143,10 @@ export default function CustomersPage() {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="phone">Телефон</Label>
-                  <Input
+                  <PhoneInput
                     id="phone"
                     value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    placeholder="+380..."
+                    onValueChange={(val) => setForm({ ...form, phone: val })}
                   />
                 </div>
               </div>

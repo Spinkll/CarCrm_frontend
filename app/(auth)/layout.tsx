@@ -1,18 +1,19 @@
 "use client"
 
 import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { AuthProvider, useAuth } from "@/lib/auth-context"
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
+    if (!isLoading && isAuthenticated && pathname !== "/verify-email") {
       router.replace("/")
     }
-  }, [isAuthenticated, isLoading, router])
+  }, [isAuthenticated, isLoading, router, pathname])
 
   if (isLoading) {
     return (
@@ -22,7 +23,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (isAuthenticated) return null
+  if (isAuthenticated && pathname !== "/verify-email") return null
 
   return <>{children}</>
 }
