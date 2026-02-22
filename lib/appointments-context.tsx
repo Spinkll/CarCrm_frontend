@@ -39,7 +39,40 @@ export function AppointmentsProvider({ children }: { children: React.ReactNode }
     setIsLoading(true)
     try {
       const res = await api.get("/appointments")
-      setAppointments(res.data)
+      const fetchedAppointments = res.data
+
+      // Auto-cancel past appointments (SCHEDULED or CONFIRMED)
+      const now = new Date()
+      // Normalize to today midnight to only cancel if the day has fully passed
+      const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+
+      const processedAppointments = await Promise.all(
+        fetchedAppointments.map(async (app: Appointment) => {
+          if (app.status === "SCHEDULED" || app.status === "CONFIRMED") {
+            const appointmentDate = new Date(app.scheduledAt)
+            const appointmentMidnight = new Date(
+              appointmentDate.getFullYear(),
+              appointmentDate.getMonth(),
+              appointmentDate.getDate()
+            ).getTime()
+
+            // If the appointment date is strictly before today
+            if (appointmentMidnight < todayMidnight) {
+              try {
+                // Update on the backend silently
+                await api.patch(`/appointments/${app.id}/status`, { status: "CANCELLED" })
+                // Return updated locally
+                return { ...app, status: "CANCELLED" as const }
+              } catch (err) {
+                console.error(`Failed to auto-cancel appointment ${app.id}`, err)
+              }
+            }
+          }
+          return app
+        })
+      )
+
+      setAppointments(processedAppointments)
     } catch (error) {
       console.error("Помилка завантаження записів", error)
     } finally {

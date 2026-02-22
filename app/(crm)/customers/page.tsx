@@ -72,8 +72,11 @@ export default function CustomersPage() {
     if (!form.firstName || !form.lastName || !form.email) return
     setIsSubmitting(true)
 
+    const cleanPhone = form.phone ? form.phone.replace(/[\s\-\(\)]/g, "") : ""
+
     const result = await createCustomer({
-      ...form
+      ...form,
+      phone: cleanPhone
     })
 
     setIsSubmitting(false)

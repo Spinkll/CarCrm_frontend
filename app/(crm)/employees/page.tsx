@@ -99,12 +99,14 @@ export default function EmployeesPage() {
 
     setIsSubmitting(true)
 
+    const cleanPhone = form.phone ? form.phone.replace(/[\s\-\(\)]/g, "") : ""
+
     // Відправляємо на бекенд
     const result = await createEmployee({
       firstName: form.firstName,
       lastName: form.lastName,
       email: form.email,
-      phone: form.phone,
+      phone: cleanPhone,
       role: form.role
     })
 

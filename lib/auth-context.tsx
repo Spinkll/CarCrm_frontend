@@ -25,6 +25,7 @@ type AuthContextType = {
   addEmployee: (firstName: string, lastName: string, email: string, password: string, phone: string, role: UserRole) => Promise<{ success: boolean; error?: string }>
   changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>
   updateProfile: (data: { firstName?: string; lastName?: string; phone?: string }) => Promise<{ success: boolean; error?: string }>
+  resendVerification: () => Promise<{ success: boolean; error?: string }>
   markEmailAsVerified: () => void
   logout: () => void
 }
@@ -138,6 +139,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user])
 
+  const resendVerification = useCallback(async () => {
+    try {
+      await api.post("/auth/resend-verification-email")
+      return { success: true }
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Failed to resend email"
+      return { success: false, error: Array.isArray(msg) ? msg[0] : msg }
+    }
+  }, [])
+
   const logout = useCallback(() => {
     localStorage.removeItem("access_token")
     localStorage.removeItem("refresh_token")
@@ -165,6 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         addEmployee,
         changePassword,
         updateProfile,
+        resendVerification,
         markEmailAsVerified,
         logout,
       }}

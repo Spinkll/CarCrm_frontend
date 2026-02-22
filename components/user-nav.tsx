@@ -2,8 +2,9 @@
 
 import { useState } from "react"
 import { useAuth } from "@/lib/auth-context"
-import { LogOut, Shield, Settings, User, Briefcase, MoreVertical, KeyRound, UserCog, CheckCircle, XCircle } from "lucide-react"
+import { LogOut, Shield, Settings, User, Briefcase, MoreVertical, KeyRound, UserCog, CheckCircle, XCircle, MailCheck, Loader2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { toast } from "@/hooks/use-toast"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,11 +39,24 @@ const roleConfig = {
 }
 
 export function UserNav({ collapsed }: { collapsed: boolean }) {
-  const { user, logout } = useAuth()
+  const { user, logout, resendVerification } = useAuth()
   const [changePasswordOpen, setChangePasswordOpen] = useState(false)
   const [profileEditOpen, setProfileEditOpen] = useState(false)
+  const [isVerifying, setIsVerifying] = useState(false)
 
   if (!user) return null
+
+  const handleResendVerification = async () => {
+    setIsVerifying(true)
+    const result = await resendVerification()
+    setIsVerifying(false)
+
+    if (result.success) {
+      toast({ title: "Лист відправлено!", description: "Перевірте вашу пошту для верифікації.", variant: "success" })
+    } else {
+      toast({ title: "Помилка відправки", description: result.error || "Спробуйте пізніше", variant: "destructive" })
+    }
+  }
 
   const role = roleConfig[user.role as keyof typeof roleConfig] || roleConfig.CLIENT
 
@@ -96,6 +110,19 @@ export function UserNav({ collapsed }: { collapsed: boolean }) {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent side="top" align="end" className="w-48">
+                  {user.role === "CLIENT" && (
+                    user.isVerified ? (
+                      <DropdownMenuItem disabled className="text-green-600">
+                        <CheckCircle className="mr-2 size-4" />
+                        Пошта підтверджена
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem onClick={handleResendVerification} disabled={isVerifying} className="text-orange-600">
+                        {isVerifying ? <Loader2 className="mr-2 size-4 animate-spin" /> : <MailCheck className="mr-2 size-4" />}
+                        Підтвердити пошту
+                      </DropdownMenuItem>
+                    )
+                  )}
                   <DropdownMenuItem onClick={() => setProfileEditOpen(true)}>
                     <UserCog className="mr-2 size-4" />
                     Мій профіль
@@ -128,6 +155,19 @@ export function UserNav({ collapsed }: { collapsed: boolean }) {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="right" align="end" className="w-48">
+                {user.role === "CLIENT" && (
+                  user.isVerified ? (
+                    <DropdownMenuItem disabled className="text-green-600">
+                      <CheckCircle className="mr-2 size-4" />
+                      Пошта підтверджена
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem onClick={handleResendVerification} disabled={isVerifying} className="text-orange-600">
+                      {isVerifying ? <Loader2 className="mr-2 size-4 animate-spin" /> : <MailCheck className="mr-2 size-4" />}
+                      Підтвердити пошту
+                    </DropdownMenuItem>
+                  )
+                )}
                 <DropdownMenuItem onClick={() => setProfileEditOpen(true)}>
                   <UserCog className="mr-2 size-4" />
                   Мій профіль

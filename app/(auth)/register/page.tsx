@@ -51,12 +51,14 @@ export default function RegisterPage() {
       return
     }
 
+    const cleanPhone = form.phone.replace(/[\s\-\(\)]/g, "")
+
     const result = await register(
       form.firstName,
       form.lastName,
       form.email,
       form.password,
-      form.phone
+      cleanPhone
     )
 
     if (result.success) {

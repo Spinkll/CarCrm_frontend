@@ -8,10 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { StatusBadge } from "@/components/status-badge"
-import { ArrowLeft, Plus, Trash2, Wrench, Clock, ShieldCheck, Loader2 } from "lucide-react"
+import { ArrowLeft, Plus, Trash2, Wrench, Clock, ShieldCheck, Loader2, Check, ChevronsUpDown } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/api"
 import { toast } from "@/hooks/use-toast"
@@ -29,7 +33,7 @@ interface OrderDetails {
   car: { brand: string; model: string; plate: string; vin: string; year: number }
   manager: { id: number; firstName: string; lastName: string } | null
   mechanic: { id: number; firstName: string; lastName: string } | null
-  items: Array<{ id: number; name: string; quantity: number; price: number }>
+  items: Array<{ id: number; name: string; quantity: number; price: number; type?: "SERVICE" | "PART" }>
   history: Array<{ id: number; action: string; comment: string; timestamp: string; changedBy: { firstName: string; lastName: string } }>
 }
 
@@ -53,14 +57,24 @@ export default function OrderDetailsPage() {
 
   const [order, setOrder] = useState<OrderDetails | null>(null)
   const [employees, setEmployees] = useState<any[]>([])
+  const [catalogServices, setCatalogServices] = useState<{ id: number, name: string, price: number }[]>([])
+  const [catalogParts, setCatalogParts] = useState<{ id: number, name: string, price: number }[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [itemModalOpen, setItemModalOpen] = useState(false)
-  const [itemForm, setItemForm] = useState({ name: "", price: "", quantity: "1" })
+  const [itemForm, setItemForm] = useState<{ name: string; price: string; quantity: string; type: "SERVICE" | "PART" }>({
+    name: "", price: "", quantity: "1", type: "SERVICE"
+  })
+  const [draftItems, setDraftItems] = useState<Array<{ id: string, name: string; price: string; quantity: string; type: "SERVICE" | "PART" }>>([])
+  const [serviceComboboxOpen, setServiceComboboxOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
 
   const [assignModalOpen, setAssignModalOpen] = useState(false)
   const [assignForm, setAssignForm] = useState({ mechanicId: "", managerId: "" })
+
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [itemToDelete, setItemToDelete] = useState<number | null>(null)
 
   const role = user?.role?.toUpperCase() || "CLIENT"
 
@@ -89,44 +103,106 @@ export default function OrderDetailsPage() {
     }
   }
 
+  const fetchCatalogServices = async () => {
+    try {
+      const { data } = await api.get('/catalog/services').catch(() => ({ data: [] }))
+      setCatalogServices(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error("Failed to fetch catalog services", error)
+    }
+  }
+
+  const fetchCatalogParts = async () => {
+    try {
+      const { data } = await api.get('/catalog/parts').catch(() => ({ data: [] }))
+      setCatalogParts(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error("Failed to fetch catalog parts", error)
+    }
+  }
+
   useEffect(() => {
     setIsLoading(true)
-    Promise.all([fetchOrderDetails(), canAssign ? fetchEmployees() : Promise.resolve()])
-      .finally(() => setIsLoading(false))
-  }, [orderId, canAssign])
+    const promises = [fetchOrderDetails()]
+    if (canAssign) promises.push(fetchEmployees())
+    if (canManageItems) {
+      promises.push(fetchCatalogServices())
+      promises.push(fetchCatalogParts())
+    }
 
-  const handleAddItem = async () => {
+    Promise.all(promises).finally(() => setIsLoading(false))
+  }, [orderId, canAssign, canManageItems])
+
+  const handleAddToDraft = () => {
     if (!itemForm.name || !itemForm.price || !itemForm.quantity) return
+    setDraftItems([...draftItems, { ...itemForm, id: Math.random().toString() }])
+    setItemForm({ name: "", price: "", quantity: "1", type: itemForm.type })
+    setSearchQuery("")
+  }
+
+  const handleRemoveFromDraft = (id: string) => {
+    setDraftItems(draftItems.filter(i => i.id !== id))
+  }
+
+  const handleSaveAllItems = async () => {
+    const itemsToSave = [...draftItems]
+    // Якщо форма частково заповнена (назва, ціна, кількість), додамо її також як позицію
+    if (itemForm.name && itemForm.price && itemForm.quantity) {
+      itemsToSave.push({ ...itemForm, id: Math.random().toString() })
+    }
+
+    if (itemsToSave.length === 0) {
+      toast({ title: "Заповніть дані позиції або додайте до списку", variant: "destructive" })
+      return
+    }
+
     setIsSubmitting(true)
     try {
-      await api.post(`/orders/${orderId}/items`, {
-        name: itemForm.name,
-        price: Number(itemForm.price),
-        quantity: Number(itemForm.quantity),
-      })
+      for (const item of itemsToSave) {
+        await api.post(`/orders/${orderId}/items`, {
+          name: item.name,
+          price: Number(item.price),
+          quantity: Number(item.quantity),
+          type: item.type,
+        })
+      }
       await fetchOrderDetails()
       refreshOrders()
       setItemModalOpen(false)
-      setItemForm({ name: "", price: "", quantity: "1" })
-      toast({ title: "Позицію додано", variant: "success" })
+      setDraftItems([])
+      setItemForm({ name: "", price: "", quantity: "1", type: "SERVICE" })
+      setSearchQuery("")
+
+      const count = itemsToSave.length
+      toast({ title: count > 1 ? `Додано ${count} позицій` : "Позицію додано", variant: "success" })
       fetchNotifications()
     } catch (error) {
-      toast({ title: "Не вдалося додати позицію", variant: "destructive" })
+      toast({ title: "Не вдалося додати деякі позиції", variant: "destructive" })
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const handleRemoveItem = async (itemId: number) => {
-    if (!confirm("Ви впевнені, що хочете видалити цю позицію?")) return
+  const confirmRemoveItem = (itemId: number) => {
+    setItemToDelete(itemId)
+    setDeleteModalOpen(true)
+  }
+
+  const handleRemoveItem = async () => {
+    if (!itemToDelete) return
+    setIsSubmitting(true)
     try {
-      await api.delete(`/orders/${orderId}/items/${itemId}`)
+      await api.delete(`/orders/${orderId}/items/${itemToDelete}`)
       await fetchOrderDetails()
       refreshOrders()
       toast({ title: "Позицію видалено", variant: "success" })
       fetchNotifications()
     } catch (error) {
       toast({ title: "Не вдалося видалити позицію", variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
+      setDeleteModalOpen(false)
+      setItemToDelete(null)
     }
   }
 
@@ -176,6 +252,9 @@ export default function OrderDetailsPage() {
     return <div className="p-8 text-center text-muted-foreground">Замовлення не знайдено або доступ заборонено.</div>
   }
 
+  const serviceItems = order.items.filter(i => i.type === "SERVICE" || !i.type) // Defaulting to SERVICE if type is missing for old data
+  const partItems = order.items.filter(i => i.type === "PART")
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <PageHeader title={`Замовлення #${order.id}`} description="Деталі замовлення та історія сервісу">
@@ -219,8 +298,8 @@ export default function OrderDetailsPage() {
             <Card className="border-border bg-card">
               <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border">
                 <div>
-                  <CardTitle className="text-lg">Послуги та Запчастини</CardTitle>
-                  <CardDescription>Перелік робіт та деталей у цьому замовленні</CardDescription>
+                  <CardTitle className="text-lg">Деталізація замовлення</CardTitle>
+                  <CardDescription>Перелік робіт та запчастин</CardDescription>
                 </div>
                 {canManageItems && (
                   <Button size="sm" onClick={() => setItemModalOpen(true)} className="gap-1">
@@ -229,19 +308,23 @@ export default function OrderDetailsPage() {
                 )}
               </CardHeader>
               <CardContent className="p-0">
+                {/* Таблиця послуг */}
+                <div className="bg-secondary/20 px-6 py-2 border-b border-border">
+                  <h3 className="text-sm font-semibold uppercase text-muted-foreground tracking-wider">🛠 Виконані Роботи (Послуги)</h3>
+                </div>
                 <Table>
                   <TableHeader>
                     <TableRow className="border-border hover:bg-transparent">
-                      <TableHead className="pl-6">Послуга / Запчастина</TableHead>
-                      <TableHead className="text-right">К-сть</TableHead>
+                      <TableHead className="pl-6 w-1/2">Назва послуги</TableHead>
+                      <TableHead className="text-right">К-сть / Години</TableHead>
                       <TableHead className="text-right">Ціна</TableHead>
                       <TableHead className="text-right">Сума</TableHead>
                       {canManageItems && <TableHead className="w-12 pr-6"></TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {order.items.map((item) => (
-                      <TableRow key={item.id} className="border-border">
+                    {serviceItems.map((item) => (
+                      <TableRow key={item.id} className="border-border transition-colors hover:bg-muted/50">
                         <TableCell className="pl-6 font-medium">{item.name}</TableCell>
                         <TableCell className="text-right text-muted-foreground">{item.quantity}</TableCell>
                         <TableCell className="text-right text-muted-foreground">{Number(item.price).toLocaleString()} ₴</TableCell>
@@ -250,17 +333,59 @@ export default function OrderDetailsPage() {
                         </TableCell>
                         {canManageItems && (
                           <TableCell className="pr-6 text-right">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleRemoveItem(item.id)}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => confirmRemoveItem(item.id)}>
                               <Trash2 className="size-4" />
                             </Button>
                           </TableCell>
                         )}
                       </TableRow>
                     ))}
-                    {order.items.length === 0 && (
+                    {serviceItems.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={canManageItems ? 5 : 4} className="py-8 text-center text-muted-foreground">
-                          Жодної послуги чи запчастини ще не додано.
+                        <TableCell colSpan={canManageItems ? 5 : 4} className="py-6 text-center text-sm text-muted-foreground">
+                          Послуг ще не додано.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+
+                {/* Таблиця запчастин */}
+                <div className="bg-secondary/20 px-6 py-2 border-y border-border mt-4">
+                  <h3 className="text-sm font-semibold uppercase text-muted-foreground tracking-wider">📦 Використані Запчастини та Матеріали</h3>
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-border hover:bg-transparent">
+                      <TableHead className="pl-6 w-1/2">Назва деталі / артикул</TableHead>
+                      <TableHead className="text-right">К-сть</TableHead>
+                      <TableHead className="text-right">Ціна</TableHead>
+                      <TableHead className="text-right">Сума</TableHead>
+                      {canManageItems && <TableHead className="w-12 pr-6"></TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {partItems.map((item) => (
+                      <TableRow key={item.id} className="border-border transition-colors hover:bg-muted/50">
+                        <TableCell className="pl-6 font-medium">{item.name}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{item.quantity}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{Number(item.price).toLocaleString()} ₴</TableCell>
+                        <TableCell className="text-right font-medium text-foreground">
+                          {(Number(item.price) * item.quantity).toLocaleString()} ₴
+                        </TableCell>
+                        {canManageItems && (
+                          <TableCell className="pr-6 text-right">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => confirmRemoveItem(item.id)}>
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                    {partItems.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={canManageItems ? 5 : 4} className="py-6 text-center text-sm text-muted-foreground">
+                          Запчастин ще не додано.
                         </TableCell>
                       </TableRow>
                     )}
@@ -352,15 +477,109 @@ export default function OrderDetailsPage() {
       </div>
 
       {canManageItems && (
-        <Dialog open={itemModalOpen} onOpenChange={setItemModalOpen}>
-          <DialogContent className="sm:max-w-md">
+        <Dialog
+          open={itemModalOpen}
+          onOpenChange={(open) => {
+            setItemModalOpen(open)
+            if (!open) {
+              setDraftItems([])
+              setItemForm({ name: "", price: "", quantity: "1", type: "SERVICE" })
+              setSearchQuery("")
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Додати послугу або запчастину</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              <div className="grid gap-2 mb-2">
+                <Label>Тип позиції</Label>
+                <RadioGroup
+                  value={itemForm.type}
+                  onValueChange={(val: "SERVICE" | "PART") => setItemForm({ ...itemForm, type: val })}
+                  className="flex space-x-4"
+                >
+                  <div className="flex items-center space-x-2 bg-secondary/30 p-2 rounded-md border border-border flex-1">
+                    <RadioGroupItem value="SERVICE" id="r-service" />
+                    <Label htmlFor="r-service" className="cursor-pointer flex-1">🛠 Робота (Послуга)</Label>
+                  </div>
+                  <div className="flex items-center space-x-2 bg-secondary/30 p-2 rounded-md border border-border flex-1">
+                    <RadioGroupItem value="PART" id="r-part" />
+                    <Label htmlFor="r-part" className="cursor-pointer flex-1">📦 Запчастина</Label>
+                  </div>
+                </RadioGroup>
+              </div>
               <div className="grid gap-2">
-                <Label htmlFor="i-name">Назва / Опис</Label>
-                <Input id="i-name" value={itemForm.name} onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })} placeholder="Напр. Масляний фільтр, Діагностика" />
+                <Label htmlFor="i-name">{itemForm.type === "SERVICE" ? "Назва послуги" : "Назва запчастини (артикул)"}</Label>
+                <Popover open={serviceComboboxOpen} onOpenChange={setServiceComboboxOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={serviceComboboxOpen}
+                      className="w-full justify-between font-normal text-left px-3 shadow-none overflow-hidden"
+                    >
+                      <span className="truncate">{itemForm.name || (itemForm.type === "SERVICE" ? "Оберіть або введіть послугу..." : "Введіть назву запчастини...")}</span>
+                      <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start" style={{ width: "var(--radix-popover-trigger-width)" }}>
+                    <Command>
+                      <CommandInput
+                        placeholder="Пошук..."
+                        value={searchQuery}
+                        onValueChange={setSearchQuery}
+                      />
+                      <CommandList>
+                        <CommandEmpty className="py-4 px-2 text-center text-sm text-muted-foreground">
+                          Не знайдено серед існуючих.<br />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="mt-2 text-primary w-full"
+                            onClick={() => {
+                              setItemForm({ ...itemForm, name: searchQuery })
+                              setServiceComboboxOpen(false)
+                              setSearchQuery("")
+                            }}
+                          >
+                            <Plus className="mr-1 size-4" /> Додати &quot;{searchQuery}&quot;
+                          </Button>
+                        </CommandEmpty>
+                        <CommandGroup>
+                          {searchQuery && !(itemForm.type === "SERVICE" ? catalogServices : catalogParts).some(s => s.name.toLowerCase() === searchQuery.toLowerCase()) && (
+                            <CommandItem
+                              value={searchQuery}
+                              onSelect={() => {
+                                setItemForm({ ...itemForm, name: searchQuery })
+                                setServiceComboboxOpen(false)
+                                setSearchQuery("")
+                              }}
+                            >
+                              <Plus className="mr-2 size-4" />
+                              Створити &quot;{searchQuery}&quot;
+                            </CommandItem>
+                          )}
+                          {(itemForm.type === "SERVICE" ? catalogServices : catalogParts).map((catalogItem) => (
+                            <CommandItem
+                              key={catalogItem.id}
+                              value={catalogItem.name}
+                              onSelect={() => {
+                                setItemForm({ ...itemForm, name: catalogItem.name, price: String(catalogItem.price || 0) })
+                                setServiceComboboxOpen(false)
+                                setSearchQuery("")
+                              }}
+                            >
+                              <Check className={cn("mr-2 size-4", itemForm.name === catalogItem.name ? "opacity-100" : "opacity-0")} />
+                              {catalogItem.name} - {catalogItem.price} ₴
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
@@ -372,10 +591,49 @@ export default function OrderDetailsPage() {
                   <Input id="i-qty" type="number" min="1" value={itemForm.quantity} onChange={(e) => setItemForm({ ...itemForm, quantity: e.target.value })} />
                 </div>
               </div>
+
+              <div className="flex justify-end mt-1">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleAddToDraft}
+                  disabled={!itemForm.name || !itemForm.price || !itemForm.quantity}
+                  className="gap-2 h-8 text-xs"
+                >
+                  <Plus className="size-3" /> Додати до списку
+                </Button>
+              </div>
+
+              {draftItems.length > 0 && (
+                <div className="mt-2 border-t pt-4 space-y-3">
+                  <Label className="text-muted-foreground text-xs uppercase tracking-wider">Список для збереження ({draftItems.length})</Label>
+                  <div className="max-h-[220px] overflow-y-auto space-y-2 pr-1">
+                    {draftItems.map((item) => (
+                      <div key={item.id} className="flex justify-between items-center text-sm border p-2.5 rounded-md bg-secondary/10">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-semibold leading-tight">{item.name}</span>
+                          <span className="text-[10px] text-muted-foreground font-medium uppercase">
+                            {item.type === "SERVICE" ? "🛠 Послуга" : "📦 Запчастина"}
+                          </span>
+                        </div>
+                        <div className="flex justify-end items-center gap-3">
+                          <span className="text-muted-foreground text-xs tabular-nums">{item.quantity} шт x {item.price} ₴</span>
+                          <span className="font-bold text-sm w-[70px] text-right tabular-nums">{(Number(item.quantity) * Number(item.price)).toLocaleString()} ₴</span>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0" onClick={() => handleRemoveFromDraft(item.id)}>
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setItemModalOpen(false)} disabled={isSubmitting}>Скасувати</Button>
-              <Button onClick={handleAddItem} disabled={isSubmitting}>{isSubmitting ? "Додавання..." : "Додати позицію"}</Button>
+              <Button onClick={handleSaveAllItems} disabled={isSubmitting}>
+                {isSubmitting ? "Додавання..." : (draftItems.length > 0 || itemForm.name ? `Зберегти всі позиції` : "Додати позицію")}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -433,6 +691,26 @@ export default function OrderDetailsPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Видалення позиції</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              Ви впевнені, що хочете видалити цю позицію із замовлення? Цю дію не можна буде скасувати.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteModalOpen(false)} disabled={isSubmitting}>Скасувати</Button>
+            <Button variant="destructive" onClick={handleRemoveItem} disabled={isSubmitting}>
+              {isSubmitting ? "Видалення..." : "Видалити"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
