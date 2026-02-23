@@ -15,22 +15,28 @@ export function ServiceBreakdown() {
     const serviceMap = new Map<string, { name: string; count: number; revenue: number }>()
 
     orders.forEach((order) => {
-      // Якщо у тебе є окреме поле для типу послуги, заміни description на нього
-      // Робимо trim і capitalize, щоб "Oil change" і "oil change" рахувались як одне
-      const rawName = order.description || "Загальний сервіс"
-      const name = rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase().trim()
-
-      if (!serviceMap.has(name)) {
-        serviceMap.set(name, { name, count: 0, revenue: 0 })
-      }
-
-      const entry = serviceMap.get(name)!
-      entry.count += 1
-      
-      // Додаємо в дохід тільки завершені або оплачені замовлення
       const status = order.status?.toLowerCase()
-      if (status === "completed" || status === "paid") {
-        entry.revenue += Number(order.totalAmount || 0)
+      const isRevenueCounted = status === "completed" || status === "paid"
+
+      if (order.items && Array.isArray(order.items)) {
+        order.items.forEach((item) => {
+          // Рахуємо тільки послуги, пропускаємо запчастини
+          if (item.type === "PART") return
+
+          const rawName = item.name || "Невідома послуга"
+          const name = rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase().trim()
+
+          if (!serviceMap.has(name)) {
+            serviceMap.set(name, { name, count: 0, revenue: 0 })
+          }
+
+          const entry = serviceMap.get(name)!
+          entry.count += Number(item.quantity) || 1
+
+          if (isRevenueCounted) {
+            entry.revenue += (Number(item.price) || 0) * (Number(item.quantity) || 1)
+          }
+        })
       }
     })
 

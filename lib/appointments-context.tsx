@@ -25,6 +25,7 @@ interface AppointmentsContextType {
   fetchAppointments: () => Promise<void>
   updateStatus: (id: number, status: string) => Promise<{ success: boolean; error?: string }>
   reschedule: (id: number, scheduledAt: string, estimatedMin?: number) => Promise<{ success: boolean; error?: string }>
+  getAvailableSlots: (date: string) => Promise<string[]>
 }
 
 const AppointmentsContext = createContext<AppointmentsContextType | undefined>(undefined)
@@ -104,13 +105,24 @@ export function AppointmentsProvider({ children }: { children: React.ReactNode }
     }
   }, [fetchAppointments])
 
+  const getAvailableSlots = useCallback(async (date: string) => {
+    try {
+      const res = await api.get(`/appointments/available-slots?date=${date}`)
+      return Array.isArray(res.data) ? res.data : []
+    } catch (error) {
+      console.error("Failed to fetch available slots", error)
+      return []
+    }
+  }, [])
+
   const value = useMemo(() => ({
     appointments,
     isLoading,
     fetchAppointments,
     updateStatus,
     reschedule,
-  }), [appointments, isLoading, fetchAppointments, updateStatus, reschedule])
+    getAvailableSlots,
+  }), [appointments, isLoading, fetchAppointments, updateStatus, reschedule, getAvailableSlots])
 
   return (
     <AppointmentsContext.Provider value={value}>

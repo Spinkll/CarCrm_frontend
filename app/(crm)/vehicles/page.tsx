@@ -123,40 +123,38 @@ export default function VehiclesPage() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <PageHeader title={pageTitle} description="Управління транспортними засобами">
-        {/* ОСЬ ТУТ БУЛА ВТРАЧЕНА КНОПКА */}
-        {canCreateVehicle && (
-          <Button
-            onClick={() => {
-              if (role === "client" && !user?.isVerified) {
-                toast({
-                  title: "Необхідна верифікація",
-                  description: "Будь ласка, підтвердіть вашу електронну пошту, щоб додати автомобіль.",
-                  variant: "destructive"
-                });
-                return;
-              }
-              setOpen(true);
-            }}
-            className="gap-2"
-          >
-            <Plus className="size-4" />
-            Додати авто
-          </Button>
-        )}
-      </PageHeader>
+      <PageHeader title={pageTitle} description="Управління транспортними засобами" />
 
       <div className="flex-1 overflow-auto p-6">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <Input
+            placeholder="Пошук за маркою, моделлю, номером, VIN або власником..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="max-w-md bg-card"
+          />
+          {canCreateVehicle && (
+            <Button
+              onClick={() => {
+                if (role === "client" && !user?.isVerified) {
+                  toast({
+                    title: "Необхідна верифікація",
+                    description: "Будь ласка, підтвердіть вашу електронну пошту, щоб додати автомобіль.",
+                    variant: "destructive"
+                  });
+                  return;
+                }
+                setOpen(true);
+              }}
+            >
+              <Plus className="mr-2 size-4" />
+              Додати авто
+            </Button>
+          )}
+        </div>
+
         <Card className="border-border bg-card">
           <CardContent className="p-0">
-            <div className="border-b border-border p-4">
-              <Input
-                placeholder="Пошук за маркою, моделлю, номером, VIN або власником..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="max-w-md bg-secondary"
-              />
-            </div>
 
             {isLoading ? (
               <div className="flex justify-center p-8">

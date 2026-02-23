@@ -132,98 +132,7 @@ export default function EmployeesPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <PageHeader title="Персонал" description="Управління доступом та ролями">
-        {user.role === "ADMIN" && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <UserPlus className="size-4" />
-                Додати працівника
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="border-border bg-card sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle className="text-foreground">Новий працівник</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                {error && (
-                  <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                    {error}
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="emp-first">Ім'я</Label>
-                    <Input
-                      id="emp-first"
-                      value={form.firstName}
-                      onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-                      placeholder="Іван"
-                      className="bg-secondary"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="emp-last">Прізвище</Label>
-                    <Input
-                      id="emp-last"
-                      value={form.lastName}
-                      onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-                      placeholder="Іванов"
-                      className="bg-secondary"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="emp-email">Email</Label>
-                  <Input
-                    id="emp-email"
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    placeholder="employee@autocare.com"
-                    className="bg-secondary"
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="emp-phone">Телефон</Label>
-                  <PhoneInput
-                    id="emp-phone"
-                    value={form.phone}
-                    onValueChange={(val) => setForm({ ...form, phone: val })}
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label>Роль</Label>
-                  <Select
-                    value={form.role}
-                    onValueChange={(v) => setForm({ ...form, role: v as any })}
-                  >
-                    <SelectTrigger className="w-full bg-secondary">
-                      <SelectValue placeholder="Оберіть роль" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="MECHANIC">Механік</SelectItem>
-                      <SelectItem value="MANAGER">Менеджер</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button onClick={handleAdd} disabled={isSubmitting} className="gap-2">
-                  {isSubmitting ? "Збереження..." : (
-                    <>
-                      <UserPlus className="size-4" />
-                      Додати працівника
-                    </>
-                  )}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
-      </PageHeader>
+      <PageHeader title="Персонал" description="Управління доступом та ролями" />
 
       <div className="flex-1 space-y-6 p-6">
         {/* Статистика */}
@@ -264,14 +173,107 @@ export default function EmployeesPage() {
         </div>
 
         {/* Пошук */}
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Пошук працівників..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="bg-secondary pl-9"
-          />
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Пошук працівників..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="bg-card pl-9"
+            />
+          </div>
+
+          {user.role === "ADMIN" && (
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2 shadow-sm">
+                  <UserPlus className="size-4" />
+                  Додати працівника
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="border-border bg-card sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="text-foreground">Новий працівник</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  {error && (
+                    <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                      {error}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="emp-first">Ім'я</Label>
+                      <Input
+                        id="emp-first"
+                        value={form.firstName}
+                        onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                        placeholder="Іван"
+                        className="bg-secondary"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="emp-last">Прізвище</Label>
+                      <Input
+                        id="emp-last"
+                        value={form.lastName}
+                        onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                        placeholder="Іванов"
+                        className="bg-secondary"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="emp-email">Email</Label>
+                    <Input
+                      id="emp-email"
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      placeholder="employee@autocare.com"
+                      className="bg-secondary"
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="emp-phone">Телефон</Label>
+                    <PhoneInput
+                      id="emp-phone"
+                      value={form.phone}
+                      onValueChange={(val) => setForm({ ...form, phone: val })}
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label>Роль</Label>
+                    <Select
+                      value={form.role}
+                      onValueChange={(v) => setForm({ ...form, role: v as any })}
+                    >
+                      <SelectTrigger className="w-full bg-secondary">
+                        <SelectValue placeholder="Оберіть роль" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="MECHANIC">Механік</SelectItem>
+                        <SelectItem value="MANAGER">Менеджер</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button onClick={handleAdd} disabled={isSubmitting} className="gap-2">
+                    {isSubmitting ? "Збереження..." : (
+                      <>
+                        <UserPlus className="size-4" />
+                        Додати працівника
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         {/* Таблиця */}

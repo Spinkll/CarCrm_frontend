@@ -45,6 +45,7 @@ export default function ServiceRequestsPage() {
   const { fetchNotifications } = useNotifications()
 
   const [approveOpen, setApproveOpen] = useState(false)
+  const [rejectOpen, setRejectOpen] = useState(false)
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -60,8 +61,29 @@ export default function ServiceRequestsPage() {
 
   if (!user || user.role === "CLIENT") return null
 
-  const openApproveModal = (id: number) => {
-    setSelectedRequestId(id)
+  const openApproveModal = (req: any) => {
+    setSelectedRequestId(req.id)
+
+    // Предзаповнюємо форму, якщо клієнт обрав час
+    if (req.scheduledAt) {
+      // req.scheduledAt comes as ISO string e.g., "2026-02-23T14:00:00.000Z"
+      // We want to extract exactly the YYYY-MM-DD and HH:MM parts
+      const dateStr = req.scheduledAt.substring(0, 10) // "2026-02-23"
+      const timeStr = req.scheduledAt.substring(11, 16) // "14:00"
+
+      setApproveForm({
+        date: dateStr,
+        time: timeStr,
+        estimatedMin: 60,
+      })
+    } else {
+      setApproveForm({
+        date: "",
+        time: "10:00",
+        estimatedMin: 60,
+      })
+    }
+
     setApproveOpen(true)
   }
 
@@ -94,11 +116,21 @@ export default function ServiceRequestsPage() {
     }
   }
 
-  const handleReject = async (id: number) => {
-    if (confirm("Ви впевнені, що хочете відхилити цю заявку?")) {
-      await rejectRequest(id)
-      toast({ title: "Заявку відхилено", variant: "default" })
-    }
+  const openRejectModal = (id: number) => {
+    setSelectedRequestId(id)
+    setRejectOpen(true)
+  }
+
+  const handleReject = async () => {
+    if (!selectedRequestId) return
+
+    setIsSubmitting(true)
+    await rejectRequest(selectedRequestId)
+    setIsSubmitting(false)
+
+    setRejectOpen(false)
+    setSelectedRequestId(null)
+    toast({ title: "Заявку відхилено", variant: "default" })
   }
 
   return (
@@ -124,13 +156,14 @@ export default function ServiceRequestsPage() {
                     <TableHead className="text-muted-foreground">Причина звернення</TableHead>
                     <TableHead className="text-muted-foreground">Статус</TableHead>
                     <TableHead className="text-muted-foreground">Дата заявки</TableHead>
+                    <TableHead className="text-muted-foreground">Бажаний час</TableHead>
                     <TableHead className="pr-6 text-right text-muted-foreground">Дії</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {activeRequests.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
+                      <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">
                         <div className="flex flex-col items-center justify-center">
                           <MessageSquare className="mb-2 size-8 opacity-20" />
                           <p>Нових заявок немає</p>
@@ -162,8 +195,20 @@ export default function ServiceRequestsPage() {
                               {config?.label || req.status}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            {new Date(req.createdAt).toLocaleDateString()}
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(req.createdAt).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </TableCell>
+                          <TableCell className="text-xs whitespace-nowrap">
+                            {req.scheduledAt ? (
+                              <Badge variant="outline" className="font-medium text-primary bg-primary/10 border-primary/20 py-1">
+                                {new Date(req.scheduledAt).toLocaleString('uk-UA', {
+                                  timeZone: 'UTC', // Обов'язково вказуємо UTC, бо ми зберігали час без зсувів 
+                                  day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+                                })}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-[10px] uppercase tracking-wider opacity-60">Не вказано</span>
+                            )}
                           </TableCell>
                           <TableCell className="pr-6 text-right">
                             <div className="flex justify-end gap-2">
@@ -171,7 +216,7 @@ export default function ServiceRequestsPage() {
                                 size="sm"
                                 variant="outline"
                                 className="border-green-200 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800"
-                                onClick={() => openApproveModal(req.id)}
+                                onClick={() => openApproveModal(req)}
                               >
                                 <CheckCircle2 className="mr-1 size-4" />
                                 Одобрити
@@ -180,7 +225,7 @@ export default function ServiceRequestsPage() {
                                 size="sm"
                                 variant="ghost"
                                 className="text-muted-foreground hover:bg-red-50 hover:text-red-600"
-                                onClick={() => handleReject(req.id)}
+                                onClick={() => openRejectModal(req.id)}
                               >
                                 <XCircle className="size-4" />
                               </Button>
@@ -248,6 +293,29 @@ export default function ServiceRequestsPage() {
             <Button onClick={handleApprove} disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
               Підтвердити та записати
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Модалка відхилення заявки */}
+      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Відхилити заявку?</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              Ви впевнені, що хочете відхилити цю заявку? Цю дію не можна скасувати.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectOpen(false)} disabled={isSubmitting}>
+              Скасувати
+            </Button>
+            <Button variant="destructive" onClick={handleReject} disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+              Відхилити
             </Button>
           </DialogFooter>
         </DialogContent>

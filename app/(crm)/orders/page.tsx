@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "@/hooks/use-toast"
 import { PageHeader } from "@/components/page-header"
@@ -32,8 +32,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { format } from "date-fns"
+import { uk } from "date-fns/locale"
+import { cn } from "@/lib/utils"
 import { StatusBadge } from "@/components/status-badge"
-import { Plus, ChevronDown, Eye } from "lucide-react"
+import { Plus, ChevronDown, Eye, CalendarIcon } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useOrders } from "@/lib/orders-context"
 import { useVehicles } from "@/lib/vehicles-context"
@@ -71,7 +76,7 @@ export default function OrdersPage() {
 
   // ДОСТАЕМ ФУНКЦИЮ СОЗДАНИЯ ЗАЯВКИ
   const { createRequest } = useServiceRequests()
-  const { fetchAppointments } = useAppointments()
+  const { fetchAppointments, getAvailableSlots } = useAppointments()
   const { fetchNotifications } = useNotifications()
 
   const [open, setOpen] = useState(false)
@@ -85,6 +90,38 @@ export default function OrdersPage() {
     estimatedDate: "",
     estimatedTime: "",
   })
+
+  // Стан для календаря (клієнта)
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>("")
+  const [calendarOpen, setCalendarOpen] = useState(false)
+  const [availableSlots, setAvailableSlots] = useState<string[]>([])
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false)
+
+  // Доступні слоти часу (наприклад, з 9:00 до 17:00)
+  const timeSlots = [
+    "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"
+  ]
+
+  useEffect(() => {
+    async function fetchSlots() {
+      if (!selectedDate) {
+        setAvailableSlots([])
+        return
+      }
+      setIsLoadingSlots(true)
+      const dateStr = format(selectedDate, "yyyy-MM-dd")
+      const slots = await getAvailableSlots(dateStr)
+      setAvailableSlots(slots)
+      setIsLoadingSlots(false)
+
+      // Скидаємо вибраний час, якщо він тепер не доступний
+      if (selectedTimeSlot && !slots.includes(selectedTimeSlot)) {
+        setSelectedTimeSlot("")
+      }
+    }
+    fetchSlots()
+  }, [selectedDate, getAvailableSlots])
 
   if (!user) return null
 
@@ -118,12 +155,21 @@ export default function OrdersPage() {
 
     // --- ЛОГИКА ДЛЯ КЛИЕНТА (СОЗДАЕТ ServiceRequest) ---
     if (role === "CLIENT") {
-      const result = await createRequest(Number(form.vehicleId), form.description);
+      let scheduledAt
+      if (selectedDate && selectedTimeSlot) {
+        const dateStr = format(selectedDate, "yyyy-MM-dd")
+        // Зберігаємо обраний час як абсолютний, щоб уникнути зсувів часового поясу браузером
+        scheduledAt = `${dateStr}T${selectedTimeSlot}:00.000Z`
+      }
+
+      const result = await createRequest(Number(form.vehicleId), form.description, scheduledAt);
 
       setIsSubmitting(false);
 
       if (result.success) {
         setForm({ vehicleId: "", description: "", services: "", estimatedDate: "", estimatedTime: "" });
+        setSelectedDate(undefined);
+        setSelectedTimeSlot("");
         setOpen(false);
         toast({ title: "Заявку надіслано", description: "Менеджер зв'яжеться з вами.", variant: "success" });
       } else {
@@ -175,43 +221,47 @@ export default function OrdersPage() {
       <PageHeader
         title={role === "CLIENT" ? "Мої замовлення" : "Замовлення сервісу"}
         description={descriptions[role] || "Замовлення"}
-      >
-        {canCreateOrders && (
-          <Button
-            onClick={() => {
-              if (role === "CLIENT" && !user?.isVerified) {
-                toast({
-                  title: "Необхідна верифікація",
-                  description: "Будь ласка, підтвердіть вашу електронну пошту, щоб залишити заявку.",
-                  variant: "destructive"
-                });
-                return;
-              }
-              setOpen(true);
-            }}
-            className="gap-2"
-          >
-            <Plus className="size-4" />
-            {role === "CLIENT" ? "Залишити заявку" : "Нове замовлення"}
-          </Button>
-        )}
-      </PageHeader>
+      />
 
       <div className="flex-1 overflow-auto p-6">
-        <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="all">
-              Всі <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.all})</span>
-            </TabsTrigger>
-            <TabsTrigger value="in_progress">
-              В роботі <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.inProgress})</span>
-            </TabsTrigger>
-            <TabsTrigger value="completed">
-              Завершені <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.completed})</span>
-            </TabsTrigger>
-          </TabsList>
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <Tabs value={tab} onValueChange={setTab} className="w-full sm:w-auto">
+            <TabsList>
+              <TabsTrigger value="all">
+                Всі <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.all})</span>
+              </TabsTrigger>
+              <TabsTrigger value="in_progress">
+                В роботі <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.inProgress})</span>
+              </TabsTrigger>
+              <TabsTrigger value="completed">
+                Завершені <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.completed})</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
 
-          <TabsContent value={tab}>
+          {canCreateOrders && (
+            <Button
+              onClick={() => {
+                if (role === "CLIENT" && !user?.isVerified) {
+                  toast({
+                    title: "Необхідна верифікація",
+                    description: "Будь ласка, підтвердіть вашу електронну пошту, щоб залишити заявку.",
+                    variant: "destructive"
+                  });
+                  return;
+                }
+                setOpen(true);
+              }}
+              className="w-full sm:w-auto gap-2 shadow-sm"
+            >
+              <Plus className="size-4" />
+              {role === "CLIENT" ? "Залишити заявку" : "Нове замовлення"}
+            </Button>
+          )}
+        </div>
+
+        <Tabs value={tab} onValueChange={setTab} className="w-full">
+          <TabsContent value={tab} className="m-0">
             <Card className="border-border bg-card">
               <CardContent className="p-0">
                 {isLoading ? (
@@ -363,18 +413,81 @@ export default function OrdersPage() {
 
               <div className="grid gap-2">
                 <Label htmlFor="o-date">
-                  {role === "CLIENT" ? "Бажана дата (необов'язково)" : "Дата запису *"}
+                  {role === "CLIENT" ? "Бажана дата та час (необов'язково)" : "Дата запису *"}
                 </Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    id="o-date"
-                    type="date"
-                    value={form.estimatedDate}
-                    onChange={(e) => setForm({ ...form, estimatedDate: e.target.value })}
-                    min={new Date().toISOString().split('T')[0]}
-                    required={role !== "CLIENT"}
-                  />
-                  {role !== "CLIENT" && (
+                {role === "CLIENT" ? (
+                  <div className="grid gap-4">
+                    <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !selectedDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {selectedDate ? format(selectedDate, "PPP", { locale: uk }) : <span>Оберіть дату</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={selectedDate}
+                          onSelect={(date) => {
+                            setSelectedDate(date)
+                            setCalendarOpen(false)
+                          }}
+                          disabled={(date) => {
+                            const today = new Date()
+                            today.setHours(0, 0, 0, 0)
+                            return date < today
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+
+                    {selectedDate && (
+                      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                        {isLoadingSlots ? (
+                          <div className="col-span-full py-4 text-center text-xs text-muted-foreground">
+                            Завантаження вільних годин...
+                          </div>
+                        ) : (
+                          timeSlots.map((time) => {
+                            const isAvailable = availableSlots.includes(time)
+
+                            return (
+                              <Button
+                                key={time}
+                                type="button"
+                                variant={selectedTimeSlot === time ? "default" : "outline"}
+                                className={cn(
+                                  "text-xs relative overflow-hidden",
+                                  !isAvailable && "opacity-50 line-through text-muted-foreground bg-muted hover:bg-muted/80"
+                                )}
+                                disabled={!isAvailable}
+                                onClick={() => setSelectedTimeSlot(time)}
+                              >
+                                {time}
+                              </Button>
+                            )
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      id="o-date"
+                      type="date"
+                      value={form.estimatedDate}
+                      onChange={(e) => setForm({ ...form, estimatedDate: e.target.value })}
+                      min={new Date().toISOString().split('T')[0]}
+                      required
+                    />
                     <Input
                       id="o-time"
                       type="time"
@@ -383,8 +496,8 @@ export default function OrdersPage() {
                       placeholder="Час"
                       required
                     />
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
 
             </div>

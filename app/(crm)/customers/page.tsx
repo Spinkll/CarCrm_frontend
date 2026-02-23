@@ -100,85 +100,84 @@ export default function CustomersPage() {
       <PageHeader
         title="Клієнти"
         description={user.role === "MECHANIC" ? "Перегляд інформації про клієнтів" : "Управління базою клієнтів"}
-      >
-        {canCreateCustomers && (
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2 shadow-sm">
-                <Plus className="size-4" />
-                Додати клієнта
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Новий клієнт</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="first-name">Ім'я</Label>
-                    <Input
-                      id="first-name"
-                      value={form.firstName}
-                      onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-                      placeholder="Іван"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="last-name">Прізвище</Label>
-                    <Input
-                      id="last-name"
-                      value={form.lastName}
-                      onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-                      placeholder="Іванов"
-                    />
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    placeholder="ivan@email.com"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="phone">Телефон</Label>
-                  <PhoneInput
-                    id="phone"
-                    value={form.phone}
-                    onValueChange={(val) => setForm({ ...form, phone: val })}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>
-                  Скасувати
-                </Button>
-                <Button onClick={handleSubmit} disabled={isSubmitting}>
-                  {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
-                  Додати клієнта
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
-      </PageHeader>
+      />
 
       <div className="flex-1 overflow-auto p-6">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <Input
+            placeholder="Пошук клієнтів..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="max-w-md bg-card"
+          />
+          {canCreateCustomers && (
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2 shadow-sm">
+                  <Plus className="size-4" />
+                  Додати клієнта
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Новий клієнт</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="first-name">Ім'я</Label>
+                      <Input
+                        id="first-name"
+                        value={form.firstName}
+                        onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                        placeholder="Іван"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="last-name">Прізвище</Label>
+                      <Input
+                        id="last-name"
+                        value={form.lastName}
+                        onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                        placeholder="Іванов"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      placeholder="ivan@email.com"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="phone">Телефон</Label>
+                    <PhoneInput
+                      id="phone"
+                      value={form.phone}
+                      onValueChange={(val) => setForm({ ...form, phone: val })}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>
+                    Скасувати
+                  </Button>
+                  <Button onClick={handleSubmit} disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
+                    Додати клієнта
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
+
         <Card className="border-border bg-card shadow-sm">
           <CardContent className="p-0">
-            <div className="border-b border-border p-4">
-              <Input
-                placeholder="Пошук клієнтів..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="max-w-md bg-secondary/50"
-              />
-            </div>
-
             {isDataLoading ? (
               <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
                 <Loader2 className="mb-2 size-8 animate-spin" />

@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Badge } from "@/components/ui/badge"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { StatusBadge } from "@/components/status-badge"
 import { ArrowLeft, Plus, Trash2, Wrench, Clock, ShieldCheck, Loader2, Check, ChevronsUpDown } from "lucide-react"
@@ -21,6 +22,8 @@ import { api } from "@/lib/api"
 import { toast } from "@/hooks/use-toast"
 import { useOrders } from "@/lib/orders-context"
 import { useNotifications } from "@/lib/notifications-context"
+import { useCrm } from "@/lib/crm-context"
+import { useInventory } from "@/lib/inventory-context"
 
 // Локальні типи
 interface OrderDetails {
@@ -54,19 +57,20 @@ export default function OrderDetailsPage() {
   const orderId = Number(params.id)
   const { refreshOrders } = useOrders()
   const { fetchNotifications } = useNotifications()
+  const { refreshData: refreshCrmData } = useCrm()
+  const { inventory, fetchInventory } = useInventory()
 
   const [order, setOrder] = useState<OrderDetails | null>(null)
   const [employees, setEmployees] = useState<any[]>([])
   const [catalogServices, setCatalogServices] = useState<{ id: number, name: string, price: number }[]>([])
-  const [catalogParts, setCatalogParts] = useState<{ id: number, name: string, price: number }[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [itemModalOpen, setItemModalOpen] = useState(false)
-  const [itemForm, setItemForm] = useState<{ name: string; price: string; quantity: string; type: "SERVICE" | "PART" }>({
+  const [itemForm, setItemForm] = useState<{ id?: number, name: string; price: string; quantity: string; type: "SERVICE" | "PART" }>({
     name: "", price: "", quantity: "1", type: "SERVICE"
   })
-  const [draftItems, setDraftItems] = useState<Array<{ id: string, name: string; price: string; quantity: string; type: "SERVICE" | "PART" }>>([])
+  const [draftItems, setDraftItems] = useState<Array<{ id: string, name: string; price: string; quantity: string; type: "SERVICE" | "PART", partId?: number, serviceId?: number }>>([])
   const [serviceComboboxOpen, setServiceComboboxOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
 
@@ -112,22 +116,12 @@ export default function OrderDetailsPage() {
     }
   }
 
-  const fetchCatalogParts = async () => {
-    try {
-      const { data } = await api.get('/catalog/parts').catch(() => ({ data: [] }))
-      setCatalogParts(Array.isArray(data) ? data : [])
-    } catch (error) {
-      console.error("Failed to fetch catalog parts", error)
-    }
-  }
-
   useEffect(() => {
     setIsLoading(true)
     const promises = [fetchOrderDetails()]
     if (canAssign) promises.push(fetchEmployees())
     if (canManageItems) {
       promises.push(fetchCatalogServices())
-      promises.push(fetchCatalogParts())
     }
 
     Promise.all(promises).finally(() => setIsLoading(false))
@@ -135,7 +129,22 @@ export default function OrderDetailsPage() {
 
   const handleAddToDraft = () => {
     if (!itemForm.name || !itemForm.price || !itemForm.quantity) return
-    setDraftItems([...draftItems, { ...itemForm, id: Math.random().toString() }])
+
+    // Перевірка наявності на складі при додаванні запчастини
+    if (itemForm.type === "PART") {
+      const part = inventory.find(p => p.name === itemForm.name)
+      if (part && Number(itemForm.quantity) > part.stockQuantity) {
+        toast({ title: `Недостатньо на складі (залишок: ${part.stockQuantity} шт.)`, variant: "destructive" })
+        return
+      }
+    }
+
+    setDraftItems([...draftItems, {
+      ...itemForm,
+      id: Math.random().toString(),
+      partId: itemForm.type === "PART" ? itemForm.id : undefined,
+      serviceId: itemForm.type === "SERVICE" ? itemForm.id : undefined,
+    }])
     setItemForm({ name: "", price: "", quantity: "1", type: itemForm.type })
     setSearchQuery("")
   }
@@ -148,7 +157,12 @@ export default function OrderDetailsPage() {
     const itemsToSave = [...draftItems]
     // Якщо форма частково заповнена (назва, ціна, кількість), додамо її також як позицію
     if (itemForm.name && itemForm.price && itemForm.quantity) {
-      itemsToSave.push({ ...itemForm, id: Math.random().toString() })
+      itemsToSave.push({
+        ...itemForm,
+        id: Math.random().toString(),
+        partId: itemForm.type === "PART" ? itemForm.id : undefined,
+        serviceId: itemForm.type === "SERVICE" ? itemForm.id : undefined,
+      })
     }
 
     if (itemsToSave.length === 0) {
@@ -159,15 +173,22 @@ export default function OrderDetailsPage() {
     setIsSubmitting(true)
     try {
       for (const item of itemsToSave) {
-        await api.post(`/orders/${orderId}/items`, {
+        const payload: any = {
           name: item.name,
           price: Number(item.price),
           quantity: Number(item.quantity),
           type: item.type,
-        })
+        }
+
+        if (item.partId) payload.partId = item.partId
+        if (item.serviceId) payload.serviceId = item.serviceId
+
+        await api.post(`/orders/${orderId}/items`, payload)
       }
       await fetchOrderDetails()
       refreshOrders()
+      refreshCrmData()
+      fetchInventory()
       setItemModalOpen(false)
       setDraftItems([])
       setItemForm({ name: "", price: "", quantity: "1", type: "SERVICE" })
@@ -195,6 +216,8 @@ export default function OrderDetailsPage() {
       await api.delete(`/orders/${orderId}/items/${itemToDelete}`)
       await fetchOrderDetails()
       refreshOrders()
+      refreshCrmData()
+      fetchInventory()
       toast({ title: "Позицію видалено", variant: "success" })
       fetchNotifications()
     } catch (error) {
@@ -227,6 +250,7 @@ export default function OrderDetailsPage() {
       await fetchOrderDetails()
       setAssignModalOpen(false)
       refreshOrders()
+      refreshCrmData()
       toast({ title: "Команду призначено", variant: "success" })
       fetchNotifications()
     } catch (error) {
@@ -518,10 +542,10 @@ export default function OrderDetailsPage() {
                       variant="outline"
                       role="combobox"
                       aria-expanded={serviceComboboxOpen}
-                      className="w-full justify-between font-normal text-left px-3 shadow-none overflow-hidden"
+                      className="w-full justify-between font-normal text-left px-3 shadow-none h-auto min-h-10 py-2"
                     >
-                      <span className="truncate">{itemForm.name || (itemForm.type === "SERVICE" ? "Оберіть або введіть послугу..." : "Введіть назву запчастини...")}</span>
-                      <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+                      <span className="whitespace-normal break-words flex-1 pr-2">{itemForm.name || (itemForm.type === "SERVICE" ? "Оберіть або введіть послугу..." : "Введіть назву запчастини...")}</span>
+                      <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start" style={{ width: "var(--radix-popover-trigger-width)" }}>
@@ -534,21 +558,25 @@ export default function OrderDetailsPage() {
                       <CommandList>
                         <CommandEmpty className="py-4 px-2 text-center text-sm text-muted-foreground">
                           Не знайдено серед існуючих.<br />
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="mt-2 text-primary w-full"
-                            onClick={() => {
-                              setItemForm({ ...itemForm, name: searchQuery })
-                              setServiceComboboxOpen(false)
-                              setSearchQuery("")
-                            }}
-                          >
-                            <Plus className="mr-1 size-4" /> Додати &quot;{searchQuery}&quot;
-                          </Button>
+                          {itemForm.type === "SERVICE" ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="mt-2 text-primary w-full"
+                              onClick={() => {
+                                setItemForm({ ...itemForm, name: searchQuery })
+                                setServiceComboboxOpen(false)
+                                setSearchQuery("")
+                              }}
+                            >
+                              <Plus className="mr-1 size-4" /> Додати &quot;{searchQuery}&quot;
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-destructive mt-2 block">Запчастину потрібно спочатку додати на склад!</span>
+                          )}
                         </CommandEmpty>
                         <CommandGroup>
-                          {searchQuery && !(itemForm.type === "SERVICE" ? catalogServices : catalogParts).some(s => s.name.toLowerCase() === searchQuery.toLowerCase()) && (
+                          {searchQuery && itemForm.type === "SERVICE" && !catalogServices.some(s => s.name.toLowerCase() === searchQuery.toLowerCase()) && (
                             <CommandItem
                               value={searchQuery}
                               onSelect={() => {
@@ -561,18 +589,51 @@ export default function OrderDetailsPage() {
                               Створити &quot;{searchQuery}&quot;
                             </CommandItem>
                           )}
-                          {(itemForm.type === "SERVICE" ? catalogServices : catalogParts).map((catalogItem) => (
+
+                          {/* Мапінг послуг */}
+                          {itemForm.type === "SERVICE" && catalogServices.map((catalogItem) => (
                             <CommandItem
-                              key={catalogItem.id}
+                              key={`service-${catalogItem.id}`}
                               value={catalogItem.name}
                               onSelect={() => {
-                                setItemForm({ ...itemForm, name: catalogItem.name, price: String(catalogItem.price || 0) })
+                                setItemForm({ ...itemForm, id: catalogItem.id, name: catalogItem.name, price: String(catalogItem.price || 0) })
                                 setServiceComboboxOpen(false)
                                 setSearchQuery("")
                               }}
+                              className="items-start py-2"
                             >
-                              <Check className={cn("mr-2 size-4", itemForm.name === catalogItem.name ? "opacity-100" : "opacity-0")} />
-                              {catalogItem.name} - {catalogItem.price} ₴
+                              <Check className={cn("mr-2 size-4 shrink-0 mt-0.5", itemForm.name === catalogItem.name ? "opacity-100" : "opacity-0")} />
+                              <span className="flex-1 whitespace-normal break-words text-left leading-tight pr-2">{catalogItem.name}</span>
+                              <span className="shrink-0 font-medium whitespace-nowrap">{catalogItem.price} ₴</span>
+                            </CommandItem>
+                          ))}
+
+                          {/* Мапінг запчастин зі складу */}
+                          {itemForm.type === "PART" && inventory.map((invItem) => (
+                            <CommandItem
+                              key={`inv-${invItem.id}`}
+                              value={`${invItem.sku || ''} ${invItem.name}`}
+                              onSelect={() => {
+                                setItemForm({ ...itemForm, id: invItem.id, name: invItem.name, price: String(invItem.retailPrice || 0) })
+                                setServiceComboboxOpen(false)
+                                setSearchQuery("")
+                              }}
+                              disabled={invItem.stockQuantity <= 0}
+                              className="items-start py-2"
+                            >
+                              <Check className={cn("mr-2 size-4 shrink-0 mt-0.5", itemForm.name === invItem.name ? "opacity-100" : "opacity-0")} />
+                              <div className="flex flex-col flex-1 pl-1 overflow-hidden pr-2">
+                                <span className={cn("whitespace-normal break-words text-left leading-tight text-sm", invItem.stockQuantity <= 0 && "text-muted-foreground line-through")}>
+                                  {invItem.sku && <span className="text-muted-foreground mr-1 text-xs font-normal">[{invItem.sku}]</span>}
+                                  {invItem.name}
+                                </span>
+                              </div>
+                              <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1 sm:gap-2 shrink-0 mt-0.5">
+                                <span className="font-medium whitespace-nowrap">{invItem.retailPrice} ₴</span>
+                                <Badge variant={invItem.stockQuantity > 0 ? "secondary" : "destructive"} className="text-[10px] w-14 justify-center px-1">
+                                  {invItem.stockQuantity} шт
+                                </Badge>
+                              </div>
                             </CommandItem>
                           ))}
                         </CommandGroup>
@@ -583,8 +644,8 @@ export default function OrderDetailsPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="i-price">Ціна (₴)</Label>
-                  <Input id="i-price" type="number" value={itemForm.price} onChange={(e) => setItemForm({ ...itemForm, price: e.target.value })} placeholder="0.00" />
+                  <Label htmlFor="i-price">Ціна продажу (₴)</Label>
+                  <Input id="i-price" type="number" value={itemForm.price} onChange={(e) => setItemForm({ ...itemForm, price: e.target.value })} disabled={itemForm.type === "PART" && !!itemForm.name} placeholder="0.00" />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="i-qty">Кількість</Label>
@@ -609,16 +670,16 @@ export default function OrderDetailsPage() {
                   <Label className="text-muted-foreground text-xs uppercase tracking-wider">Список для збереження ({draftItems.length})</Label>
                   <div className="max-h-[220px] overflow-y-auto space-y-2 pr-1">
                     {draftItems.map((item) => (
-                      <div key={item.id} className="flex justify-between items-center text-sm border p-2.5 rounded-md bg-secondary/10">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="font-semibold leading-tight">{item.name}</span>
-                          <span className="text-[10px] text-muted-foreground font-medium uppercase">
+                      <div key={item.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm border p-2.5 rounded-md bg-secondary/10 gap-3">
+                        <div className="flex flex-col gap-0.5 flex-1 w-full m-0 min-w-0">
+                          <span className="font-semibold leading-tight whitespace-normal break-words">{item.name}</span>
+                          <span className="text-[10px] text-muted-foreground font-medium uppercase mt-1">
                             {item.type === "SERVICE" ? "🛠 Послуга" : "📦 Запчастина"}
                           </span>
                         </div>
-                        <div className="flex justify-end items-center gap-3">
-                          <span className="text-muted-foreground text-xs tabular-nums">{item.quantity} шт x {item.price} ₴</span>
-                          <span className="font-bold text-sm w-[70px] text-right tabular-nums">{(Number(item.quantity) * Number(item.price)).toLocaleString()} ₴</span>
+                        <div className="flex justify-between sm:justify-end w-full sm:w-auto items-center gap-3 shrink-0">
+                          <span className="text-muted-foreground text-xs tabular-nums whitespace-nowrap">{item.quantity} шт x {item.price} ₴</span>
+                          <span className="font-bold text-sm w-[70px] text-right tabular-nums whitespace-nowrap">{(Number(item.quantity) * Number(item.price)).toLocaleString()} ₴</span>
                           <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0" onClick={() => handleRemoveFromDraft(item.id)}>
                             <Trash2 className="size-3.5" />
                           </Button>

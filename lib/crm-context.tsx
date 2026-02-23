@@ -22,6 +22,7 @@ export interface Vehicle {
   mileage: number
   color: string
   userId: number
+  createdAt?: string
 }
 
 export interface ServiceOrder {
@@ -32,6 +33,7 @@ export interface ServiceOrder {
   carId: number
   createdAt: string
   car?: Vehicle
+  items?: Array<{ id: number; name: string; quantity: number; price: number; type?: "SERVICE" | "PART" }>
 }
 
 export interface Appointment {

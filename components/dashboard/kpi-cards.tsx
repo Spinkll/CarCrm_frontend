@@ -3,27 +3,89 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Users, Car, ClipboardList, DollarSign, TrendingUp, TrendingDown, Loader2 } from "lucide-react"
 import { useCrm } from "@/lib/crm-context"
-import { useMemo } from "react"
+import { useMemo, useEffect } from "react"
 
 export function KpiCards() {
-  const { customers, vehicles, orders, isLoading } = useCrm()
+  const { customers, vehicles, orders, isLoading, refreshData } = useCrm()
 
-  // Використовуємо useMemo, щоб не перераховувати при кожному рендері
+  // Автоматично оновлюємо дані при поверненні на дашборд
+  useEffect(() => {
+    refreshData()
+  }, [refreshData])
+
   const stats = useMemo(() => {
-    // 1. Рахуємо дохід (тільки завершені замовлення)
-    // Додаємо Number(), бо з бази Decimal часто приходить як рядок
-    const revenue = orders
-      .filter((o) => o.status?.toLowerCase() === "completed")
-      .reduce((sum, o) => sum + Number(o.totalAmount || 0), 0)
+    const now = new Date()
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999)
 
-    // 2. Рахуємо активні замовлення (всі, крім завершених та скасованих)
+    // Допоміжна функція для обчислення відсотків
+    const calculateTrend = (current: number, previous: number) => {
+      if (previous === 0) return current > 0 ? "+100%" : "0%"
+      const change = ((current - previous) / previous) * 100
+      // Округлюємо до 1 знака після коми, якщо число не ціле
+      const formattedChange = change % 1 === 0 ? change.toFixed(0) : change.toFixed(1)
+      return `${change > 0 ? '+' : ''}${formattedChange}%`
+    }
+
+    // 1. Клієнти (Нових цього місяця vs Минулого)
+    const currentCustomers = customers.filter(c => new Date(c.createdAt) >= currentMonthStart).length
+    const previousCustomers = customers.filter(c => {
+      const d = new Date(c.createdAt)
+      return d >= previousMonthStart && d <= previousMonthEnd
+    }).length
+    const cChangeStr = calculateTrend(currentCustomers, previousCustomers)
+
+    // 2. Авто (Нових цього місяця vs Минулого)
+    const currentVehicles = vehicles.filter(v => v.createdAt && new Date(v.createdAt) >= currentMonthStart).length
+    const previousVehicles = vehicles.filter(v => {
+      if (!v.createdAt) return false
+      const d = new Date(v.createdAt)
+      return d >= previousMonthStart && d <= previousMonthEnd
+    }).length
+    const vChangeStr = calculateTrend(currentVehicles, previousVehicles)
+
+    // 3. Замовлення (Активні зараз, але тренд по створенню нових)
     const active = orders.filter((o) => {
       const s = o.status?.toLowerCase()
-      return s === "in_progress" || s === "pending" || s === "received"
+      return s === "in_progress" || s === "pending" || s === "received" || s === "confirmed" || s === "waiting_parts"
     }).length
 
-    return { revenue, active }
-  }, [orders])
+    const currentCreatedOrders = orders.filter(o => new Date(o.createdAt) >= currentMonthStart).length
+    const previousCreatedOrders = orders.filter(o => {
+      const d = new Date(o.createdAt)
+      return d >= previousMonthStart && d <= previousMonthEnd
+    }).length
+    const oChangeStr = calculateTrend(currentCreatedOrders, previousCreatedOrders)
+
+    // 4. Дохід (Зароблене цього місяця vs Минулого)
+    const currentRevenue = orders
+      .filter(o => {
+        const s = o.status?.toLowerCase()
+        return (s === "completed" || s === "paid") && new Date(o.createdAt) >= currentMonthStart
+      })
+      .reduce((sum, o) => sum + Number(o.totalAmount || 0), 0)
+
+    const previousRevenue = orders
+      .filter(o => {
+        const s = o.status?.toLowerCase()
+        if (s !== "completed" && s !== "paid") return false
+        const d = new Date(o.createdAt)
+        return d >= previousMonthStart && d <= previousMonthEnd
+      })
+      .reduce((sum, o) => sum + Number(o.totalAmount || 0), 0)
+
+    const rChangeStr = calculateTrend(currentRevenue, previousRevenue)
+
+    return {
+      active,
+      currentRevenue,
+      customersTrend: { value: cChangeStr, direction: currentCustomers >= previousCustomers ? "up" as const : "down" as const },
+      vehiclesTrend: { value: vChangeStr, direction: currentVehicles >= previousVehicles ? "up" as const : "down" as const },
+      ordersTrend: { value: oChangeStr, direction: currentCreatedOrders >= previousCreatedOrders ? "up" as const : "down" as const },
+      revenueTrend: { value: rChangeStr, direction: currentRevenue >= previousRevenue ? "up" as const : "down" as const },
+    }
+  }, [customers, vehicles, orders])
 
   if (isLoading) {
     return (
@@ -43,30 +105,30 @@ export function KpiCards() {
     {
       label: "Всього клієнтів",
       value: customers.length.toString(),
-      change: "+12%", 
-      trend: "up" as const,
+      change: stats.customersTrend.value,
+      trend: stats.customersTrend.direction,
       icon: Users,
     },
     {
       label: "Зареєстровано авто",
       value: vehicles.length.toString(),
-      change: "+8%",
-      trend: "up" as const,
+      change: stats.vehiclesTrend.value,
+      trend: stats.vehiclesTrend.direction,
       icon: Car,
     },
     {
       label: "Активні замовлення",
       value: stats.active.toString(),
-      change: "-3%",
-      trend: "down" as const,
+      change: stats.ordersTrend.value,
+      trend: stats.ordersTrend.direction,
       icon: ClipboardList,
     },
     {
-      label: "Загальний дохід",
-      value: `${stats.revenue.toLocaleString()} ₴`, 
-      change: "+18%",
-      trend: "up" as const,
-      icon: DollarSign, 
+      label: "Дохід за цей місяць",
+      value: `${stats.currentRevenue.toLocaleString()} ₴`,
+      change: stats.revenueTrend.value,
+      trend: stats.revenueTrend.direction,
+      icon: DollarSign,
     },
   ]
 

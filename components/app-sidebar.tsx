@@ -13,6 +13,7 @@ import {
   ChevronRight,
   UserCog,
   MessageSquare,
+  Package,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
@@ -67,6 +68,12 @@ const navItems: NavItem[] = [
     label: "Персонал",
     href: "/employees",
     icon: UserCog,
+    roles: ["ADMIN", "MANAGER"]
+  },
+  {
+    label: "Склад",
+    href: "/inventory",
+    icon: Package,
     roles: ["ADMIN", "MANAGER"]
   },
 ]
