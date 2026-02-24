@@ -386,11 +386,15 @@ export default function OrdersPage() {
                     <SelectValue placeholder="Оберіть автомобіль" />
                   </SelectTrigger>
                   <SelectContent>
-                    {vehicles.map((v) => (
-                      <SelectItem key={v.id} value={v.id.toString()}>
-                        {v.brand} {v.model} ({v.plate})
-                      </SelectItem>
-                    ))}
+                    {vehicles.map((v) => {
+                      const owner = customers.find(c => c.id === v.userId)
+                      const ownerStr = owner ? ` - ${owner.firstName} ${owner.lastName}` : ''
+                      return (
+                        <SelectItem key={v.id} value={v.id.toString()}>
+                          {v.brand} {v.model} ({v.plate}){ownerStr}
+                        </SelectItem>
+                      )
+                    })}
                     {vehicles.length === 0 && (
                       <div className="p-2 text-sm text-muted-foreground">Транспортних засобів не знайдено. Додайте авто спочатку.</div>
                     )}

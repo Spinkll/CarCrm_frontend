@@ -288,7 +288,7 @@ export default function VehiclesPage() {
                   <SelectContent>
                     {customers.map((c) => (
                       <SelectItem key={c.id} value={String(c.id)}>
-                        {c.firstName} {c.lastName} ({c.email})
+                        {c.firstName} {c.lastName}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -57,7 +57,9 @@ export function NotificationsList() {
                     {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: uk })}
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground line-clamp-2">{n.message}</p>
+                <p className="text-xs text-muted-foreground whitespace-normal break-words mt-1 leading-relaxed w-full">
+                  {n.message}
+                </p>
               </DropdownMenuItem>
             ))
           )}

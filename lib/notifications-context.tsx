@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react"
 import { useAuth } from "./auth-context"
 import api from "./api"
+import { useToast } from "@/components/ui/use-toast"
 
 interface Notification {
   id: number
@@ -61,6 +62,19 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       setUnreadCount(0)
     }
   }, [user, fetchNotifications])
+
+  const { toast } = useToast()
+  const prevUnreadCount = React.useRef(0)
+
+  useEffect(() => {
+    if (unreadCount > prevUnreadCount.current && prevUnreadCount.current !== 0) {
+      toast({
+        title: "Нове сповіщення",
+        description: "У вас є нові непрочитані сповіщення.",
+      })
+    }
+    prevUnreadCount.current = unreadCount
+  }, [unreadCount, toast])
 
   // Оптимистичное обновление для быстрого отклика UI
   const markAsRead = useCallback(async (id: number) => {

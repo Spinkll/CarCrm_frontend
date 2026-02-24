@@ -5,9 +5,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/status-badge"
 import { useCrm } from "@/lib/crm-context"
 import { Loader2 } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 export function RecentOrders() {
   const { orders, customers, vehicles, isLoading } = useCrm()
+  const router = useRouter()
 
   // 1. Використовуємо правильну назву стейту 'orders'
   // 2. Сортуємо та обрізаємо масив
@@ -54,12 +56,16 @@ export function RecentOrders() {
               ) : (
                 recent.map((order) => {
                   const vehicle = vehicles.find((v) => v.id === order.carId)
-                  const customer = customers.find((c) => 
+                  const customer = customers.find((c) =>
                     c.id === (order.carId || vehicle?.userId)
                   )
 
                   return (
-                    <TableRow key={order.id} className="border-border">
+                    <TableRow
+                      key={order.id}
+                      className="border-border cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => router.push(`/orders-detail/${order.id}`)}
+                    >
                       <TableCell className="pl-6 font-mono text-xs font-medium text-foreground">
                         #{order.id}
                       </TableCell>

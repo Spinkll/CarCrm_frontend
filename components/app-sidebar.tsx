@@ -14,6 +14,7 @@ import {
   UserCog,
   MessageSquare,
   Package,
+  Banknote,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
@@ -74,7 +75,13 @@ const navItems: NavItem[] = [
     label: "Склад",
     href: "/inventory",
     icon: Package,
-    roles: ["ADMIN", "MANAGER"]
+    roles: ["ADMIN", "MANAGER", "MECHANIC"]
+  },
+  {
+    label: "Мої доходи",
+    href: "/earnings",
+    icon: Banknote,
+    roles: ["MECHANIC"]
   },
 ]
 

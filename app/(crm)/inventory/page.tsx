@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils"
 import { useInventory, type InventoryItem } from "@/lib/inventory-context"
 import { toast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth-context"
+import { api } from "@/lib/api"
 
 const emptyForm = {
     name: "",
@@ -46,6 +47,7 @@ export default function InventoryPage() {
     const [selectedId, setSelectedId] = useState<number | null>(null)
     const [searchTerm, setSearchTerm] = useState("")
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [notifiedItems, setNotifiedItems] = useState<Set<number>>(new Set())
 
     // Стейт для поточного заповнення (один рядок вводу)
     const [currentItem, setCurrentItem] = useState({ ...emptyForm })
@@ -56,6 +58,11 @@ export default function InventoryPage() {
     const [editForm, setEditForm] = useState(emptyForm)
 
     if (!user || user.role === "CLIENT") return null
+
+    const role = user.role?.toUpperCase()
+    const canManageInventory = role === "ADMIN" || role === "MANAGER"
+    const canSeePurchasePrice = role === "ADMIN" || role === "MANAGER"
+    const isMechanic = role === "MECHANIC"
 
     const openCreateModal = () => {
         setIsEditMode(false)
@@ -91,6 +98,18 @@ export default function InventoryPage() {
 
     const handleRemoveRow = (id: string) => {
         setNewItems(newItems.filter(item => (item as any).id !== id))
+    }
+
+    const handleNotifyStock = async (item: InventoryItem) => {
+        try {
+            await api.post('/inventory/report-missing', {
+                partId: item.id
+            })
+            toast({ title: "Адміністратора сповіщено", variant: "success" })
+            setNotifiedItems(prev => new Set(prev).add(item.id))
+        } catch (error) {
+            toast({ title: "Не вдалося надіслати сповіщення", variant: "destructive" })
+        }
     }
 
     const handleSubmit = async () => {
@@ -186,10 +205,12 @@ export default function InventoryPage() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="max-w-md bg-card"
                     />
-                    <Button onClick={openCreateModal}>
-                        <Plus className="mr-2 size-4" />
-                        Додати позицію
-                    </Button>
+                    {canManageInventory && (
+                        <Button onClick={openCreateModal}>
+                            <Plus className="mr-2 size-4" />
+                            Додати позицію
+                        </Button>
+                    )}
                 </div>
 
                 <Card className="border-border bg-card">
@@ -204,9 +225,9 @@ export default function InventoryPage() {
                                     <TableRow className="border-border hover:bg-transparent">
                                         <TableHead className="pl-6 text-muted-foreground">Назва та Артикул</TableHead>
                                         <TableHead className="text-muted-foreground">Роздрібна ціна</TableHead>
-                                        <TableHead className="text-muted-foreground">Закупівельна ціна</TableHead>
+                                        {canSeePurchasePrice && <TableHead className="text-muted-foreground">Закупівельна ціна</TableHead>}
                                         <TableHead className="text-muted-foreground">Залишок на складі</TableHead>
-                                        <TableHead className="pr-6 text-right text-muted-foreground">Дії</TableHead>
+                                        {canManageInventory && <TableHead className="pr-6 text-right text-muted-foreground">Дії</TableHead>}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -221,7 +242,8 @@ export default function InventoryPage() {
                                         </TableRow>
                                     ) : (
                                         filteredInventory.map((item) => {
-                                            const isLowStock = item.minStockLevel && item.stockQuantity <= item.minStockLevel
+                                            const isOutOfStock = item.stockQuantity <= 0
+                                            const isLowStock = !isOutOfStock && item.minStockLevel !== null && item.stockQuantity <= item.minStockLevel
                                             return (
                                                 <TableRow key={item.id} className="border-border">
                                                     <TableCell className="pl-6">
@@ -231,30 +253,53 @@ export default function InventoryPage() {
                                                     <TableCell className="font-medium">
                                                         {Number(item.retailPrice).toLocaleString()} ₴
                                                     </TableCell>
-                                                    <TableCell className="text-muted-foreground">
-                                                        {item.purchasePrice ? `${Number(item.purchasePrice).toLocaleString()} ₴` : "—"}
-                                                    </TableCell>
+                                                    {canSeePurchasePrice && (
+                                                        <TableCell className="text-muted-foreground">
+                                                            {item.purchasePrice ? `${Number(item.purchasePrice).toLocaleString()} ₴` : "—"}
+                                                        </TableCell>
+                                                    )}
                                                     <TableCell>
-                                                        <div className="flex items-center gap-2">
-                                                            <span>{item.stockQuantity} шт.</span>
-                                                            {isLowStock && (
-                                                                <Badge variant="destructive" className="h-5 px-1 py-0 text-[10px]">
-                                                                    <AlertTriangle className="mr-1 size-3" />
-                                                                    Закінчується
-                                                                </Badge>
+                                                        <div className="flex flex-col gap-1.5 items-start">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={isOutOfStock ? "text-destructive font-medium" : ""}>{item.stockQuantity} шт.</span>
+                                                                {isOutOfStock && (
+                                                                    <Badge variant="destructive" className="h-5 px-1.5 py-0 text-[10px] bg-red-600 hover:bg-red-700">
+                                                                        <AlertTriangle className="mr-1 size-3" />
+                                                                        Закінчився
+                                                                    </Badge>
+                                                                )}
+                                                                {isLowStock && (
+                                                                    <Badge variant="outline" className="h-5 px-1.5 py-0 text-[10px] text-amber-600 border-amber-600 bg-amber-50 dark:bg-amber-950/30">
+                                                                        <AlertTriangle className="mr-1 size-3" />
+                                                                        Закінчується
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                            {isOutOfStock && isMechanic && (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="h-6 px-2 text-[10px] uppercase font-semibold text-destructive border-destructive/30 hover:bg-destructive/10"
+                                                                    onClick={() => handleNotifyStock(item)}
+                                                                    disabled={notifiedItems.has(item.id)}
+                                                                >
+                                                                    {notifiedItems.has(item.id) ? "✓ Сповіщення надіслано" : "Сповістити менеджера / адміна"}
+                                                                </Button>
                                                             )}
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className="pr-6 text-right">
-                                                        <Button
-                                                            size="icon"
-                                                            variant="ghost"
-                                                            className="text-muted-foreground hover:text-primary"
-                                                            onClick={() => openEditModal(item)}
-                                                        >
-                                                            <Pencil className="size-4" />
-                                                        </Button>
-                                                    </TableCell>
+                                                    {canManageInventory && (
+                                                        <TableCell className="pr-6 text-right">
+                                                            <Button
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                className="text-muted-foreground hover:text-primary"
+                                                                onClick={() => openEditModal(item)}
+                                                            >
+                                                                <Pencil className="size-4" />
+                                                            </Button>
+                                                        </TableCell>
+                                                    )}
                                                 </TableRow>
                                             )
                                         })
