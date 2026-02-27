@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -12,6 +12,13 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 import { Loader2, Banknote, Calendar } from "lucide-react"
 import api from "@/lib/api"
 import { format } from "date-fns"
@@ -36,16 +43,37 @@ interface EarningsData {
     works: WorkItem[]
 }
 
+const monthNames = [
+    "Січень", "Лютий", "Березень", "Квітень", "Травень", "Червень",
+    "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень"
+]
+
 export default function EarningsPage() {
     const { user } = useAuth()
+    const now = new Date()
+
+    const [selectedMonth, setSelectedMonth] = useState(String(now.getMonth() + 1))
+    const [selectedYear, setSelectedYear] = useState(String(now.getFullYear()))
     const [data, setData] = useState<EarningsData | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
+    const years = useMemo(() => {
+        const result: string[] = []
+        for (let y = now.getFullYear(); y >= now.getFullYear() - 3; y--) {
+            result.push(String(y))
+        }
+        return result
+    }, [])
+
     useEffect(() => {
         async function fetchEarnings() {
+            setIsLoading(true)
+            setError(null)
             try {
-                const response = await api.get("/users/me/earnings")
+                const response = await api.get("/payroll/my-earnings", {
+                    params: { month: Number(selectedMonth), year: Number(selectedYear) }
+                })
                 setData(response.data)
             } catch (err: any) {
                 console.error("Помилка завантаження доходів:", err)
@@ -60,7 +88,7 @@ export default function EarningsPage() {
         } else {
             setIsLoading(false)
         }
-    }, [user])
+    }, [user, selectedMonth, selectedYear])
 
     if (!user || user.role !== "MECHANIC") return null
 
@@ -68,10 +96,36 @@ export default function EarningsPage() {
         <div className="flex flex-1 flex-col overflow-hidden">
             <PageHeader
                 title="Мої доходи"
-                description="Перегляд ваших доходів та виконаних робіт за поточний місяць"
+                description="Перегляд ваших доходів та виконаних робіт"
             />
 
             <div className="flex-1 overflow-auto p-6 space-y-6">
+                {/* Селектор періоду */}
+                <div className="flex items-center gap-3">
+                    <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                        <SelectTrigger className="w-[160px] bg-card">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {monthNames.map((name, i) => (
+                                <SelectItem key={i + 1} value={String(i + 1)}>
+                                    {name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Select value={selectedYear} onValueChange={setSelectedYear}>
+                        <SelectTrigger className="w-[100px] bg-card">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {years.map((y) => (
+                                <SelectItem key={y} value={y}>{y}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+
                 {isLoading ? (
                     <div className="flex justify-center p-12">
                         <Loader2 className="size-8 animate-spin text-muted-foreground" />
@@ -95,7 +149,7 @@ export default function EarningsPage() {
                                         {data.totalEarnings.toLocaleString()} ₴
                                     </div>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        За поточний місяць
+                                        {monthNames[Number(selectedMonth) - 1]} {selectedYear}
                                     </p>
                                 </CardContent>
                             </Card>
@@ -121,7 +175,7 @@ export default function EarningsPage() {
                             <CardHeader>
                                 <CardTitle>Деталізація виконаних робіт</CardTitle>
                                 <CardDescription>
-                                    Список усіх робіт, які ви виконали в цьому місяці
+                                    Список усіх робіт за {monthNames[Number(selectedMonth) - 1].toLowerCase()} {selectedYear} р.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="p-0">
@@ -140,7 +194,7 @@ export default function EarningsPage() {
                                         {data.works.length === 0 ? (
                                             <TableRow>
                                                 <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
-                                                    Ви ще не виконали жодних робіт у цьому місяці
+                                                    Ви ще не виконали жодних робіт за цей період
                                                 </TableCell>
                                             </TableRow>
                                         ) : (

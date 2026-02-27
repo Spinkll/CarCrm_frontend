@@ -35,6 +35,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useVehicles } from "@/lib/vehicles-context"
 import { useCrm } from "@/lib/crm-context"
 import { toast } from "@/hooks/use-toast"
+import { carBrandsAndModels, carYears } from "@/lib/cars"
 
 export default function VehiclesPage() {
   const { user } = useAuth()
@@ -55,6 +56,18 @@ export default function VehiclesPage() {
     mileage: "",
     userId: "",
   })
+
+  const uniqueBrands = Object.keys(carBrandsAndModels).sort();
+
+  const matchedBrandKey = Object.keys(carBrandsAndModels).find(
+    (b) => b.toLowerCase() === form.brand?.toLowerCase()
+  );
+
+  const uniqueModels = matchedBrandKey
+    ? carBrandsAndModels[matchedBrandKey].sort()
+    : [];
+
+  const uniqueYears = carYears;
 
   if (!user) return null
 
@@ -90,13 +103,34 @@ export default function VehiclesPage() {
       return;
     }
 
+    const isValidBrand = Object.keys(carBrandsAndModels).find(
+      (b) => b.toLowerCase() === form.brand.toLowerCase()
+    );
+    if (!isValidBrand) {
+      toast({ title: "Дані некоректні", description: "Будь ласка, оберіть марку автомобіля зі списку.", variant: "destructive" });
+      return;
+    }
+
+    const isValidModel = carBrandsAndModels[isValidBrand].find(
+      (m) => m.toLowerCase() === form.model.toLowerCase()
+    );
+    if (!isValidModel) {
+      toast({ title: "Дані некоректні", description: "Будь ласка, оберіть модель автомобіля зі списку.", variant: "destructive" });
+      return;
+    }
+
+    if (form.year && !carYears.includes(String(form.year))) {
+      toast({ title: "Дані некоректні", description: "Будь ласка, оберіть дійсний рік випуску зі списку.", variant: "destructive" });
+      return;
+    }
+
     setIsSubmitting(true)
 
     const ownerId = canAssignOwner ? Number(form.userId) : user?.id
 
     const payload = {
-      brand: form.brand,
-      model: form.model,
+      brand: isValidBrand,
+      model: isValidModel,
       year: parseInt(form.year) || new Date().getFullYear(),
       vin: form.vin,
       plate: form.plate.toUpperCase(),
@@ -301,6 +335,8 @@ export default function VehiclesPage() {
                 <Label htmlFor="v-brand">Марка</Label>
                 <Input
                   id="v-brand"
+                  list="brands-list"
+                  autoComplete="off"
                   value={form.brand}
                   onChange={(e) => setForm({ ...form, brand: e.target.value })}
                   placeholder="Toyota"
@@ -310,6 +346,8 @@ export default function VehiclesPage() {
                 <Label htmlFor="v-model">Модель</Label>
                 <Input
                   id="v-model"
+                  list="models-list"
+                  autoComplete="off"
                   value={form.model}
                   onChange={(e) => setForm({ ...form, model: e.target.value })}
                   placeholder="Camry"
@@ -323,6 +361,8 @@ export default function VehiclesPage() {
                 <Input
                   id="v-year"
                   type="number"
+                  list="years-list"
+                  autoComplete="off"
                   value={form.year}
                   onChange={(e) => setForm({ ...form, year: e.target.value })}
                   placeholder="2024"
@@ -368,6 +408,22 @@ export default function VehiclesPage() {
                 placeholder="0"
               />
             </div>
+
+            <datalist id="brands-list">
+              {uniqueBrands.map((brand) => (
+                <option key={brand} value={brand} />
+              ))}
+            </datalist>
+            <datalist id="models-list">
+              {uniqueModels.map((model) => (
+                <option key={model} value={model} />
+              ))}
+            </datalist>
+            <datalist id="years-list">
+              {uniqueYears.map((year) => (
+                <option key={year} value={year} />
+              ))}
+            </datalist>
 
           </div>
           <DialogFooter>

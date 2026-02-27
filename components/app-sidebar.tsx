@@ -78,6 +78,12 @@ const navItems: NavItem[] = [
     roles: ["ADMIN", "MANAGER", "MECHANIC"]
   },
   {
+    label: "Зарплати",
+    href: "/payroll",
+    icon: Banknote,
+    roles: ["ADMIN", "MANAGER"]
+  },
+  {
     label: "Мої доходи",
     href: "/earnings",
     icon: Banknote,

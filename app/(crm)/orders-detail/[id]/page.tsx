@@ -178,6 +178,7 @@ export default function OrderDetailsPage() {
           price: Number(item.price),
           quantity: Number(item.quantity),
           type: item.type,
+          mechanicId: user?.role === "MECHANIC" ? user?.id : order?.mechanic?.id,
         }
 
         if (item.partId) payload.partId = item.partId
