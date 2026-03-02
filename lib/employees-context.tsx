@@ -13,6 +13,8 @@ export interface Employee {
   phone: string
   commissionRate?: number
   baseSalary?: number
+  isBlocked?: boolean
+  blockReason?: string
 }
 
 type EmployeesContextType = {
@@ -21,6 +23,8 @@ type EmployeesContextType = {
   createEmployee: (data: any) => Promise<{ success: boolean; error?: string }>
   updateEmployee: (id: number, data: Partial<Employee>) => Promise<{ success: boolean; error?: string }>
   deleteEmployee: (id: number) => Promise<{ success: boolean; error?: string }>
+  blockEmployee: (id: number, reason?: string) => Promise<{ success: boolean; error?: string }>
+  unblockEmployee: (id: number) => Promise<{ success: boolean; error?: string }>
   refreshEmployees: () => void
 }
 
@@ -80,6 +84,28 @@ export function EmployeesProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const blockEmployee = async (id: number, reason?: string) => {
+    try {
+      await api.patch(`/users/${id}/block`, { reason })
+      setEmployees((prev) => prev.map((e) => e.id === id ? { ...e, isBlocked: true, blockReason: reason } : e))
+      return { success: true }
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Failed to block employee"
+      return { success: false, error: Array.isArray(msg) ? msg[0] : msg }
+    }
+  }
+
+  const unblockEmployee = async (id: number) => {
+    try {
+      await api.patch(`/users/${id}/unblock`)
+      setEmployees((prev) => prev.map((e) => e.id === id ? { ...e, isBlocked: false, blockReason: undefined } : e))
+      return { success: true }
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Failed to unblock employee"
+      return { success: false, error: Array.isArray(msg) ? msg[0] : msg }
+    }
+  }
+
   return (
     <EmployeesContext.Provider
       value={{
@@ -88,6 +114,8 @@ export function EmployeesProvider({ children }: { children: React.ReactNode }) {
         createEmployee,
         updateEmployee,
         deleteEmployee,
+        blockEmployee,
+        unblockEmployee,
         refreshEmployees: fetchEmployees,
       }}
     >

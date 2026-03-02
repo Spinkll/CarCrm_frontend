@@ -70,7 +70,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: true }
     } catch (error: any) {
       const msg = error.response?.data?.message || "Не вдалося ввійти"
-      return { success: false, error: Array.isArray(msg) ? msg[0] : msg }
+      const errorMsg = Array.isArray(msg) ? msg[0] : msg
+
+      if (typeof errorMsg === 'string' && (errorMsg.toLowerCase().includes("blocked") || errorMsg.toLowerCase().includes("заблокован"))) {
+        return { success: false, error: "Ваш обліковий запис заблоковано" }
+      }
+
+      return { success: false, error: errorMsg }
     }
   }, [])
 

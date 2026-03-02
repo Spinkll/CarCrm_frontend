@@ -46,7 +46,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { UserPlus, Shield, Settings, Search, Trash2, Briefcase, Percent, Pencil, Banknote } from "lucide-react"
+import { UserPlus, Shield, Settings, Search, Trash2, Briefcase, Percent, Pencil, Banknote, Lock, Unlock } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const roleConfig = {
@@ -57,12 +57,18 @@ const roleConfig = {
 
 export default function EmployeesPage() {
   const { user } = useAuth()
-  const { employees, createEmployee, updateEmployee, deleteEmployee, isLoading } = useEmployees()
+  const { employees, createEmployee, updateEmployee, deleteEmployee, blockEmployee, unblockEmployee, isLoading } = useEmployees()
   const router = useRouter()
 
   const [search, setSearch] = useState("")
+  const [filterStatus, setFilterStatus] = useState("ACTIVE") // ACTIVE, BLOCKED, ALL
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const [blockDialogOpen, setBlockDialogOpen] = useState(false)
+  const [employeeToBlock, setEmployeeToBlock] = useState<Employee | null>(null)
+  const [blockReason, setBlockReason] = useState("")
+  const [isBlocking, setIsBlocking] = useState(false)
 
   const [form, setForm] = useState({
     firstName: "",
@@ -89,11 +95,16 @@ export default function EmployeesPage() {
     }
   }, [user, router])
 
-  const filtered = employees.filter(
-    (e) =>
+  const filtered = employees.filter((e) => {
+    // Фільтр по статусу
+    if (filterStatus === "ACTIVE" && e.isBlocked) return false;
+    if (filterStatus === "BLOCKED" && !e.isBlocked) return false;
+
+    return (
       `${e.firstName} ${e.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
       e.email.toLowerCase().includes(search.toLowerCase())
-  )
+    )
+  })
 
   const mechanicCount = employees.filter((e) => e.role === "MECHANIC").length
   const adminCount = employees.filter((e) => e.role === "ADMIN").length
@@ -143,6 +154,25 @@ export default function EmployeesPage() {
 
   async function handleRemove(userId: number) {
     await deleteEmployee(userId)
+  }
+
+  function openBlockDialog(emp: Employee) {
+    setEmployeeToBlock(emp)
+    setBlockReason("")
+    setBlockDialogOpen(true)
+  }
+
+  async function handleBlock() {
+    if (!employeeToBlock) return
+    setIsBlocking(true)
+    await blockEmployee(employeeToBlock.id, blockReason)
+    setIsBlocking(false)
+    setBlockDialogOpen(false)
+    setEmployeeToBlock(null)
+  }
+
+  async function handleUnblock(userId: number) {
+    await unblockEmployee(userId)
   }
 
   function openSettings(emp: Employee) {
@@ -239,14 +269,26 @@ export default function EmployeesPage() {
 
         {/* Пошук та додавання */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative w-full max-w-sm">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Пошук працівників..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="bg-card pl-9"
-            />
+          <div className="flex w-full flex-col gap-4 sm:max-w-md sm:flex-row">
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Пошук працівників..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="bg-card pl-9 w-full"
+              />
+            </div>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-full sm:w-[180px] bg-card">
+                <SelectValue placeholder="Статус" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ACTIVE">Активні</SelectItem>
+                <SelectItem value="ALL">Всі працівники</SelectItem>
+                <SelectItem value="BLOCKED">Заблоковані</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {user.role === "ADMIN" && (
@@ -428,6 +470,9 @@ export default function EmployeesPage() {
                                   {isSelf && (
                                     <span className="ml-2 text-xs text-muted-foreground">(Ви)</span>
                                   )}
+                                  {emp.isBlocked && (
+                                    <Badge variant="destructive" className="ml-2 px-1.5 py-0 text-[10px]">Заблоковано</Badge>
+                                  )}
                                 </p>
                                 <p className="text-xs text-muted-foreground">ID: {emp.id}</p>
                               </div>
@@ -482,6 +527,43 @@ export default function EmployeesPage() {
                                   >
                                     <Pencil className="size-4" />
                                     <span className="sr-only">Налаштування працівника</span>
+                                  </Button>
+                                )}
+                                {emp.isBlocked ? (
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-green-600">
+                                        <Unlock className="size-4" />
+                                        <span className="sr-only">Розблокувати</span>
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent className="border-border bg-card">
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle className="text-foreground">Розблокувати працівника</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Ви впевнені, що хочете розблокувати <strong>{emp.firstName} {emp.lastName}</strong>?
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel className="border-border bg-secondary text-foreground hover:bg-accent">Скасувати</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => handleUnblock(emp.id)}
+                                          className="bg-primary text-primary-foreground"
+                                        >
+                                          Розблокувати
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                ) : (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-8 text-muted-foreground hover:text-orange-600"
+                                    onClick={() => openBlockDialog(emp)}
+                                  >
+                                    <Lock className="size-4" />
+                                    <span className="sr-only">Заблокувати</span>
                                   </Button>
                                 )}
                                 <AlertDialog>
@@ -587,6 +669,38 @@ export default function EmployeesPage() {
             </Button>
             <Button onClick={handleSaveSettings} disabled={isSavingSettings} className="gap-2">
               {isSavingSettings ? "Збереження..." : "Зберегти"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Діалог блокування працівника */}
+      <Dialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
+        <DialogContent className="border-border bg-card sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Заблокувати працівника</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Ви впевнені, що хочете заблокувати <strong>{employeeToBlock?.firstName} {employeeToBlock?.lastName}</strong>?
+            </p>
+            <div className="grid gap-2">
+              <Label htmlFor="block-reason">Причина блокування (необов'язково)</Label>
+              <Input
+                id="block-reason"
+                value={blockReason}
+                onChange={(e) => setBlockReason(e.target.value)}
+                placeholder="Причина..."
+                className="bg-secondary"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBlockDialogOpen(false)} className="border-border">
+              Скасувати
+            </Button>
+            <Button onClick={handleBlock} disabled={isBlocking} className="bg-orange-600 hover:bg-orange-700 text-white gap-2">
+              {isBlocking ? "Блокування..." : "Заблокувати"}
             </Button>
           </DialogFooter>
         </DialogContent>

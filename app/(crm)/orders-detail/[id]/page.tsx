@@ -1038,30 +1038,32 @@ export default function OrderDetailsPage() {
               <RadioGroup
                 value={paymentMethod}
                 onValueChange={(val: "CASH" | "CARD" | "TRANSFER") => setPaymentMethod(val)}
-                className="grid grid-cols-3 gap-2"
+                className={cn("grid gap-2", role === "CLIENT" ? "grid-cols-3" : "grid-cols-1")}
               >
-                {(["CASH", "CARD", "TRANSFER"] as const).map((method) => {
-                  const info = paymentMethodLabels[method]
-                  const Icon = info.icon
-                  return (
-                    <Label
-                      key={method}
-                      htmlFor={`pay-${method}`}
-                      className={cn(
-                        "flex flex-col items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all",
-                        paymentMethod === method
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/40"
-                      )}
-                    >
-                      <RadioGroupItem value={method} id={`pay-${method}`} className="sr-only" />
-                      <Icon className={cn("size-5", paymentMethod === method ? "text-primary" : "text-muted-foreground")} />
-                      <span className={cn("text-xs font-medium", paymentMethod === method ? "text-primary" : "text-muted-foreground")}>
-                        {info.label}
-                      </span>
-                    </Label>
-                  )
-                })}
+                {(["CASH", "CARD", "TRANSFER"] as const)
+                  .filter((method) => role === "CLIENT" || method === "CASH")
+                  .map((method) => {
+                    const info = paymentMethodLabels[method]
+                    const Icon = info.icon
+                    return (
+                      <Label
+                        key={method}
+                        htmlFor={`pay-${method}`}
+                        className={cn(
+                          "flex flex-col items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all",
+                          paymentMethod === method
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/40"
+                        )}
+                      >
+                        <RadioGroupItem value={method} id={`pay-${method}`} className="sr-only" />
+                        <Icon className={cn("size-5", paymentMethod === method ? "text-primary" : "text-muted-foreground")} />
+                        <span className={cn("text-xs font-medium", paymentMethod === method ? "text-primary" : "text-muted-foreground")}>
+                          {info.label}
+                        </span>
+                      </Label>
+                    )
+                  })}
               </RadioGroup>
             </div>
           </div>

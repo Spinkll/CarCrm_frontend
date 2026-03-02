@@ -19,6 +19,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { useAuth, type UserRole } from "@/lib/auth-context"
+import { useServiceRequests } from "@/lib/service-requests-context"
 import { UserNav } from "@/components/user-nav"
 
 type NavItem = {
@@ -78,6 +79,12 @@ const navItems: NavItem[] = [
     roles: ["ADMIN", "MANAGER", "MECHANIC"]
   },
   {
+    label: "Послуги",
+    href: "/services",
+    icon: Wrench,
+    roles: ["ADMIN", "MANAGER", "MECHANIC"]
+  },
+  {
     label: "Зарплати",
     href: "/payroll",
     icon: Banknote,
@@ -96,11 +103,16 @@ export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuth()
 
+  // Use service requests to get the count of newly incoming or in-review requests
+  const { requests } = useServiceRequests()
+
   if (!user) return null;
 
   const visibleItems = navItems.filter(
     (item) => item.roles.includes(user.role)
   )
+
+  const pendingRequestsCount = requests?.filter(r => r.status === "NEW" || r.status === "IN_REVIEW").length || 0;
 
   return (
     <aside
@@ -126,6 +138,10 @@ export function AppSidebar() {
           const isActive =
             pathname === item.href ||
             (item.href !== "/" && pathname.startsWith(item.href))
+
+          const isRequestsTab = item.href === "/requests"
+          const showBadge = isRequestsTab && pendingRequestsCount > 0
+
           return (
             <Link
               key={item.href}
@@ -137,8 +153,22 @@ export function AppSidebar() {
                   : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
               )}
             >
-              <item.icon className="size-5 shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
+              <div className="relative">
+                <item.icon className="size-5 shrink-0" />
+                {collapsed && showBadge && (
+                  <span className="absolute -right-1 -top-1 flex size-2.5 rounded-full bg-destructive" />
+                )}
+              </div>
+              {!collapsed && (
+                <div className="flex flex-1 items-center justify-between">
+                  <span>{item.label}</span>
+                  {showBadge && (
+                    <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-white">
+                      {pendingRequestsCount}
+                    </span>
+                  )}
+                </div>
+              )}
             </Link>
           )
         })}

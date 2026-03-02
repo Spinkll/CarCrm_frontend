@@ -24,16 +24,36 @@ import {
 import { Input } from "@/components/ui/input"
 import { PhoneInput } from "@/components/ui/phone-input"
 import { Label } from "@/components/ui/label"
-import { Plus, Mail, Phone, Loader2 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Plus, Mail, Phone, Loader2, Lock, Unlock } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useCustomers } from "@/lib/customers-context"
+import type { Customer } from "@/lib/customers-context"
 import { useVehicles } from "@/lib/vehicles-context"
 import { useOrders } from "@/lib/orders-context"
 import { toast } from "@/hooks/use-toast"
 
 export default function CustomersPage() {
   const { user } = useAuth()
-  const { customers, createCustomer, isLoading: customersLoading } = useCustomers()
+  const { customers, createCustomer, blockCustomer, unblockCustomer, isLoading: customersLoading } = useCustomers()
   const { vehicles, isLoading: vehiclesLoading } = useVehicles()
   const { orders, isLoading: ordersLoading } = useOrders()
 
@@ -41,6 +61,13 @@ export default function CustomersPage() {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const [filterStatus, setFilterStatus] = useState("ACTIVE") // ACTIVE, BLOCKED, ALL
+
+  const [blockDialogOpen, setBlockDialogOpen] = useState(false)
+  const [customerToBlock, setCustomerToBlock] = useState<Customer | null>(null)
+  const [blockReason, setBlockReason] = useState("")
+  const [isBlocking, setIsBlocking] = useState(false)
 
   const [form, setForm] = useState({
     firstName: "",
@@ -58,6 +85,10 @@ export default function CustomersPage() {
   // Оптимізована фільтрація клієнтів
   const filtered = useMemo(() => {
     return customers.filter((c) => {
+      // Фільтр по статусу (заблоковано/активно)
+      if (filterStatus === "ACTIVE" && c.isBlocked) return false;
+      if (filterStatus === "BLOCKED" && !c.isBlocked) return false;
+
       const fullName = `${c.firstName} ${c.lastName}`.toLowerCase()
       const searchLower = search.toLowerCase()
       return (
@@ -66,7 +97,7 @@ export default function CustomersPage() {
         (c.phone && c.phone.includes(search))
       )
     })
-  }, [customers, search])
+  }, [customers, search, filterStatus])
 
   async function handleSubmit() {
     if (!form.firstName || !form.lastName || !form.email) return
@@ -90,6 +121,35 @@ export default function CustomersPage() {
     }
   }
 
+  function openBlockDialog(customer: Customer) {
+    setCustomerToBlock(customer)
+    setBlockReason("")
+    setBlockDialogOpen(true)
+  }
+
+  async function handleBlock() {
+    if (!customerToBlock) return
+    setIsBlocking(true)
+    const res = await blockCustomer(customerToBlock.id, blockReason)
+    setIsBlocking(false)
+    if (res.success) {
+      setBlockDialogOpen(false)
+      setCustomerToBlock(null)
+      toast({ title: "Клієнта заблоковано", variant: "success" })
+    } else {
+      toast({ title: res.error || "Не вдалося заблокувати клієнта", variant: "destructive" })
+    }
+  }
+
+  async function handleUnblock(userId: number) {
+    const res = await unblockCustomer(userId)
+    if (res.success) {
+      toast({ title: "Клієнта розблоковано", variant: "success" })
+    } else {
+      toast({ title: res.error || "Не вдалося розблокувати клієнта", variant: "destructive" })
+    }
+  }
+
   if (!user || user.role === "CLIENT") return null
 
   const isDataLoading = customersLoading || vehiclesLoading || ordersLoading
@@ -104,12 +164,24 @@ export default function CustomersPage() {
 
       <div className="flex-1 overflow-auto p-6">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <Input
-            placeholder="Пошук клієнтів..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="max-w-md bg-card"
-          />
+          <div className="flex w-full flex-col gap-4 sm:max-w-md sm:flex-row">
+            <Input
+              placeholder="Пошук клієнтів..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full bg-card"
+            />
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-full sm:w-[180px] bg-card">
+                <SelectValue placeholder="Статус" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ACTIVE">Активні</SelectItem>
+                <SelectItem value="ALL">Всі клієнти</SelectItem>
+                <SelectItem value="BLOCKED">Заблоковані</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           {canCreateCustomers && (
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
@@ -192,7 +264,8 @@ export default function CustomersPage() {
                     <TableHead>Автомобілі</TableHead>
                     <TableHead>Замовлення</TableHead>
                     <TableHead>Всього витрачено</TableHead>
-                    <TableHead className="pr-6">В системі з</TableHead>
+                    <TableHead>В системі з</TableHead>
+                    {canCreateCustomers && <TableHead className="pr-6 text-right">Дії</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -225,7 +298,12 @@ export default function CustomersPage() {
                               {customer.firstName?.[0]}{customer.lastName?.[0]}
                             </div>
                             <div>
-                              <p className="font-semibold text-foreground">{customer.firstName} {customer.lastName}</p>
+                              <p className="font-semibold text-foreground">
+                                {customer.firstName} {customer.lastName}
+                                {customer.isBlocked && (
+                                  <Badge variant="destructive" className="ml-2 px-1.5 py-0 text-[10px]">Заблоковано</Badge>
+                                )}
+                              </p>
                               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">ID: {customer.id}</p>
                             </div>
                           </div>
@@ -255,9 +333,54 @@ export default function CustomersPage() {
                         <TableCell className="font-semibold text-foreground">
                           {totalSpent.toLocaleString(undefined, { minimumFractionDigits: 0 })} ₴
                         </TableCell>
-                        <TableCell className="pr-6 text-xs text-muted-foreground">
-                          {new Date(customer.createdAt).toLocaleDateString()}
+                        <TableCell className={canCreateCustomers ? "" : "pr-6"}>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(customer.createdAt).toLocaleDateString()}
+                          </span>
                         </TableCell>
+                        {canCreateCustomers && (
+                          <TableCell className="pr-6 text-right">
+                            <div className="flex items-center justify-end">
+                              {customer.isBlocked ? (
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-green-600">
+                                      <Unlock className="size-4" />
+                                      <span className="sr-only">Розблокувати</span>
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent className="border-border bg-card">
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle className="text-foreground">Розблокувати клієнта</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Ви впевнені, що хочете розблокувати <strong>{customer.firstName} {customer.lastName}</strong>?
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel className="border-border bg-secondary text-foreground hover:bg-accent">Скасувати</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => handleUnblock(customer.id)}
+                                        className="bg-primary text-primary-foreground"
+                                      >
+                                        Розблокувати
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-8 text-muted-foreground hover:text-orange-600"
+                                  onClick={() => openBlockDialog(customer)}
+                                >
+                                  <Lock className="size-4" />
+                                  <span className="sr-only">Заблокувати</span>
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        )}
                       </TableRow>
                     )
                   })}
@@ -273,6 +396,39 @@ export default function CustomersPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Діалог блокування клієнта */}
+      <Dialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
+        <DialogContent className="border-border bg-card sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Заблокувати клієнта</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Ви впевнені, що хочете заблокувати <strong>{customerToBlock?.firstName} {customerToBlock?.lastName}</strong>?
+              Клієнт не зможе записуватись на сервіс.
+            </p>
+            <div className="grid gap-2">
+              <Label htmlFor="block-reason-customer">Причина блокування (необов'язково)</Label>
+              <Input
+                id="block-reason-customer"
+                value={blockReason}
+                onChange={(e) => setBlockReason(e.target.value)}
+                placeholder="Причина..."
+                className="bg-secondary"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBlockDialogOpen(false)} className="border-border">
+              Скасувати
+            </Button>
+            <Button onClick={handleBlock} disabled={isBlocking} className="bg-orange-600 hover:bg-orange-700 text-white gap-2">
+              {isBlocking ? "Блокування..." : "Заблокувати"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

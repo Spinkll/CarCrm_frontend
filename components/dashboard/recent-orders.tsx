@@ -55,9 +55,9 @@ export function RecentOrders() {
                 </TableRow>
               ) : (
                 recent.map((order) => {
-                  const vehicle = vehicles.find((v) => v.id === order.carId)
+                  const vehicle = order.car || vehicles.find((v) => v.id === order.carId)
                   const customer = customers.find((c) =>
-                    c.id === (order.carId || vehicle?.userId)
+                    c.id === vehicle?.userId
                   )
 
                   return (

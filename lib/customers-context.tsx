@@ -13,14 +13,18 @@ export interface Customer {
   address?: string
   role: "CLIENT"
   createdAt: string
-  cars?: any[] 
+  cars?: any[]
   orders?: any[]
+  isBlocked?: boolean
+  blockReason?: string
 }
 
 type CustomersContextType = {
   customers: Customer[]
   isLoading: boolean
   createCustomer: (data: any) => Promise<{ success: boolean; error?: string }>
+  blockCustomer: (id: number, reason?: string) => Promise<{ success: boolean; error?: string }>
+  unblockCustomer: (id: number) => Promise<{ success: boolean; error?: string }>
   refreshCustomers: () => void
 }
 
@@ -59,13 +63,37 @@ export function CustomersProvider({ children }: { children: React.ReactNode }) {
       const msg = error.response?.data?.message || "Error creating customer";
       return { success: false, error: Array.isArray(msg) ? msg[0] : msg };
     }
-}
+  }
+
+  const blockCustomer = async (id: number, reason?: string) => {
+    try {
+      await api.patch(`/users/${id}/block`, { reason })
+      setCustomers((prev) => prev.map((c) => c.id === id ? { ...c, isBlocked: true, blockReason: reason } : c))
+      return { success: true }
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Failed to block customer"
+      return { success: false, error: Array.isArray(msg) ? msg[0] : msg }
+    }
+  }
+
+  const unblockCustomer = async (id: number) => {
+    try {
+      await api.patch(`/users/${id}/unblock`)
+      setCustomers((prev) => prev.map((c) => c.id === id ? { ...c, isBlocked: false, blockReason: undefined } : c))
+      return { success: true }
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Failed to unblock customer"
+      return { success: false, error: Array.isArray(msg) ? msg[0] : msg }
+    }
+  }
   return (
     <CustomersContext.Provider
       value={{
         customers,
         isLoading,
         createCustomer,
+        blockCustomer,
+        unblockCustomer,
         refreshCustomers: fetchCustomers,
       }}
     >

@@ -46,36 +46,44 @@ export default function LandingPage() {
 
       <main className="flex-1 w-full">
         {/* HERO SECTION */}
-        <section className="relative w-full py-12 md:py-24 lg:py-32 xl:py-48 overflow-hidden bg-gradient-to-br from-background via-secondary/20 to-primary/5">
-          <div className="absolute inset-0 bg-grid-white/10 bg-[size:30px_30px] [mask-image:linear-gradient(to_bottom,white,transparent)] dark:bg-grid-zinc-900/10"></div>
-          <div className="container relative mx-auto px-4 md:px-6 z-10 w-full">
+        <section className="relative w-full py-20 md:py-32 lg:py-48 overflow-hidden bg-black flex items-center min-h-[80vh]">
+          {/* ФОНОВЕ ЗОБРАЖЕННЯ */}
+          <div
+            className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: "url('/hero-bg.jpg')" }}
+          >
+            {/* Затемнення фону */}
+            <div className="absolute inset-0 bg-black/70"></div>
+          </div>
+
+          {/* Градієнт для плавного переходу вниз */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/5 to-transparent z-0 pointer-events-none"></div>
+
+          <div className="container relative mx-auto px-4 md:px-6 z-10 w-full mb-12">
             <div className="flex flex-col items-center gap-6 text-center max-w-4xl mx-auto w-full">
-              <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-medium text-primary mb-4 backdrop-blur-sm">
-                <Star className="mr-2 size-4 fill-primary" /> Сучасний сервіс для вашого авто
+              <div className="inline-flex items-center rounded-full border border-white/20 bg-black/40 px-3 py-1 text-sm font-medium text-white mb-4 backdrop-blur-md">
+                <Star className="mr-2 size-4 text-primary fill-primary" /> Сучасний сервіс для вашого авто
               </div>
-              <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl w-full">
-                Професійне обслуговування <span className="text-primary bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">без компромісів</span>
+              <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl w-full text-white drop-shadow-sm">
+                Професійне обслуговування <span className="text-primary drop-shadow-[0_2px_10px_rgba(255,255,255,0.1)]">без компромісів</span>
               </h1>
-              <p className="mx-auto max-w-[700px] text-lg text-muted-foreground md:text-xl leading-relaxed w-full">
+              <p className="mx-auto max-w-[700px] text-lg text-gray-300 md:text-xl leading-relaxed w-full drop-shadow-sm">
                 Довірте своє авто професіоналам WagGarage. Швидка діагностика, оригінальні запчастини та гарантія на всі види робіт. Ваш спокій — наш пріоритет.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 mt-8 w-full sm:w-auto">
                 <Link href="/dashboard" className="w-full sm:w-auto">
-                  <Button size="lg" className="w-full gap-2 rounded-full text-base h-12 px-8">
+                  <Button size="lg" className="w-full gap-2 rounded-full text-base h-14 px-8 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-shadow">
                     <CalendarDays className="size-5" /> Записатися онлайн
                   </Button>
                 </Link>
                 <Link href="#services" className="w-full sm:w-auto">
-                  <Button size="lg" variant="outline" className="w-full rounded-full text-base h-12 px-8 bg-background/50 backdrop-blur-sm">
+                  <Button size="lg" variant="outline" className="w-full rounded-full text-base h-14 px-8 bg-black/30 text-white border-white/20 hover:bg-white/10 hover:text-white backdrop-blur-md transition-all">
                     Наші послуги
                   </Button>
                 </Link>
               </div>
             </div>
           </div>
-          {/* Decorative shapes */}
-          <div className="absolute top-1/2 left-0 -translate-y-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/20 rounded-full blur-[120px] opacity-50 pointer-events-none"></div>
-          <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-1/2 w-[500px] h-[500px] bg-blue-500/20 rounded-full blur-[100px] opacity-50 pointer-events-none"></div>
         </section>
 
         {/* FEATURES */}
