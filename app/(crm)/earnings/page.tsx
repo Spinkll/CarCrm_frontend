@@ -28,8 +28,7 @@ interface WorkItem {
     id: number
     orderId: number
     car: string
-    name: string
-    quantity: number
+    serviceName: string
     earned: number
     date: string
 }
@@ -185,7 +184,7 @@ export default function EarningsPage() {
                                             <TableHead className="pl-6 text-muted-foreground">№ Замовлення</TableHead>
                                             <TableHead className="text-muted-foreground">Автомобіль</TableHead>
                                             <TableHead className="text-muted-foreground">Назва роботи</TableHead>
-                                            <TableHead className="text-center text-muted-foreground">Кількість</TableHead>
+
                                             <TableHead className="text-right text-muted-foreground">Зароблено</TableHead>
                                             <TableHead className="pr-6 text-right text-muted-foreground">Дата</TableHead>
                                         </TableRow>
@@ -193,7 +192,7 @@ export default function EarningsPage() {
                                     <TableBody>
                                         {data.works.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
+                                                <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
                                                     Ви ще не виконали жодних робіт за цей період
                                                 </TableCell>
                                             </TableRow>
@@ -204,10 +203,10 @@ export default function EarningsPage() {
                                                         #{work.orderId}
                                                     </TableCell>
                                                     <TableCell>{work.car}</TableCell>
-                                                    <TableCell className="max-w-[250px] truncate" title={work.name}>
-                                                        {work.name}
+                                                    <TableCell className="max-w-[250px] truncate" title={work.serviceName}>
+                                                        {work.serviceName}
                                                     </TableCell>
-                                                    <TableCell className="text-center">{work.quantity}</TableCell>
+
                                                     <TableCell className="text-right font-medium">
                                                         {work.earned.toLocaleString()} ₴
                                                     </TableCell>

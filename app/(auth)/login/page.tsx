@@ -27,7 +27,7 @@ export default function LoginPage() {
     const result = await login(email, password)
 
     if (result.success) {
-      router.replace("/")
+      router.replace("/dashboard")
     } else {
       setError(result.error || "Login failed")
       setIsLoading(false)

@@ -15,7 +15,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Badge } from "@/components/ui/badge"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { StatusBadge } from "@/components/status-badge"
-import { ArrowLeft, Plus, Trash2, Wrench, Clock, ShieldCheck, Loader2, Check, ChevronsUpDown } from "lucide-react"
+import { ArrowLeft, Plus, Trash2, Wrench, Clock, ShieldCheck, Loader2, Check, ChevronsUpDown, ChevronDown, Banknote, CreditCard, Wallet, FileDown } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/api"
@@ -24,6 +30,7 @@ import { useOrders } from "@/lib/orders-context"
 import { useNotifications } from "@/lib/notifications-context"
 import { useCrm } from "@/lib/crm-context"
 import { useInventory } from "@/lib/inventory-context"
+import { useAppointments } from "@/lib/appointments-context"
 
 // Локальні типи
 interface OrderDetails {
@@ -40,6 +47,19 @@ interface OrderDetails {
   history: Array<{ id: number; action: string; comment: string; timestamp: string; changedBy: { firstName: string; lastName: string } }>
 }
 
+interface Payment {
+  id: number
+  amount: number
+  method: "CASH" | "CARD" | "TRANSFER"
+  createdAt: string
+}
+
+const paymentMethodLabels: Record<string, { label: string; icon: React.ElementType }> = {
+  CASH: { label: "Готівка", icon: Banknote },
+  CARD: { label: "Картка", icon: CreditCard },
+  TRANSFER: { label: "Переказ", icon: Wallet },
+}
+
 // Словник для перекладу дій в історії
 const actionTranslations: Record<string, string> = {
   ORDER_CREATED: "Створено замовлення",
@@ -49,16 +69,27 @@ const actionTranslations: Record<string, string> = {
   ITEM_REMOVED: "Видалено позицію",
 }
 
+const statusTranslations: Record<string, string> = {
+  PENDING: "Очікує",
+  CONFIRMED: "Підтверджено",
+  IN_PROGRESS: "В процесі",
+  WAITING_PARTS: "Очікування запчастин",
+  COMPLETED: "Виконано",
+  PAID: "Оплачено",
+  CANCELLED: "Скасовано",
+}
+
 export default function OrderDetailsPage() {
   const params = useParams()
   const router = useRouter()
   const { user } = useAuth()
 
   const orderId = Number(params.id)
-  const { refreshOrders } = useOrders()
+  const { updateStatus: updateOrderStatus, refreshOrders } = useOrders()
   const { fetchNotifications } = useNotifications()
   const { refreshData: refreshCrmData } = useCrm()
   const { inventory, fetchInventory } = useInventory()
+  const { appointments, updateStatus: updateAppointmentStatus } = useAppointments()
 
   const [order, setOrder] = useState<OrderDetails | null>(null)
   const [employees, setEmployees] = useState<any[]>([])
@@ -80,11 +111,19 @@ export default function OrderDetailsPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [itemToDelete, setItemToDelete] = useState<number | null>(null)
 
+  // Payment state
+  const [payments, setPayments] = useState<Payment[]>([])
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD" | "TRANSFER">("CASH")
+  const [isPaymentSubmitting, setIsPaymentSubmitting] = useState(false)
+  const [isReceiptDownloading, setIsReceiptDownloading] = useState(false)
+
   const role = user?.role?.toUpperCase() || "CLIENT"
 
   // ЗМІНЕНО ТУТ: Додано MECHANIC до прав управління позиціями
   const canManageItems = role === "ADMIN" || role === "MANAGER" || role === "MECHANIC"
   const canAssign = role === "ADMIN" || role === "MANAGER"
+  const canEditStatus = role === "ADMIN" || role === "MANAGER" || role === "MECHANIC"
 
   const managers = employees.filter(e => e.role === "MANAGER" || e.role === "ADMIN")
   const mechanics = employees.filter(e => e.role === "MECHANIC")
@@ -95,6 +134,62 @@ export default function OrderDetailsPage() {
       setOrder(data)
     } catch (error) {
       console.error("Failed to fetch order", error)
+    }
+  }
+
+  const fetchPayments = async () => {
+    try {
+      const { data } = await api.get(`/payments/order/${orderId}`)
+      setPayments(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error("Failed to fetch payments", error)
+      setPayments([])
+    }
+  }
+
+  const handlePayment = async () => {
+    if (!order) return
+    setIsPaymentSubmitting(true)
+    try {
+      await api.post(`/payments/order/${orderId}`, {
+        method: paymentMethod,
+        amount: Number(order.totalAmount),
+      })
+      await Promise.all([fetchOrderDetails(), fetchPayments()])
+      refreshOrders()
+      refreshCrmData()
+      fetchNotifications()
+      setPaymentModalOpen(false)
+      toast({ title: "Оплату зафіксовано", description: `Метод: ${paymentMethodLabels[paymentMethod].label}`, variant: "success" })
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Не вдалося зафіксувати оплату"
+      toast({ title: Array.isArray(msg) ? msg[0] : msg, variant: "destructive" })
+    } finally {
+      setIsPaymentSubmitting(false)
+    }
+  }
+
+  const handleDownloadReceipt = async () => {
+    setIsReceiptDownloading(true)
+    try {
+      const response = await api.get(`payments/order/${orderId}/receipt`, {
+        responseType: 'blob',
+      })
+      const blob = new Blob([response.data], { type: 'application/pdf' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `receipt_order_${orderId}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+      toast({ title: "Чек завантажено", variant: "success" })
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Не вдалося завантажити чек"
+      toast({ title: Array.isArray(msg) ? msg[0] : msg, variant: "destructive" })
+    } finally {
+      setIsReceiptDownloading(false)
     }
   }
 
@@ -118,7 +213,7 @@ export default function OrderDetailsPage() {
 
   useEffect(() => {
     setIsLoading(true)
-    const promises = [fetchOrderDetails()]
+    const promises = [fetchOrderDetails(), fetchPayments()]
     if (canAssign) promises.push(fetchEmployees())
     if (canManageItems) {
       promises.push(fetchCatalogServices())
@@ -269,6 +364,40 @@ export default function OrderDetailsPage() {
     setAssignModalOpen(true)
   }
 
+  const handleStatusChange = async (newStatus: string) => {
+    if (!order) return
+    setIsSubmitting(true)
+    try {
+      await updateOrderStatus(order.id, newStatus)
+
+      // Синхронізація статусу запису в календарі
+      const orderToApptStatus: Record<string, string> = {
+        CONFIRMED: "CONFIRMED",
+        IN_PROGRESS: "ARRIVED",
+        COMPLETED: "COMPLETED",
+        PAID: "COMPLETED",
+        CANCELLED: "CANCELLED",
+      }
+      const apptStatus = orderToApptStatus[newStatus]
+      if (apptStatus) {
+        const relatedAppt = appointments.find(a => a.orderId === order.id)
+        if (relatedAppt && relatedAppt.status !== apptStatus) {
+          await updateAppointmentStatus(relatedAppt.id, apptStatus)
+        }
+      }
+
+      await fetchOrderDetails()
+      refreshOrders()
+      refreshCrmData()
+      fetchNotifications()
+      toast({ title: "Статус оновлено", variant: "success" })
+    } catch (error) {
+      toast({ title: "Не вдалося оновити статус", variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   if (isLoading) {
     return <div className="flex h-screen items-center justify-center"><Loader2 className="size-8 animate-spin text-primary" /></div>
   }
@@ -301,7 +430,34 @@ export default function OrderDetailsPage() {
                       {order.car.year} {order.car.brand} {order.car.model} — {order.car.plate || "Немає номерів"}
                     </CardDescription>
                   </div>
-                  <StatusBadge status={order.status.toLowerCase()} />
+                  {canEditStatus ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="inline-flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity">
+                          <StatusBadge status={order.status.toLowerCase()} />
+                          <ChevronDown className="size-3 text-muted-foreground" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                          Змінити статус
+                        </div>
+                        {["CONFIRMED", "IN_PROGRESS", "WAITING_PARTS", "COMPLETED", "CANCELLED"]
+                          .filter((s) => s !== order.status)
+                          .map((status) => (
+                            <DropdownMenuItem
+                              key={status}
+                              onClick={() => handleStatusChange(status)}
+                              className="cursor-pointer"
+                            >
+                              {statusTranslations[status] || status}
+                            </DropdownMenuItem>
+                          ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : (
+                    <StatusBadge status={order.status.toLowerCase()} />
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="pt-4 space-y-4">
@@ -431,8 +587,97 @@ export default function OrderDetailsPage() {
                     </p>
                   </div>
                 </div>
+
+                {/* Payment summary */}
+                {(payments.length > 0 || order.status === "COMPLETED" || order.status === "PAID") && (
+                  <div className="mt-4 pt-4 border-t border-border space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Оплачено</span>
+                      <span className={cn("font-semibold", order.status === "PAID" ? "text-success" : "text-foreground")}>
+                        {payments.reduce((s, p) => s + Number(p.amount), 0).toLocaleString()} ₴
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                      <div
+                        className={cn("h-full rounded-full transition-all duration-500", order.status === "PAID" ? "bg-success" : "bg-primary")}
+                        style={{ width: `${Math.min(100, Number(order.totalAmount) > 0 ? (payments.reduce((s, p) => s + Number(p.amount), 0) / Number(order.totalAmount)) * 100 : 0)}%` }}
+                      />
+                    </div>
+                    {order.status === "PAID" ? (
+                      <>
+                        <p className="text-xs text-success font-medium flex items-center gap-1">
+                          <Check className="size-3" /> Замовлення повністю оплачено
+                        </p>
+                        <Button
+                          variant="outline"
+                          className="w-full mt-2 gap-2"
+                          onClick={handleDownloadReceipt}
+                          disabled={isReceiptDownloading}
+                        >
+                          {isReceiptDownloading ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <FileDown className="size-4" />
+                          )}
+                          {isReceiptDownloading ? "Завантаження..." : "Завантажити чек (PDF)"}
+                        </Button>
+                      </>
+                    ) : order.status === "COMPLETED" && payments.length === 0 ? (
+                      <p className="text-xs text-warning font-medium">Очікує оплати</p>
+                    ) : null}
+                  </div>
+                )}
+
+                {/* Accept payment button */}
+                {order.status === "COMPLETED" && payments.length === 0 && (
+                  <Button
+                    className="w-full mt-4 gap-2"
+                    onClick={() => {
+                      setPaymentMethod(role === "CLIENT" ? "CARD" : "CASH")
+                      setPaymentModalOpen(true)
+                    }}
+                  >
+                    <Banknote className="size-4" />
+                    {role === "CLIENT" ? "Сплатити" : "Прийняти оплату"}
+                  </Button>
+                )}
               </CardContent>
             </Card>
+
+            {/* Payment history */}
+            {payments.length > 0 && (
+              <Card className="border-border bg-card">
+                <CardHeader className="pb-3 border-b border-border">
+                  <CardTitle className="text-sm">Історія оплат</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <div className="space-y-3">
+                    {payments.map((payment) => {
+                      const methodInfo = paymentMethodLabels[payment.method] || { label: payment.method, icon: Banknote }
+                      const MethodIcon = methodInfo.icon
+                      return (
+                        <div key={payment.id} className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="flex size-8 items-center justify-center rounded-full bg-success/10">
+                              <MethodIcon className="size-4 text-success" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-foreground">{methodInfo.label}</p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {new Date(payment.createdAt).toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="text-sm font-semibold text-foreground">
+                            {Number(payment.amount).toLocaleString()} ₴
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             <Card className="border-border bg-card">
               <CardHeader className="pb-3 border-b border-border">
@@ -769,6 +1014,61 @@ export default function OrderDetailsPage() {
             <Button variant="outline" onClick={() => setDeleteModalOpen(false)} disabled={isSubmitting}>Скасувати</Button>
             <Button variant="destructive" onClick={handleRemoveItem} disabled={isSubmitting}>
               {isSubmitting ? "Видалення..." : "Видалити"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Dialog */}
+      <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{role === "CLIENT" ? "Оплата замовлення" : "Прийняти оплату"}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="text-center space-y-1">
+              <p className="text-sm text-muted-foreground">Сума до сплати</p>
+              <p className="text-3xl font-bold text-foreground">
+                {Number(order?.totalAmount || 0).toLocaleString()} ₴
+              </p>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Спосіб оплати</Label>
+              <RadioGroup
+                value={paymentMethod}
+                onValueChange={(val: "CASH" | "CARD" | "TRANSFER") => setPaymentMethod(val)}
+                className="grid grid-cols-3 gap-2"
+              >
+                {(["CASH", "CARD", "TRANSFER"] as const).map((method) => {
+                  const info = paymentMethodLabels[method]
+                  const Icon = info.icon
+                  return (
+                    <Label
+                      key={method}
+                      htmlFor={`pay-${method}`}
+                      className={cn(
+                        "flex flex-col items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all",
+                        paymentMethod === method
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/40"
+                      )}
+                    >
+                      <RadioGroupItem value={method} id={`pay-${method}`} className="sr-only" />
+                      <Icon className={cn("size-5", paymentMethod === method ? "text-primary" : "text-muted-foreground")} />
+                      <span className={cn("text-xs font-medium", paymentMethod === method ? "text-primary" : "text-muted-foreground")}>
+                        {info.label}
+                      </span>
+                    </Label>
+                  )
+                })}
+              </RadioGroup>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPaymentModalOpen(false)} disabled={isPaymentSubmitting}>Скасувати</Button>
+            <Button onClick={handlePayment} disabled={isPaymentSubmitting} className="gap-2">
+              {isPaymentSubmitting ? "Обробка..." : "Підтвердити оплату"}
             </Button>
           </DialogFooter>
         </DialogContent>

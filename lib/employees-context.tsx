@@ -11,12 +11,15 @@ export interface Employee {
   lastName: string
   role: "ADMIN" | "MANAGER" | "MECHANIC"
   phone: string
+  commissionRate?: number
+  baseSalary?: number
 }
 
 type EmployeesContextType = {
   employees: Employee[]
   isLoading: boolean
   createEmployee: (data: any) => Promise<{ success: boolean; error?: string }>
+  updateEmployee: (id: number, data: Partial<Employee>) => Promise<{ success: boolean; error?: string }>
   deleteEmployee: (id: number) => Promise<{ success: boolean; error?: string }>
   refreshEmployees: () => void
 }
@@ -56,6 +59,17 @@ export function EmployeesProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const updateEmployee = async (id: number, payload: Partial<Employee>) => {
+    try {
+      const { data } = await api.patch(`/users/${id}`, payload)
+      setEmployees((prev) => prev.map((e) => e.id === id ? { ...e, ...data } : e))
+      return { success: true }
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Failed to update employee"
+      return { success: false, error: Array.isArray(msg) ? msg[0] : msg }
+    }
+  }
+
   const deleteEmployee = async (id: number) => {
     try {
       await api.delete(`/users/${id}`)
@@ -72,6 +86,7 @@ export function EmployeesProvider({ children }: { children: React.ReactNode }) {
         employees,
         isLoading,
         createEmployee,
+        updateEmployee,
         deleteEmployee,
         refreshEmployees: fetchEmployees,
       }}

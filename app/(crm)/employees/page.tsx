@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { PageHeader } from "@/components/page-header"
 import { useAuth } from "@/lib/auth-context"
 import { useEmployees } from "@/lib/employees-context"
+import type { Employee } from "@/lib/employees-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,6 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog"
 import {
   Select,
@@ -44,10 +46,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { UserPlus, Shield, Settings, Search, Trash2, Briefcase } from "lucide-react"
+import { UserPlus, Shield, Settings, Search, Trash2, Briefcase, Percent, Pencil, Banknote } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-// Конфігурація для бейджів ролей (Перекладено)
 const roleConfig = {
   ADMIN: { label: "Адміністратор", icon: Shield, className: "bg-primary/15 text-primary border-primary/30" },
   MANAGER: { label: "Менеджер", icon: Briefcase, className: "bg-purple-100 text-purple-700 border-purple-200" },
@@ -56,7 +57,7 @@ const roleConfig = {
 
 export default function EmployeesPage() {
   const { user } = useAuth()
-  const { employees, createEmployee, deleteEmployee, isLoading } = useEmployees()
+  const { employees, createEmployee, updateEmployee, deleteEmployee, isLoading } = useEmployees()
   const router = useRouter()
 
   const [search, setSearch] = useState("")
@@ -69,8 +70,18 @@ export default function EmployeesPage() {
     email: "",
     phone: "",
     role: "" as "MECHANIC" | "MANAGER" | "",
+    commissionRate: "",
+    baseSalary: "",
   })
   const [error, setError] = useState("")
+
+  // Стан для діалогу налаштувань працівника
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
+  const [editCommission, setEditCommission] = useState("")
+  const [editBaseSalary, setEditBaseSalary] = useState("")
+  const [editError, setEditError] = useState("")
+  const [isSavingSettings, setIsSavingSettings] = useState(false)
 
   useEffect(() => {
     if (user && user.role !== "ADMIN" && user.role !== "MANAGER") {
@@ -78,7 +89,6 @@ export default function EmployeesPage() {
     }
   }, [user, router])
 
-  // Фільтрація
   const filtered = employees.filter(
     (e) =>
       `${e.firstName} ${e.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
@@ -97,23 +107,34 @@ export default function EmployeesPage() {
       return
     }
 
+    if (form.role === "MECHANIC" && (!form.commissionRate || Number(form.commissionRate) <= 0 || Number(form.commissionRate) > 100)) {
+      setError("Вкажіть коректний % від робіт (1-100%)")
+      return
+    }
+
+    if (!form.baseSalary || Number(form.baseSalary) < 0) {
+      setError("Вкажіть коректну базову ставку")
+      return
+    }
+
     setIsSubmitting(true)
 
     const cleanPhone = form.phone ? form.phone.replace(/[\s\-\(\)]/g, "") : ""
 
-    // Відправляємо на бекенд
     const result = await createEmployee({
       firstName: form.firstName,
       lastName: form.lastName,
       email: form.email,
       phone: cleanPhone,
-      role: form.role
+      role: form.role,
+      baseSalary: Number(form.baseSalary),
+      ...(form.role === "MECHANIC" && { commissionRate: Number(form.commissionRate) }),
     })
 
     setIsSubmitting(false)
 
     if (result.success) {
-      setForm({ firstName: "", lastName: "", email: "", phone: "", role: "" })
+      setForm({ firstName: "", lastName: "", email: "", phone: "", role: "", commissionRate: "", baseSalary: "" })
       setDialogOpen(false)
     } else {
       setError(result.error || "Не вдалося додати працівника")
@@ -122,6 +143,50 @@ export default function EmployeesPage() {
 
   async function handleRemove(userId: number) {
     await deleteEmployee(userId)
+  }
+
+  function openSettings(emp: Employee) {
+    setEditingEmployee(emp)
+    setEditCommission(emp.commissionRate ? String(emp.commissionRate) : "")
+    setEditBaseSalary(emp.baseSalary ? String(emp.baseSalary) : "")
+    setEditError("")
+    setSettingsOpen(true)
+  }
+
+  async function handleSaveSettings() {
+    if (!editingEmployee) return
+    setEditError("")
+
+    const updateData: any = {}
+
+    // Базова ставка — для всіх
+    const salary = Number(editBaseSalary)
+    if (!editBaseSalary || salary < 0) {
+      setEditError("Вкажіть коректну базову ставку")
+      return
+    }
+    updateData.baseSalary = salary
+
+    // Комісія — тільки для механіків
+    if (editingEmployee.role === "MECHANIC") {
+      const rate = Number(editCommission)
+      if (!rate || rate <= 0 || rate > 100) {
+        setEditError("Вкажіть коректний відсоток комісії (1-100%)")
+        return
+      }
+      updateData.commissionRate = rate
+    }
+
+    setIsSavingSettings(true)
+    const result = await updateEmployee(editingEmployee.id, updateData)
+    setIsSavingSettings(false)
+
+    if (result.success) {
+      setSettingsOpen(false)
+      setEditingEmployee(null)
+    } else {
+      setEditError(result.error || "Не вдалося зберегти зміни")
+    }
   }
 
   function getInitials(first: string, last: string) {
@@ -172,7 +237,7 @@ export default function EmployeesPage() {
           </Card>
         </div>
 
-        {/* Пошук */}
+        {/* Пошук та додавання */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative w-full max-w-sm">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -251,7 +316,7 @@ export default function EmployeesPage() {
                     <Label>Роль</Label>
                     <Select
                       value={form.role}
-                      onValueChange={(v) => setForm({ ...form, role: v as any })}
+                      onValueChange={(v) => setForm({ ...form, role: v as any, commissionRate: v === "MECHANIC" ? form.commissionRate : "" })}
                     >
                       <SelectTrigger className="w-full bg-secondary">
                         <SelectValue placeholder="Оберіть роль" />
@@ -262,6 +327,52 @@ export default function EmployeesPage() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {form.role && (
+                    <div className="grid gap-2">
+                      <Label htmlFor="emp-salary">Базова ставка (₴)</Label>
+                      <div className="relative">
+                        <Input
+                          id="emp-salary"
+                          type="number"
+                          min="0"
+                          value={form.baseSalary}
+                          onChange={(e) => setForm({ ...form, baseSalary: e.target.value })}
+                          placeholder="Наприклад, 15000"
+                          className="bg-secondary pr-10"
+                          required
+                        />
+                        <Banknote className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Фіксована місячна ставка працівника
+                      </p>
+                    </div>
+                  )}
+
+                  {form.role === "MECHANIC" && (
+                    <div className="grid gap-2">
+                      <Label htmlFor="emp-commission">% від виконаних робіт</Label>
+                      <div className="relative">
+                        <Input
+                          id="emp-commission"
+                          type="number"
+                          min="1"
+                          max="100"
+                          value={form.commissionRate}
+                          onChange={(e) => setForm({ ...form, commissionRate: e.target.value })}
+                          placeholder="Наприклад, 30"
+                          className="bg-secondary pr-10"
+                          required
+                        />
+                        <Percent className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        % від вартості послуги, який отримує механік
+                      </p>
+                    </div>
+                  )}
+
                   <Button onClick={handleAdd} disabled={isSubmitting} className="gap-2">
                     {isSubmitting ? "Збереження..." : (
                       <>
@@ -288,13 +399,15 @@ export default function EmployeesPage() {
                     <TableHead className="text-muted-foreground">Працівник</TableHead>
                     <TableHead className="text-muted-foreground">Email</TableHead>
                     <TableHead className="text-muted-foreground">Роль</TableHead>
+                    <TableHead className="text-center text-muted-foreground">Ставка</TableHead>
+                    <TableHead className="text-center text-muted-foreground">% від робіт</TableHead>
                     <TableHead className="text-right text-muted-foreground">Дії</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
                         Працівників не знайдено
                       </TableCell>
                     </TableRow>
@@ -335,35 +448,68 @@ export default function EmployeesPage() {
                               </Badge>
                             )}
                           </TableCell>
+                          <TableCell className="text-center">
+                            {(emp.role === "MECHANIC" || emp.role === "MANAGER") && emp.baseSalary != null ? (
+                              <span className="inline-flex items-center gap-1 rounded-md bg-green-50 border border-green-200 px-2 py-0.5 text-xs font-medium text-green-700">
+                                <Banknote className="size-3" />
+                                {Number(emp.baseSalary).toLocaleString()} ₴
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {emp.role === "MECHANIC" ? (
+                              <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 border border-blue-200 px-2 py-0.5 text-xs font-medium text-blue-700">
+                                <Percent className="size-3" />
+                                {emp.commissionRate ?? "—"}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
                           <TableCell className="text-right">
                             {isSelf ? (
                               <span className="text-xs text-muted-foreground">--</span>
                             ) : user.role === "ADMIN" ? (
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive">
-                                    <Trash2 className="size-4" />
-                                    <span className="sr-only">Видалити працівника</span>
+                              <div className="flex items-center justify-end gap-1">
+                                {(emp.role === "MECHANIC" || emp.role === "MANAGER") && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-8 text-muted-foreground hover:text-foreground"
+                                    onClick={() => openSettings(emp)}
+                                  >
+                                    <Pencil className="size-4" />
+                                    <span className="sr-only">Налаштування працівника</span>
                                   </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent className="border-border bg-card">
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle className="text-foreground">Видалити працівника</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Ви впевнені, що хочете видалити <strong>{emp.firstName} {emp.lastName}</strong> із системи? Цю дію неможливо скасувати.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel className="border-border bg-secondary text-foreground hover:bg-accent">Скасувати</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => handleRemove(emp.id)}
-                                      className="bg-destructive text-foreground hover:bg-destructive/90"
-                                    >
-                                      Видалити
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
+                                )}
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive">
+                                      <Trash2 className="size-4" />
+                                      <span className="sr-only">Видалити працівника</span>
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent className="border-border bg-card">
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle className="text-foreground">Видалити працівника</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Ви впевнені, що хочете видалити <strong>{emp.firstName} {emp.lastName}</strong> із системи? Цю дію неможливо скасувати.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel className="border-border bg-secondary text-foreground hover:bg-accent">Скасувати</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => handleRemove(emp.id)}
+                                        className="bg-destructive text-foreground hover:bg-destructive/90"
+                                      >
+                                        Видалити
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
                             ) : (
                               <span className="text-xs text-muted-foreground">--</span>
                             )}
@@ -378,6 +524,73 @@ export default function EmployeesPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Діалог налаштувань працівника */}
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="border-border bg-card sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">
+              Налаштування: {editingEmployee?.firstName} {editingEmployee?.lastName}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {editError && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {editError}
+              </div>
+            )}
+
+            <div className="grid gap-2">
+              <Label htmlFor="edit-salary">Базова ставка (₴)</Label>
+              <div className="relative">
+                <Input
+                  id="edit-salary"
+                  type="number"
+                  min="0"
+                  value={editBaseSalary}
+                  onChange={(e) => setEditBaseSalary(e.target.value)}
+                  placeholder="Наприклад, 15000"
+                  className="bg-secondary pr-10"
+                />
+                <Banknote className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Фіксована місячна ставка працівника
+              </p>
+            </div>
+
+            {editingEmployee?.role === "MECHANIC" && (
+              <div className="grid gap-2">
+                <Label htmlFor="edit-commission">% від виконаних робіт</Label>
+                <div className="relative">
+                  <Input
+                    id="edit-commission"
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={editCommission}
+                    onChange={(e) => setEditCommission(e.target.value)}
+                    placeholder="Наприклад, 30"
+                    className="bg-secondary pr-10"
+                  />
+                  <Percent className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Відсоток від вартості послуги, який отримує механік
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSettingsOpen(false)} className="border-border">
+              Скасувати
+            </Button>
+            <Button onClick={handleSaveSettings} disabled={isSavingSettings} className="gap-2">
+              {isSavingSettings ? "Збереження..." : "Зберегти"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

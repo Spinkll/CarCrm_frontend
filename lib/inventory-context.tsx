@@ -33,7 +33,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     const [isLoading, setIsLoading] = useState(true)
 
     const fetchInventory = useCallback(async () => {
-        if (!user) return
+        if (!user || user.role === "CLIENT") return
         setIsLoading(true)
         try {
             const res = await api.get("/inventory")

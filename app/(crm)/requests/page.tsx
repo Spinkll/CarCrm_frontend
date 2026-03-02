@@ -66,10 +66,16 @@ export default function ServiceRequestsPage() {
 
     // Предзаповнюємо форму, якщо клієнт обрав час
     if (req.scheduledAt) {
-      // req.scheduledAt comes as ISO string e.g., "2026-02-23T14:00:00.000Z"
-      // We want to extract exactly the YYYY-MM-DD and HH:MM parts
-      const dateStr = req.scheduledAt.substring(0, 10) // "2026-02-23"
-      const timeStr = req.scheduledAt.substring(11, 16) // "14:00"
+      const dateObj = new Date(req.scheduledAt);
+      const dateStr = [
+        dateObj.getFullYear(),
+        String(dateObj.getMonth() + 1).padStart(2, '0'),
+        String(dateObj.getDate()).padStart(2, '0')
+      ].join('-');
+      const timeStr = [
+        String(dateObj.getHours()).padStart(2, '0'),
+        String(dateObj.getMinutes()).padStart(2, '0')
+      ].join(':');
 
       setApproveForm({
         date: dateStr,
@@ -202,7 +208,6 @@ export default function ServiceRequestsPage() {
                             {req.scheduledAt ? (
                               <Badge variant="outline" className="font-medium text-primary bg-primary/10 border-primary/20 py-1">
                                 {new Date(req.scheduledAt).toLocaleString('uk-UA', {
-                                  timeZone: 'UTC', // Обов'язково вказуємо UTC, бо ми зберігали час без зсувів 
                                   day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
                                 })}
                               </Badge>

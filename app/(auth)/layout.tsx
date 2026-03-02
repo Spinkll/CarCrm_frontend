@@ -11,7 +11,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated && pathname !== "/verify-email") {
-      router.replace("/")
+      router.replace("/dashboard")
     }
   }, [isAuthenticated, isLoading, router, pathname])
 

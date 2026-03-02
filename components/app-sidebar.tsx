@@ -31,7 +31,7 @@ type NavItem = {
 const navItems: NavItem[] = [
   {
     label: "Головна",
-    href: "/",
+    href: "/dashboard",
     icon: LayoutDashboard,
     roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"]
   },

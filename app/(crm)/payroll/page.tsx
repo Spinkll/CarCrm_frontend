@@ -25,27 +25,32 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Loader2, Banknote, Users, TrendingUp, Eye } from "lucide-react"
+import { Loader2, Banknote, Users, TrendingUp, Eye, Percent, Settings, Briefcase } from "lucide-react"
 import api from "@/lib/api"
 import { format } from "date-fns"
 import { uk } from "date-fns/locale"
+import { cn } from "@/lib/utils"
 
-interface MechanicWork {
-    id: number
+interface WorkDetail {
     orderId: number
     car: string
-    serviceName: string
+    description: string
     earned: number
     date: string
 }
 
-interface MechanicPayroll {
-    mechanicId: number
-    mechanicName: string
-    worksCount: number
+interface EmployeePayroll {
+    employeeId: number
+    name: string
+    role: string
+    currentCommissionRate: number
+    baseSalary: number
+    commissionEarnings: number
     totalEarnings: number
-    works: MechanicWork[]
+    tasksCount: number
+    details: WorkDetail[]
 }
 
 const monthNames = [
@@ -53,17 +58,23 @@ const monthNames = [
     "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень"
 ]
 
+const roleConfig: Record<string, { label: string; icon: any; className: string }> = {
+    ADMIN: { label: "Адміністратор", icon: Briefcase, className: "bg-primary/15 text-primary border-primary/30" },
+    MECHANIC: { label: "Механік", icon: Settings, className: "bg-orange-100 text-orange-700 border-orange-200" },
+    MANAGER: { label: "Менеджер", icon: Briefcase, className: "bg-purple-100 text-purple-700 border-purple-200" },
+}
+
 export default function PayrollPage() {
     const { user } = useAuth()
     const now = new Date()
 
     const [selectedMonth, setSelectedMonth] = useState(String(now.getMonth() + 1))
     const [selectedYear, setSelectedYear] = useState(String(now.getFullYear()))
-    const [data, setData] = useState<MechanicPayroll[]>([])
+    const [data, setData] = useState<EmployeePayroll[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
-    const [detailMechanic, setDetailMechanic] = useState<MechanicPayroll | null>(null)
+    const [detailEmployee, setDetailEmployee] = useState<EmployeePayroll | null>(null)
     const [detailOpen, setDetailOpen] = useState(false)
 
     const years = useMemo(() => {
@@ -100,19 +111,19 @@ export default function PayrollPage() {
     if (!user || (user.role !== "ADMIN" && user.role !== "MANAGER")) return null
 
     const totalFund = data.reduce((sum, m) => sum + m.totalEarnings, 0)
-    const mechanicsWithEarnings = data.filter(m => m.totalEarnings > 0).length
-    const avgSalary = mechanicsWithEarnings > 0 ? Math.round(totalFund / mechanicsWithEarnings) : 0
+    const employeesWithPayroll = data.filter(m => m.totalEarnings > 0).length
+    const avgSalary = employeesWithPayroll > 0 ? Math.round(totalFund / employeesWithPayroll) : 0
 
-    const openDetail = (mechanic: MechanicPayroll) => {
-        setDetailMechanic(mechanic)
+    const openDetail = (employee: EmployeePayroll) => {
+        setDetailEmployee(employee)
         setDetailOpen(true)
     }
 
     return (
         <div className="flex flex-1 flex-col overflow-hidden">
             <PageHeader
-                title="Зарплати механіків"
-                description="Перегляд нарахувань та деталізація по кожному механіку"
+                title="Зарплати працівників"
+                description="Перегляд нарахувань та деталізація по кожному працівнику"
             />
 
             <div className="flex-1 overflow-auto p-6 space-y-6">
@@ -171,11 +182,11 @@ export default function PayrollPage() {
 
                             <Card className="border-border bg-card">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Механіків з нарахуваннями</CardTitle>
+                                    <CardTitle className="text-sm font-medium">Працівників з нарахуваннями</CardTitle>
                                     <Users className="size-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold">{mechanicsWithEarnings}</div>
+                                    <div className="text-2xl font-bold">{employeesWithPayroll}</div>
                                     <p className="text-xs text-muted-foreground mt-1">
                                         з {data.length} загалом
                                     </p>
@@ -190,16 +201,16 @@ export default function PayrollPage() {
                                 <CardContent>
                                     <div className="text-2xl font-bold">{avgSalary.toLocaleString()} ₴</div>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        на одного механіка
+                                        на одного працівника
                                     </p>
                                 </CardContent>
                             </Card>
                         </div>
 
-                        {/* Таблиця механіків */}
+                        {/* Таблиця працівників */}
                         <Card className="border-border bg-card">
                             <CardHeader>
-                                <CardTitle>Деталізація по механіках</CardTitle>
+                                <CardTitle>Деталізація по працівниках</CardTitle>
                                 <CardDescription>
                                     Нарахування за {monthNames[Number(selectedMonth) - 1].toLowerCase()} {selectedYear} р.
                                 </CardDescription>
@@ -208,48 +219,95 @@ export default function PayrollPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="border-border hover:bg-transparent">
-                                            <TableHead className="pl-6 text-muted-foreground">Механік</TableHead>
-                                            <TableHead className="text-center text-muted-foreground">Виконано робіт</TableHead>
-                                            <TableHead className="text-right text-muted-foreground">Нараховано</TableHead>
+                                            <TableHead className="pl-6 text-muted-foreground">Працівник</TableHead>
+                                            <TableHead className="text-center text-muted-foreground">Роль</TableHead>
+                                            <TableHead className="text-right text-muted-foreground">Ставка</TableHead>
+                                            <TableHead className="text-right text-muted-foreground">% від робіт</TableHead>
+                                            <TableHead className="text-right text-muted-foreground">Від робіт</TableHead>
+                                            <TableHead className="text-right text-muted-foreground font-semibold">До виплати</TableHead>
                                             <TableHead className="pr-6 text-right text-muted-foreground">Дії</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {data.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={4} className="py-12 text-center text-muted-foreground">
+                                                <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">
                                                     Немає даних за обраний період
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
-                                            data.map((mechanic) => (
-                                                <TableRow key={mechanic.mechanicId} className="border-border">
-                                                    <TableCell className="pl-6">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="flex size-9 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-foreground">
-                                                                {mechanic.mechanicName.split(" ").map(n => n[0]).join("").toUpperCase()}
+                                            data.map((emp) => {
+                                                const baseSalary = Number(emp.baseSalary) || 0
+                                                const commissionEarnings = Number(emp.commissionEarnings) || 0
+                                                const totalToPay = Number(emp.totalEarnings) || 0
+                                                const config = roleConfig[emp.role] || roleConfig.MECHANIC
+
+                                                return (
+                                                    <TableRow key={emp.employeeId} className="border-border">
+                                                        <TableCell className="pl-6">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="flex size-9 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-foreground">
+                                                                    {(emp.name || "").split(" ").map(n => n?.[0] || "").join("").toUpperCase()}
+                                                                </div>
+                                                                <span className="font-medium text-foreground">{emp.name}</span>
                                                             </div>
-                                                            <span className="font-medium text-foreground">{mechanic.mechanicName}</span>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="text-center text-foreground">{mechanic.worksCount}</TableCell>
-                                                    <TableCell className="text-right font-medium text-foreground">
-                                                        {mechanic.totalEarnings.toLocaleString()} ₴
-                                                    </TableCell>
-                                                    <TableCell className="pr-6 text-right">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="gap-1.5 text-xs"
-                                                            onClick={() => openDetail(mechanic)}
-                                                            disabled={mechanic.worksCount === 0}
-                                                        >
-                                                            <Eye className="size-4" />
-                                                            Деталі
-                                                        </Button>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))
+                                                        </TableCell>
+                                                        <TableCell className="text-center">
+                                                            <Badge
+                                                                variant="outline"
+                                                                className={cn(
+                                                                    "gap-1 rounded-md border px-2 py-0.5 text-xs font-medium",
+                                                                    config.className
+                                                                )}
+                                                            >
+                                                                <config.icon className="size-3" />
+                                                                {config.label}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell className="text-right text-foreground">
+                                                            {baseSalary > 0 ? (
+                                                                <span>{baseSalary.toLocaleString()} ₴</span>
+                                                            ) : (
+                                                                <span className="text-muted-foreground">—</span>
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell className="text-right">
+                                                            {emp.currentCommissionRate ? (
+                                                                <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 border border-blue-200 px-2 py-0.5 text-xs font-medium text-blue-700">
+                                                                    <Percent className="size-3" />
+                                                                    {emp.currentCommissionRate}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-muted-foreground">—</span>
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell className="text-right text-foreground">
+                                                            {commissionEarnings > 0 ? (
+                                                                <span>{commissionEarnings.toLocaleString()} ₴</span>
+                                                            ) : (
+                                                                <span className="text-muted-foreground">—</span>
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell className="text-right">
+                                                            <span className="font-bold text-foreground text-base">
+                                                                {totalToPay.toLocaleString()} ₴
+                                                            </span>
+                                                        </TableCell>
+                                                        <TableCell className="pr-6 text-right">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="gap-1.5 text-xs"
+                                                                onClick={() => openDetail(emp)}
+                                                                disabled={emp.tasksCount === 0}
+                                                            >
+                                                                <Eye className="size-4" />
+                                                                Деталі
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )
+                                            })
                                         )}
                                     </TableBody>
                                 </Table>
@@ -259,41 +317,71 @@ export default function PayrollPage() {
                 )}
             </div>
 
-            {/* Модальне вікно деталей механіка */}
+            {/* Модальне вікно деталей */}
             <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
                 <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
                     <DialogHeader>
                         <DialogTitle>
-                            Деталізація: {detailMechanic?.mechanicName}
+                            Деталізація: {detailEmployee?.name}
+                            {detailEmployee?.currentCommissionRate ? (
+                                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                                    (% від робіт: {detailEmployee.currentCommissionRate}%)
+                                </span>
+                            ) : null}
                         </DialogTitle>
                     </DialogHeader>
+
+                    {/* Підсумок */}
+                    {detailEmployee && (
+                        <div className="grid grid-cols-3 gap-3 px-1">
+                            <div className="rounded-lg bg-secondary p-3 text-center">
+                                <p className="text-xs text-muted-foreground mb-1">Ставка</p>
+                                <p className="font-semibold text-foreground">
+                                    {(Number(detailEmployee.baseSalary) || 0).toLocaleString()} ₴
+                                </p>
+                            </div>
+                            <div className="rounded-lg bg-secondary p-3 text-center">
+                                <p className="text-xs text-muted-foreground mb-1">Від робіт</p>
+                                <p className="font-semibold text-foreground">
+                                    {(Number(detailEmployee.commissionEarnings) || 0).toLocaleString()} ₴
+                                </p>
+                            </div>
+                            <div className="rounded-lg bg-primary/10 p-3 text-center">
+                                <p className="text-xs text-muted-foreground mb-1">До виплати</p>
+                                <p className="font-bold text-primary text-lg">
+                                    {(Number(detailEmployee.totalEarnings) || 0).toLocaleString()} ₴
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex-1 overflow-auto">
-                        {detailMechanic && detailMechanic.works.length > 0 ? (
+                        {detailEmployee && detailEmployee.details.length > 0 ? (
                             <Table>
                                 <TableHeader>
                                     <TableRow className="border-border hover:bg-transparent">
                                         <TableHead className="pl-4 text-muted-foreground">№ Замовлення</TableHead>
                                         <TableHead className="text-muted-foreground">Автомобіль</TableHead>
-                                        <TableHead className="text-muted-foreground">Назва роботи</TableHead>
+                                        <TableHead className="text-muted-foreground">Опис</TableHead>
                                         <TableHead className="text-right text-muted-foreground">Зароблено</TableHead>
                                         <TableHead className="pr-4 text-right text-muted-foreground">Дата</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {detailMechanic.works.map((work) => (
-                                        <TableRow key={work.id} className="border-border">
+                                    {detailEmployee.details.map((detail, idx) => (
+                                        <TableRow key={`${detail.orderId}-${idx}`} className="border-border">
                                             <TableCell className="pl-4 font-mono text-xs font-medium">
-                                                #{work.orderId}
+                                                #{detail.orderId}
                                             </TableCell>
-                                            <TableCell className="text-sm">{work.car}</TableCell>
-                                            <TableCell className="max-w-[200px] truncate text-sm" title={work.serviceName}>
-                                                {work.serviceName}
+                                            <TableCell className="text-sm">{detail.car}</TableCell>
+                                            <TableCell className="max-w-[200px] truncate text-sm" title={detail.description}>
+                                                {detail.description}
                                             </TableCell>
                                             <TableCell className="text-right font-medium">
-                                                {work.earned.toLocaleString()} ₴
+                                                {detail.earned.toLocaleString()} ₴
                                             </TableCell>
                                             <TableCell className="pr-4 text-right text-muted-foreground text-sm">
-                                                {format(new Date(work.date), "dd.MM.yyyy HH:mm")}
+                                                {format(new Date(detail.date), "dd.MM.yyyy HH:mm")}
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -301,17 +389,17 @@ export default function PayrollPage() {
                             </Table>
                         ) : (
                             <div className="py-12 text-center text-muted-foreground">
-                                Цей механік не виконав жодних робіт за обраний період
+                                Цей працівник не має виконаних робіт за обраний період
                             </div>
                         )}
                     </div>
-                    {detailMechanic && detailMechanic.works.length > 0 && (
+                    {detailEmployee && detailEmployee.details.length > 0 && (
                         <div className="border-t border-border pt-4 flex justify-between items-center">
                             <span className="text-sm text-muted-foreground">
-                                Всього робіт: {detailMechanic.worksCount}
+                                Всього задач: {detailEmployee.tasksCount}
                             </span>
                             <span className="text-lg font-bold text-foreground">
-                                Разом: {detailMechanic.totalEarnings.toLocaleString()} ₴
+                                Від робіт: {(Number(detailEmployee.commissionEarnings) || 0).toLocaleString()} ₴
                             </span>
                         </div>
                     )}

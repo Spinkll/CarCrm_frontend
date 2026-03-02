@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { toast } from "@/hooks/use-toast"
 import { useNotifications } from "@/lib/notifications-context"
 import { PageHeader } from "@/components/page-header"
@@ -13,51 +13,43 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { StatusBadge } from "@/components/status-badge"
-import { CalendarDays, Clock, User, Car, ChevronDown, Loader2, Wrench, AlertCircle } from "lucide-react"
+import { CalendarDays, Clock, User, Car, Loader2, Wrench, AlertCircle, History, CalendarClock } from "lucide-react"
 import { useAppointments } from "@/lib/appointments-context"
 import { useAuth } from "@/lib/auth-context"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 
-const statusTranslations: Record<string, string> = {
-  SCHEDULED: "Заплановано",
-  CONFIRMED: "Підтверджено",
-  ARRIVED: "Прибув",
-  COMPLETED: "Завершено",
-  NO_SHOW: "Не з'явився",
-  CANCELLED: "Скасовано",
-}
-
-const allStatuses = ["SCHEDULED", "CONFIRMED", "ARRIVED", "COMPLETED", "NO_SHOW", "CANCELLED"]
 
 export default function AppointmentsPage() {
-  const { appointments, isLoading, fetchAppointments, updateStatus, reschedule } = useAppointments()
+  const { appointments, isLoading, fetchAppointments, reschedule } = useAppointments()
   const { user } = useAuth()
 
   const [rescheduleOpen, setRescheduleOpen] = useState(false)
   const [rescheduleTarget, setRescheduleTarget] = useState<{ id: number; scheduledAt: string; estimatedMin: number | null } | null>(null)
   const [rescheduleForm, setRescheduleForm] = useState({ date: "", time: "", estimatedMin: "" })
+  const [tab, setTab] = useState<"active" | "history">("active")
 
   const role = user?.role?.toLowerCase() || "client"
-  const canUpdateStatus = role === "admin" || role === "manager" || role === "mechanic"
+  const canReschedule = role === "admin" || role === "manager"
+
+  const activeStatuses = ["SCHEDULED", "CONFIRMED", "ARRIVED"]
+  const historyStatuses = ["COMPLETED", "NO_SHOW", "CANCELLED"]
+
+  const activeCounts = useMemo(() => ({
+    active: appointments.filter(a => activeStatuses.includes(a.status)).length,
+    history: appointments.filter(a => historyStatuses.includes(a.status)).length,
+  }), [appointments])
+
+  // Фільтруємо записи за обраною вкладкою
+  const filteredAppointments = useMemo(() => {
+    const statuses = tab === "active" ? activeStatuses : historyStatuses
+    return appointments.filter(a => statuses.includes(a.status))
+  }, [appointments, tab])
 
   // Групуємо записи за датами
-  const grouped = appointments.reduce<Record<string, typeof appointments>>((acc, appt) => {
+  const grouped = filteredAppointments.reduce<Record<string, typeof appointments>>((acc, appt) => {
     const dateKey = appt.scheduledAt ? appt.scheduledAt.split("T")[0] : "unknown"
     if (!acc[dateKey]) acc[dateKey] = []
     acc[dateKey].push(appt)
@@ -65,7 +57,9 @@ export default function AppointmentsPage() {
   }, {})
 
   const sortedDates = Object.keys(grouped).sort(
-    (a, b) => new Date(a).getTime() - new Date(b).getTime()
+    (a, b) => tab === "history"
+      ? new Date(b).getTime() - new Date(a).getTime()
+      : new Date(a).getTime() - new Date(b).getTime()
   )
 
   function formatDate(dateStr: string) {
@@ -90,17 +84,7 @@ export default function AppointmentsPage() {
     return d.toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })
   }
 
-  const { fetchNotifications } = useNotifications()
 
-  async function handleStatusUpdate(id: number, status: string) {
-    const result = await updateStatus(id, status)
-    if (result.success) {
-      toast({ title: "Статус оновлено", variant: "success" })
-      fetchNotifications()
-    } else {
-      toast({ title: "Помилка зміни статусу", description: result.error, variant: "destructive" })
-    }
-  }
 
   function openReschedule(appt: typeof appointments[0]) {
     const d = new Date(appt.scheduledAt)
@@ -112,6 +96,8 @@ export default function AppointmentsPage() {
     })
     setRescheduleOpen(true)
   }
+
+  const { fetchNotifications } = useNotifications()
 
   async function handleReschedule() {
     if (!rescheduleTarget || !rescheduleForm.date || !rescheduleForm.time) return
@@ -148,6 +134,23 @@ export default function AppointmentsPage() {
       />
 
       <div className="min-h-0 flex-1 overflow-auto p-6">
+        <div className="mb-6">
+          <Tabs value={tab} onValueChange={(v) => setTab(v as "active" | "history")} className="w-full sm:w-auto">
+            <TabsList>
+              <TabsTrigger value="active">
+                <CalendarDays className="mr-1.5 size-3.5" />
+                Активні
+                <span className="ml-1.5 text-xs text-muted-foreground">({activeCounts.active})</span>
+              </TabsTrigger>
+              <TabsTrigger value="history">
+                <History className="mr-1.5 size-3.5" />
+                Історія
+                <span className="ml-1.5 text-xs text-muted-foreground">({activeCounts.history})</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
         {isLoading ? (
           <div className="flex h-64 items-center justify-center">
             <Loader2 className="size-8 animate-spin text-primary" />
@@ -171,7 +174,7 @@ export default function AppointmentsPage() {
                       const mechanic = appt.order?.mechanic
 
                       return (
-                        <Card key={appt.id} className="border-border bg-card hover:shadow-sm transition-shadow flex flex-col">
+                        <Card key={appt.id} className={`border-border bg-card hover:shadow-sm transition-shadow flex flex-col${tab === "history" ? " opacity-70" : ""}`}>
                           <CardContent className="p-4 flex flex-col h-full">
                             <div className="flex items-start justify-between">
                               <div className="flex items-center gap-3">
@@ -191,30 +194,17 @@ export default function AppointmentsPage() {
                               </div>
                               <div className="flex items-center gap-1">
                                 <StatusBadge status={appt.status} />
-                                {canUpdateStatus && (
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="size-7">
-                                        <ChevronDown className="size-3" />
-                                        <span className="sr-only">Змінити статус</span>
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      {allStatuses
-                                        .filter((s) => s !== appt.status)
-                                        .map((status) => (
-                                          <DropdownMenuItem
-                                            key={status}
-                                            onClick={() => handleStatusUpdate(appt.id, status)}
-                                          >
-                                            {statusTranslations[status] || status}
-                                          </DropdownMenuItem>
-                                        ))}
-                                      <DropdownMenuItem onClick={() => openReschedule(appt)}>
-                                        📅 Перенести
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
+                                {canReschedule && tab === "active" && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-7"
+                                    title="Перенести запис"
+                                    onClick={() => openReschedule(appt)}
+                                  >
+                                    <CalendarClock className="size-3.5" />
+                                    <span className="sr-only">Перенести</span>
+                                  </Button>
                                 )}
                               </div>
                             </div>
@@ -278,9 +268,15 @@ export default function AppointmentsPage() {
             {sortedDates.length === 0 && (
               <Card className="border-border bg-card">
                 <CardContent className="flex flex-col items-center justify-center py-16">
-                  <CalendarDays className="size-12 text-muted-foreground opacity-20" />
+                  {tab === "history" ? (
+                    <History className="size-12 text-muted-foreground opacity-20" />
+                  ) : (
+                    <CalendarDays className="size-12 text-muted-foreground opacity-20" />
+                  )}
                   <p className="mt-4 text-sm font-medium text-muted-foreground">
-                    {role === "client" ? "У вас немає запланованих записів" : "Немає записів"}
+                    {tab === "history"
+                      ? "Історія записів порожня"
+                      : role === "client" ? "У вас немає запланованих записів" : "Немає активних записів"}
                   </p>
                 </CardContent>
               </Card>

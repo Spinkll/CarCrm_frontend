@@ -74,9 +74,8 @@ export default function OrdersPage() {
   const { vehicles } = useVehicles()
   const { customers, refreshData } = useCrm()
 
-  // ДОСТАЕМ ФУНКЦИЮ СОЗДАНИЯ ЗАЯВКИ
   const { createRequest } = useServiceRequests()
-  const { fetchAppointments, getAvailableSlots } = useAppointments()
+  const { appointments, fetchAppointments, getAvailableSlots, updateStatus: updateAppointmentStatus } = useAppointments()
   const { fetchNotifications } = useNotifications()
 
   const [open, setOpen] = useState(false)
@@ -158,8 +157,7 @@ export default function OrdersPage() {
       let scheduledAt
       if (selectedDate && selectedTimeSlot) {
         const dateStr = format(selectedDate, "yyyy-MM-dd")
-        // Зберігаємо обраний час як абсолютний, щоб уникнути зсувів часового поясу браузером
-        scheduledAt = `${dateStr}T${selectedTimeSlot}:00.000Z`
+        scheduledAt = new Date(`${dateStr}T${selectedTimeSlot}:00`).toISOString()
       }
 
       const result = await createRequest(Number(form.vehicleId), form.description, scheduledAt);
@@ -317,12 +315,34 @@ export default function OrdersPage() {
                                     <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
                                       Змінити статус
                                     </div>
-                                    {["CONFIRMED", "IN_PROGRESS", "WAITING_PARTS", "COMPLETED", "PAID", "CANCELLED"]
+                                    {["CONFIRMED", "IN_PROGRESS", "WAITING_PARTS", "COMPLETED", "CANCELLED"]
                                       .filter((s) => s !== order.status)
                                       .map((status) => (
                                         <DropdownMenuItem
                                           key={status}
-                                          onClick={async () => { await updateStatus(order.id, status); refreshData(); fetchNotifications(); toast({ title: "Статус оновлено", variant: "success" }) }}
+                                          onClick={async () => {
+                                            await updateStatus(order.id, status)
+
+                                            // Синхронізація статусу запису в календарі
+                                            const orderToApptStatus: Record<string, string> = {
+                                              CONFIRMED: "CONFIRMED",
+                                              IN_PROGRESS: "ARRIVED",
+                                              COMPLETED: "COMPLETED",
+                                              PAID: "COMPLETED",
+                                              CANCELLED: "CANCELLED",
+                                            }
+                                            const apptStatus = orderToApptStatus[status]
+                                            if (apptStatus) {
+                                              const relatedAppt = appointments.find(a => a.orderId === order.id)
+                                              if (relatedAppt && relatedAppt.status !== apptStatus) {
+                                                await updateAppointmentStatus(relatedAppt.id, apptStatus)
+                                              }
+                                            }
+
+                                            refreshData()
+                                            fetchNotifications()
+                                            toast({ title: "Статус оновлено", variant: "success" })
+                                          }}
                                           className="cursor-pointer"
                                         >
                                           {statusTranslations[status] || status}

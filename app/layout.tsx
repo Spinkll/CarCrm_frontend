@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
 
@@ -36,10 +35,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="font-sans antialiased" style={{ overflow: 'hidden', height: '100%' }}>
+      <body className="font-sans antialiased h-full">
         {children}
         <Toaster />
-        <Analytics />
       </body>
     </html>
   )
