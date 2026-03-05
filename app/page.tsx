@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ArrowRight, Wrench, ShieldCheck, Clock, CheckCircle2, Star, CalendarDays, Phone, Mail, MapPin } from "lucide-react"
+import { ArrowRight, Wrench, ShieldCheck, Clock, CheckCircle2, Star, CalendarDays, Phone, Mail, MapPin, ClipboardList, Search, ThumbsUp } from "lucide-react"
 
 export default function LandingPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -62,17 +63,42 @@ export default function LandingPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/5 to-transparent z-0 pointer-events-none"></div>
 
           <div className="container relative mx-auto px-4 md:px-6 z-10 w-full mb-8 md:mb-12">
-            <div className="flex flex-col items-center gap-4 md:gap-6 text-center max-w-4xl mx-auto w-full">
-              <div className="inline-flex items-center rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs md:text-sm font-medium text-white mb-2 md:mb-4 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, ease: "easeOut" }}
+              className="flex flex-col items-center gap-4 md:gap-6 text-center max-w-4xl mx-auto w-full"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="inline-flex items-center rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs md:text-sm font-medium text-white mb-2 md:mb-4 backdrop-blur-md"
+              >
                 <Star className="mr-1.5 md:mr-2 size-3 md:size-4 text-primary fill-primary" /> Сучасний сервіс
-              </div>
-              <h1 className="text-3xl font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl w-full text-white drop-shadow-sm leading-tight">
+              </motion.div>
+              <motion.h1
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                className="text-3xl font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl w-full text-white drop-shadow-sm leading-tight"
+              >
                 Професійне обслуговування <br className="hidden sm:block" /><span className="text-primary drop-shadow-[0_2px_10px_rgba(255,255,255,0.1)]">без компромісів</span>
-              </h1>
-              <p className="mx-auto max-w-[700px] text-base md:text-lg text-gray-300 lg:text-xl leading-relaxed w-full drop-shadow-sm px-2 sm:px-0 mt-2">
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+                className="mx-auto max-w-[700px] text-base md:text-lg text-gray-300 lg:text-xl leading-relaxed w-full drop-shadow-sm px-2 sm:px-0 mt-2"
+              >
                 Довірте своє авто професіоналам WagGarage. Швидка діагностика, оригінальні запчастини та гарантія на всі види робіт. Ваш спокій — наш пріоритет.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 mt-6 md:mt-8 w-full sm:w-auto px-4 sm:px-0">
+              </motion.p>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.5 }}
+                className="flex flex-col sm:flex-row gap-3 mt-6 md:mt-8 w-full sm:w-auto px-4 sm:px-0"
+              >
                 <Link href="/dashboard" className="w-full sm:w-auto">
                   <Button size="lg" className="w-full gap-2 rounded-full text-sm md:text-base h-12 md:h-14 px-6 md:px-8 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-shadow">
                     <CalendarDays className="size-4 md:size-5" /> Записатися онлайн
@@ -83,8 +109,8 @@ export default function LandingPage() {
                     Наші послуги
                   </Button>
                 </Link>
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
           </div>
         </section>
 
@@ -97,13 +123,20 @@ export default function LandingPage() {
                 { icon: Clock, title: "Виконання в строк", desc: "Цінуємо ваш час. Роботи виконуються чітко у попередньо обумовлені терміни." },
                 { icon: CheckCircle2, title: "Прозорі ціни", desc: "Ви завжди знаєте за що платите. Жодного нав'язування додаткових послуг." }
               ].map((feature, i) => (
-                <div key={i} className="flex flex-col items-center text-center space-y-4 p-6 rounded-2xl bg-secondary/30 hover:bg-secondary/50 transition-colors border border-border/50 w-full">
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: i * 0.15 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  key={i}
+                  className="flex flex-col items-center text-center space-y-4 p-6 rounded-2xl bg-secondary/30 hover:bg-secondary/50 transition-colors border border-border/50 w-full"
+                >
                   <div className="p-3 bg-primary/10 rounded-xl">
                     <feature.icon className="size-8 text-primary" />
                   </div>
                   <h3 className="text-xl font-bold">{feature.title}</h3>
                   <p className="text-muted-foreground">{feature.desc}</p>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
@@ -112,12 +145,18 @@ export default function LandingPage() {
         {/* SERVICES */}
         <section id="services" className="w-full py-16 md:py-24 bg-secondary/10">
           <div className="container mx-auto px-4 md:px-6 w-full">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12 w-full">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: true, margin: "-50px" }}
+              className="flex flex-col items-center justify-center space-y-4 text-center mb-12 w-full"
+            >
               <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">Популярні послуги</h2>
               <p className="max-w-[700px] text-muted-foreground md:text-lg">
                 Надаємо повний спектр послуг з ремонту та технічного обслуговування автомобілів.
               </p>
-            </div>
+            </motion.div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto w-full">
               {[
@@ -126,14 +165,73 @@ export default function LandingPage() {
                 "Ремонт двигунів", "Діагностика авто перед покупкою",
                 "Обслуговування кондиціонерів", "Шиномонтаж та балансування"
               ].map((service, i) => (
-                <Card key={i} className="group hover:border-primary/50 hover:shadow-md transition-all duration-300 bg-card w-full">
-                  <CardContent className="p-6 flex flex-col items-start gap-4">
-                    <div className="p-2 rounded-lg bg-primary/5 group-hover:bg-primary/10 transition-colors">
-                      <Wrench className="size-5 text-primary" />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                  whileInView={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: i * 0.05 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  key={i}
+                  className="w-full h-full"
+                >
+                  <Card className="group h-full hover:border-primary/50 hover:shadow-md transition-all duration-300 bg-card w-full">
+                    <CardContent className="p-6 flex flex-col items-start gap-4 h-full">
+                      <div className="p-2 rounded-lg bg-primary/5 group-hover:bg-primary/10 transition-colors">
+                        <Wrench className="size-5 text-primary" />
+                      </div>
+                      <h3 className="font-semibold text-foreground leading-tight">{service}</h3>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* HOW IT WORKS */}
+        <section className="w-full py-16 md:py-24 bg-background">
+          <div className="container mx-auto px-4 md:px-6 w-full">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: true, margin: "-50px" }}
+              className="flex flex-col items-center justify-center space-y-4 text-center mb-16 w-full"
+            >
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">Як ми працюємо</h2>
+              <p className="max-w-[700px] text-muted-foreground md:text-lg">
+                4 простих кроки від проблеми з авто до її вирішення.
+              </p>
+            </motion.div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-4 lg:gap-8 max-w-6xl mx-auto w-full relative">
+              {/* З'єднувальна лінія для десктопу */}
+              <div className="hidden md:block absolute top-[48px] left-[12%] right-[12%] h-[2px] bg-border z-0"></div>
+
+              {[
+                { icon: ClipboardList, step: "01", title: "Запис онлайн", desc: "Залишаєте заявку або записуєтесь через кабінет." },
+                { icon: Search, step: "02", title: "Діагностика", desc: "Проводимо ретельну перевірку вашого автомобіля." },
+                { icon: Wrench, step: "03", title: "Ремонт", desc: "Професійне виконання робіт та заміна деталей." },
+                { icon: ThumbsUp, step: "04", title: "Результат", desc: "Отримуєте цілком справне авто з гарантією." },
+              ].map((step, i) => (
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: i * 0.15 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  key={i}
+                  className="flex flex-col items-center text-center space-y-4 relative z-10"
+                >
+                  <div className="w-24 h-24 rounded-full bg-card border-[4px] border-background flex items-center justify-center shadow-lg relative group transition-transform duration-300 hover:scale-105">
+                    <step.icon className="size-10 text-primary group-hover:scale-110 transition-transform duration-300" />
+                    <div className="absolute -top-1 -right-1 w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold flex items-center justify-center text-sm ring-4 ring-background shadow-sm">
+                      {step.step}
                     </div>
-                    <h3 className="font-semibold text-foreground leading-tight">{service}</h3>
-                  </CardContent>
-                </Card>
+                  </div>
+                  <div className="pt-2 px-2">
+                    <h3 className="text-xl font-bold mb-2">{step.title}</h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed">{step.desc}</p>
+                  </div>
+                </motion.div>
               ))}
             </div>
           </div>
@@ -142,7 +240,13 @@ export default function LandingPage() {
         {/* CTA SECTION */}
         <section className="w-full py-20 bg-primary/5 border-y border-border/50 relative overflow-hidden">
           <div className="container mx-auto px-4 md:px-6 relative z-10 w-full">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-8 max-w-5xl mx-auto w-full">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: true, margin: "-50px" }}
+              className="flex flex-col md:flex-row items-center justify-between gap-8 max-w-5xl mx-auto w-full"
+            >
               <div className="space-y-4 max-w-lg text-center md:text-left px-2 sm:px-0">
                 <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">Готові записатися на сервіс?</h2>
                 <p className="text-muted-foreground text-base sm:text-lg">
@@ -171,7 +275,7 @@ export default function LandingPage() {
                   </Link>
                 )}
               </div>
-            </div>
+            </motion.div>
           </div>
         </section>
       </main>
