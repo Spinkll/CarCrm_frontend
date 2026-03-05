@@ -17,27 +17,29 @@ export default function LandingPage() {
     <div className="flex min-h-screen flex-col bg-background font-sans overflow-y-auto w-full">
       {/* HEADER */}
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
+        <div className="container mx-auto flex h-14 md:h-16 items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-2">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary">
-              <Wrench className="size-4 text-primary-foreground" />
+            <div className="flex size-7 md:size-8 items-center justify-center rounded-lg bg-primary">
+              <Wrench className="size-3.5 md:size-4 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold tracking-tight text-foreground">WagGarage</span>
+            <span className="text-lg md:text-xl font-bold tracking-tight text-foreground">WagGarage</span>
           </div>
           <nav className="hidden md:flex gap-6">
             <a href="#services" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Послуги</a>
             <a href="#features" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Переваги</a>
             <a href="#contacts" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Контакти</a>
           </nav>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
             {!isAuthenticated && (
               <Link href="/login">
-                <Button variant="ghost" className="hidden sm:flex">Увійти</Button>
+                <Button variant="ghost" className="hidden sm:flex text-sm">Увійти</Button>
               </Link>
             )}
             <Link href="/dashboard">
-              <Button className="gap-2 rounded-full">
-                Особистий кабінет <ArrowRight className="size-4 hidden sm:block" />
+              <Button className="gap-2 rounded-full h-8 px-3 md:h-10 md:px-4 text-xs md:text-sm">
+                <span className="hidden sm:inline">Особистий кабінет</span>
+                <span className="sm:hidden">Кабінет</span>
+                <ArrowRight className="size-4 hidden sm:block" />
               </Button>
             </Link>
           </div>
@@ -59,25 +61,25 @@ export default function LandingPage() {
           {/* Градієнт для плавного переходу вниз */}
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/5 to-transparent z-0 pointer-events-none"></div>
 
-          <div className="container relative mx-auto px-4 md:px-6 z-10 w-full mb-12">
-            <div className="flex flex-col items-center gap-6 text-center max-w-4xl mx-auto w-full">
-              <div className="inline-flex items-center rounded-full border border-white/20 bg-black/40 px-3 py-1 text-sm font-medium text-white mb-4 backdrop-blur-md">
-                <Star className="mr-2 size-4 text-primary fill-primary" /> Сучасний сервіс для вашого авто
+          <div className="container relative mx-auto px-4 md:px-6 z-10 w-full mb-8 md:mb-12">
+            <div className="flex flex-col items-center gap-4 md:gap-6 text-center max-w-4xl mx-auto w-full">
+              <div className="inline-flex items-center rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs md:text-sm font-medium text-white mb-2 md:mb-4 backdrop-blur-md">
+                <Star className="mr-1.5 md:mr-2 size-3 md:size-4 text-primary fill-primary" /> Сучасний сервіс
               </div>
-              <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl w-full text-white drop-shadow-sm">
-                Професійне обслуговування <span className="text-primary drop-shadow-[0_2px_10px_rgba(255,255,255,0.1)]">без компромісів</span>
+              <h1 className="text-3xl font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl w-full text-white drop-shadow-sm leading-tight">
+                Професійне обслуговування <br className="hidden sm:block" /><span className="text-primary drop-shadow-[0_2px_10px_rgba(255,255,255,0.1)]">без компромісів</span>
               </h1>
-              <p className="mx-auto max-w-[700px] text-lg text-gray-300 md:text-xl leading-relaxed w-full drop-shadow-sm">
+              <p className="mx-auto max-w-[700px] text-base md:text-lg text-gray-300 lg:text-xl leading-relaxed w-full drop-shadow-sm px-2 sm:px-0 mt-2">
                 Довірте своє авто професіоналам WagGarage. Швидка діагностика, оригінальні запчастини та гарантія на всі види робіт. Ваш спокій — наш пріоритет.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 mt-8 w-full sm:w-auto">
+              <div className="flex flex-col sm:flex-row gap-3 mt-6 md:mt-8 w-full sm:w-auto px-4 sm:px-0">
                 <Link href="/dashboard" className="w-full sm:w-auto">
-                  <Button size="lg" className="w-full gap-2 rounded-full text-base h-14 px-8 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-shadow">
-                    <CalendarDays className="size-5" /> Записатися онлайн
+                  <Button size="lg" className="w-full gap-2 rounded-full text-sm md:text-base h-12 md:h-14 px-6 md:px-8 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-shadow">
+                    <CalendarDays className="size-4 md:size-5" /> Записатися онлайн
                   </Button>
                 </Link>
                 <Link href="#services" className="w-full sm:w-auto">
-                  <Button size="lg" variant="outline" className="w-full rounded-full text-base h-14 px-8 bg-black/30 text-white border-white/20 hover:bg-white/10 hover:text-white backdrop-blur-md transition-all">
+                  <Button size="lg" variant="outline" className="w-full rounded-full text-sm md:text-base h-12 md:h-14 px-6 md:px-8 bg-black/30 text-white border-white/20 hover:bg-white/10 hover:text-white backdrop-blur-md transition-all">
                     Наші послуги
                   </Button>
                 </Link>
@@ -141,9 +143,9 @@ export default function LandingPage() {
         <section className="w-full py-20 bg-primary/5 border-y border-border/50 relative overflow-hidden">
           <div className="container mx-auto px-4 md:px-6 relative z-10 w-full">
             <div className="flex flex-col md:flex-row items-center justify-between gap-8 max-w-5xl mx-auto w-full">
-              <div className="space-y-4 max-w-lg text-center md:text-left">
-                <h2 className="text-3xl md:text-4xl font-bold text-foreground">Готові записатися на сервіс?</h2>
-                <p className="text-muted-foreground text-lg">
+              <div className="space-y-4 max-w-lg text-center md:text-left px-2 sm:px-0">
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">Готові записатися на сервіс?</h2>
+                <p className="text-muted-foreground text-base sm:text-lg">
                   Реєструйтесь в нашому CRM-кабінеті, щоб легко керувати історією авто та записуватись онлайн.
                 </p>
               </div>
@@ -151,19 +153,19 @@ export default function LandingPage() {
                 {!isAuthenticated ? (
                   <>
                     <Link href="/register" className="w-full sm:w-auto">
-                      <Button size="lg" className="rounded-full shadow-lg hover:shadow-xl transition-all gap-2 h-14 px-8 text-base w-full">
+                      <Button size="lg" className="rounded-full shadow-lg hover:shadow-xl transition-all gap-2 h-12 sm:h-14 px-6 sm:px-8 text-sm sm:text-base w-full">
                         Реєстрація клієнта
                       </Button>
                     </Link>
                     <Link href="/login" className="w-full sm:w-auto">
-                      <Button size="lg" variant="outline" className="rounded-full h-14 px-8 text-base bg-background w-full">
+                      <Button size="lg" variant="outline" className="rounded-full h-12 sm:h-14 px-6 sm:px-8 text-sm sm:text-base bg-background w-full">
                         Увійти
                       </Button>
                     </Link>
                   </>
                 ) : (
                   <Link href="/dashboard" className="w-full sm:w-auto">
-                    <Button size="lg" className="rounded-full shadow-lg hover:shadow-xl transition-all gap-2 h-14 px-8 text-base w-full">
+                    <Button size="lg" className="rounded-full shadow-lg hover:shadow-xl transition-all gap-2 h-12 sm:h-14 px-6 sm:px-8 text-sm sm:text-base w-full">
                       Перейти в кабінет
                     </Button>
                   </Link>
@@ -195,7 +197,7 @@ export default function LandingPage() {
               <ul className="space-y-2 text-sm text-muted-foreground w-full">
                 <li className="flex items-center gap-2 break-all"><Phone className="size-4 shrink-0" /> +380 (99) 123-45-67</li>
                 <li className="flex items-center gap-2 break-all"><Mail className="size-4 shrink-0" /> info@waggarage.com</li>
-                <li className="flex items-start gap-2 break-words"><MapPin className="size-4 shrink-0 mt-0.5" /> м. Київ, вул. Автомобільна 1</li>
+                <li className="flex items-start gap-2 break-words"><MapPin className="size-4 shrink-0 mt-0.5" /> м. Запоріжжя, вул. Перемоги</li>
               </ul>
             </div>
 

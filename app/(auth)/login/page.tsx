@@ -92,7 +92,51 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-4 text-center text-sm text-muted-foreground">
+          <div className="mt-6 flex flex-col gap-2">
+            <div className="text-center text-sm font-medium text-muted-foreground">
+              Швидкий вхід:
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setEmail("admin@admin.com")
+                  setPassword("12345678")
+                }}
+                disabled={isLoading}
+              >
+                Адмін
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setEmail("client@client.com")
+                  setPassword("123456789")
+                }}
+                disabled={isLoading}
+              >
+                Клієнт
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setEmail("mechanic@mechanic.com")
+                  setPassword("12345678")
+                }}
+                disabled={isLoading}
+              >
+                Механік
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-6 text-center text-sm text-muted-foreground">
             {"Немає облікового запису? "}
             <Link href="/register" className="text-primary underline-offset-4 hover:underline">
               Реєстрація
