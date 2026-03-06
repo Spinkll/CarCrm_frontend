@@ -15,9 +15,11 @@ import {
   MessageSquare,
   Package,
   Banknote,
+  Menu,
+  X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAuth, type UserRole } from "@/lib/auth-context"
 import { useServiceRequests } from "@/lib/service-requests-context"
 import { UserNav } from "@/components/user-nav"
@@ -101,10 +103,33 @@ const navItems: NavItem[] = [
 export function AppSidebar() {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const { user } = useAuth()
 
   // Use service requests to get the count of newly incoming or in-review requests
   const { requests } = useServiceRequests()
+
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [pathname])
+
+  // Handle escape key to close mobile sidebar
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false)
+    }
+    if (mobileOpen) {
+      document.addEventListener("keydown", handleEscape)
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = ""
+    }
+    return () => {
+      document.removeEventListener("keydown", handleEscape)
+      document.body.style.overflow = ""
+    }
+  }, [mobileOpen])
 
   if (!user) return null;
 
@@ -114,26 +139,29 @@ export function AppSidebar() {
 
   const pendingRequestsCount = requests?.filter(r => r.status === "NEW" || r.status === "IN_REVIEW").length || 0;
 
-  return (
-    <aside
-      className={cn(
-        "flex h-full flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300",
-        collapsed ? "w-16" : "w-64"
-      )}
-    >
-      <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
+  const sidebarContent = (
+    <>
+      <div className="flex h-14 md:h-16 items-center gap-3 border-b border-sidebar-border px-4">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary">
           <Wrench className="size-4 text-primary-foreground" />
         </div>
         {!collapsed && (
-          <div className="flex flex-col">
+          <div className="flex flex-col flex-1">
             <span className="text-sm font-semibold text-sidebar-foreground">WagGarage</span>
             <span className="text-xs text-muted-foreground">CRM Автосервісу</span>
           </div>
         )}
+        {/* Mobile only close button */}
+        <button
+          onClick={() => setMobileOpen(false)}
+          className="md:hidden ml-auto flex items-center justify-center size-8 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
+          aria-label="Закрити меню"
+        >
+          <X className="size-5" />
+        </button>
       </div>
 
-      <nav className="flex-1 space-y-1 p-2">
+      <nav className="flex-1 space-y-1 p-2 overflow-y-auto">
         {visibleItems.map((item) => {
           const isActive =
             pathname === item.href ||
@@ -176,7 +204,8 @@ export function AppSidebar() {
 
       <UserNav collapsed={collapsed} />
 
-      <div className="border-t border-sidebar-border p-2">
+      {/* Desktop only collapse button — hidden on mobile */}
+      <div className="hidden md:block border-t border-sidebar-border p-2">
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
@@ -186,6 +215,47 @@ export function AppSidebar() {
           {!collapsed && <span>Згорнути</span>}
         </button>
       </div>
-    </aside>
+    </>
+  )
+
+  return (
+    <>
+      {/* Mobile hamburger trigger */}
+      <button
+        onClick={() => setMobileOpen(true)}
+        className="md:hidden fixed top-3 left-3 z-50 flex items-center justify-center size-10 rounded-xl bg-sidebar border border-sidebar-border text-sidebar-foreground shadow-lg hover:bg-sidebar-accent transition-colors"
+        aria-label="Відкрити меню"
+      >
+        <Menu className="size-5" />
+      </button>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Mobile sidebar drawer */}
+      <aside
+        className={cn(
+          "md:hidden fixed inset-y-0 left-0 z-50 flex h-full w-[280px] max-w-[85vw] flex-col bg-sidebar border-r border-sidebar-border transition-transform duration-300 ease-in-out",
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        {sidebarContent}
+      </aside>
+
+      {/* Desktop sidebar */}
+      <aside
+        className={cn(
+          "hidden md:flex h-full flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300",
+          collapsed ? "w-16" : "w-64"
+        )}
+      >
+        {sidebarContent}
+      </aside>
+    </>
   )
 }

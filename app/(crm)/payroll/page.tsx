@@ -134,14 +134,22 @@ export default function PayrollPage() {
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            {monthNames.map((name, i) => (
-                                <SelectItem key={i + 1} value={String(i + 1)}>
-                                    {name}
-                                </SelectItem>
-                            ))}
+                            {monthNames.map((name, i) => {
+                                const isFutureMonth = Number(selectedYear) === now.getFullYear() && (i + 1) > (now.getMonth() + 1);
+                                return (
+                                    <SelectItem key={i + 1} value={String(i + 1)} disabled={isFutureMonth}>
+                                        {name}
+                                    </SelectItem>
+                                );
+                            })}
                         </SelectContent>
                     </Select>
-                    <Select value={selectedYear} onValueChange={setSelectedYear}>
+                    <Select value={selectedYear} onValueChange={(year) => {
+                        setSelectedYear(year);
+                        if (Number(year) === now.getFullYear() && Number(selectedMonth) > now.getMonth() + 1) {
+                            setSelectedMonth(String(now.getMonth() + 1));
+                        }
+                    }}>
                         <SelectTrigger className="w-[100px] bg-card">
                             <SelectValue />
                         </SelectTrigger>

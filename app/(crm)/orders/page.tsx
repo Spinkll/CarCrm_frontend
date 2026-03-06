@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "@/hooks/use-toast"
 import { PageHeader } from "@/components/page-header"
@@ -38,7 +38,8 @@ import { format } from "date-fns"
 import { uk } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { StatusBadge } from "@/components/status-badge"
-import { Plus, ChevronDown, Eye, CalendarIcon } from "lucide-react"
+import { KanbanBoard } from "@/components/dashboard/kanban-board"
+import { Plus, ChevronDown, Eye, CalendarIcon, LayoutList, KanbanSquare } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useOrders } from "@/lib/orders-context"
 import { useVehicles } from "@/lib/vehicles-context"
@@ -81,6 +82,19 @@ export default function OrdersPage() {
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState("all")
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // View mode toggle (table / kanban) with localStorage persistence
+  const [viewMode, setViewMode] = useState<"table" | "kanban">(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("orders_view_mode") as "table" | "kanban") || "table"
+    }
+    return "table"
+  })
+
+  const handleViewModeChange = useCallback((mode: "table" | "kanban") => {
+    setViewMode(mode)
+    localStorage.setItem("orders_view_mode", mode)
+  }, [])
 
   const [form, setForm] = useState({
     vehicleId: "",
@@ -223,169 +237,215 @@ export default function OrdersPage() {
 
       <div className="flex-1 overflow-auto p-6">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <Tabs value={tab} onValueChange={setTab} className="w-full sm:w-auto">
-            <TabsList>
-              <TabsTrigger value="all">
-                Всі <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.all})</span>
-              </TabsTrigger>
-              <TabsTrigger value="in_progress">
-                В роботі <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.inProgress})</span>
-              </TabsTrigger>
-              <TabsTrigger value="completed">
-                Завершені <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.completed})</span>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex items-center gap-3">
+            {viewMode === "table" && (
+              <Tabs value={tab} onValueChange={setTab} className="w-full sm:w-auto">
+                <TabsList>
+                  <TabsTrigger value="all">
+                    Всі <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.all})</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="in_progress">
+                    В роботі <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.inProgress})</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="completed">
+                    Завершені <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.completed})</span>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
+          </div>
 
-          {canCreateOrders && (
-            <Button
-              onClick={() => {
-                if (role === "CLIENT" && !user?.isVerified) {
-                  toast({
-                    title: "Необхідна верифікація",
-                    description: "Будь ласка, підтвердіть вашу електронну пошту, щоб залишити заявку.",
-                    variant: "destructive"
-                  });
-                  return;
-                }
-                setOpen(true);
-              }}
-              className="w-full sm:w-auto gap-2 shadow-sm"
-            >
-              <Plus className="size-4" />
-              {role === "CLIENT" ? "Залишити заявку" : "Нове замовлення"}
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {/* View mode toggle */}
+            <div className="flex items-center rounded-lg border border-border bg-card p-0.5">
+              <button
+                onClick={() => handleViewModeChange("table")}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${viewMode === "table"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                  }`}
+              >
+                <LayoutList className="size-3.5" />
+                Таблиця
+              </button>
+              <button
+                onClick={() => handleViewModeChange("kanban")}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${viewMode === "kanban"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                  }`}
+              >
+                <KanbanSquare className="size-3.5" />
+                Канбан
+              </button>
+            </div>
+
+            {canCreateOrders && (
+              <Button
+                onClick={() => {
+                  if (role === "CLIENT" && !user?.isVerified) {
+                    toast({
+                      title: "Необхідна верифікація",
+                      description: "Будь ласка, підтвердіть вашу електронну пошту, щоб залишити заявку.",
+                      variant: "destructive"
+                    });
+                    return;
+                  }
+                  setOpen(true);
+                }}
+                className="w-full sm:w-auto gap-2 shadow-sm"
+              >
+                <Plus className="size-4" />
+                {role === "CLIENT" ? "Залишити заявку" : "Нове замовлення"}
+              </Button>
+            )}
+          </div>
         </div>
 
-        <Tabs value={tab} onValueChange={setTab} className="w-full">
-          <TabsContent value={tab} className="m-0">
-            <Card className="border-border bg-card">
-              <CardContent className="p-0">
-                {isLoading ? (
-                  <div className="p-8 text-center text-muted-foreground">Завантаження замовлень...</div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-border hover:bg-transparent">
-                        <TableHead className="pl-6 text-muted-foreground">№ Замовлення</TableHead>
-                        <TableHead className="text-muted-foreground">Автомобіль</TableHead>
-                        {role !== "CLIENT" && <TableHead className="text-muted-foreground">Клієнт</TableHead>}
-                        <TableHead className="text-muted-foreground">Опис</TableHead>
-                        <TableHead className="text-muted-foreground">Статус</TableHead>
-                        <TableHead className="text-muted-foreground">Сума</TableHead>
-                        <TableHead className="pr-6 text-right text-muted-foreground"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {sorted.map((order) => {
-                        const vehicleData = order.car || vehicles.find(v => v.id === order.carId)
-                        const customer = customers.find(c => c.id === vehicleData?.userId)
+        {viewMode === "kanban" ? (
+          <div className="flex-1" style={{ height: "calc(100vh - 220px)" }}>
+            {isLoading ? (
+              <div className="p-8 text-center text-muted-foreground">Завантаження замовлень...</div>
+            ) : (
+              <KanbanBoard
+                orders={orders}
+                vehicles={vehicles}
+                customers={customers}
+                updateStatus={updateStatus}
+                canDrag={canEditOrderStatus}
+              />
+            )}
+          </div>
+        ) : (
+          <Tabs value={tab} onValueChange={setTab} className="w-full">
+            <TabsContent value={tab} className="m-0">
+              <Card className="border-border bg-card">
+                <CardContent className="p-0">
+                  {isLoading ? (
+                    <div className="p-8 text-center text-muted-foreground">Завантаження замовлень...</div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-border hover:bg-transparent">
+                          <TableHead className="pl-6 text-muted-foreground">№ Замовлення</TableHead>
+                          <TableHead className="text-muted-foreground">Автомобіль</TableHead>
+                          {role !== "CLIENT" && <TableHead className="text-muted-foreground">Клієнт</TableHead>}
+                          <TableHead className="text-muted-foreground">Опис</TableHead>
+                          <TableHead className="text-muted-foreground">Статус</TableHead>
+                          <TableHead className="text-muted-foreground">Сума</TableHead>
+                          <TableHead className="pr-6 text-right text-muted-foreground"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {sorted.map((order) => {
+                          const vehicleData = order.car || vehicles.find(v => v.id === order.carId)
+                          const customer = customers.find(c => c.id === vehicleData?.userId)
 
-                        return (
-                          <TableRow key={order.id} className="border-border group">
-                            <TableCell className="pl-6 font-medium font-mono text-foreground">
-                              #{order.id}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {vehicleData
-                                ? `${vehicleData.brand} ${vehicleData.model} (${vehicleData.plate || 'Немає номерів'})`
-                                : `Авто #${order.carId || order.vehicleId}`}
-                            </TableCell>
-
-                            {role !== "CLIENT" && (
-                              <TableCell className="text-foreground">
-                                {customer ? `${customer.firstName} ${customer.lastName}` : "Невідомо"}
+                          return (
+                            <TableRow key={order.id} className="border-border group">
+                              <TableCell className="pl-6 font-medium font-mono text-foreground">
+                                #{order.id}
                               </TableCell>
-                            )}
+                              <TableCell className="text-muted-foreground">
+                                {vehicleData
+                                  ? `${vehicleData.brand} ${vehicleData.model} (${vehicleData.plate || 'Немає номерів'})`
+                                  : `Авто #${order.carId || order.vehicleId}`}
+                              </TableCell>
 
-                            <TableCell className="max-w-48 truncate text-foreground" title={order.description}>
-                              {order.description}
-                            </TableCell>
-                            <TableCell>
-                              {canEditOrderStatus ? (
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <button className="inline-flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity">
-                                      <StatusBadge status={order.status.toLowerCase()} />
-                                      <ChevronDown className="size-3 text-muted-foreground" />
-                                    </button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="start" className="w-48">
-                                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                                      Змінити статус
-                                    </div>
-                                    {["CONFIRMED", "IN_PROGRESS", "WAITING_PARTS", "COMPLETED", "CANCELLED"]
-                                      .filter((s) => s !== order.status)
-                                      .map((status) => (
-                                        <DropdownMenuItem
-                                          key={status}
-                                          onClick={async () => {
-                                            await updateStatus(order.id, status)
-
-                                            // Синхронізація статусу запису в календарі
-                                            const orderToApptStatus: Record<string, string> = {
-                                              CONFIRMED: "CONFIRMED",
-                                              IN_PROGRESS: "ARRIVED",
-                                              COMPLETED: "COMPLETED",
-                                              PAID: "COMPLETED",
-                                              CANCELLED: "CANCELLED",
-                                            }
-                                            const apptStatus = orderToApptStatus[status]
-                                            if (apptStatus) {
-                                              const relatedAppt = appointments.find(a => a.orderId === order.id)
-                                              if (relatedAppt && relatedAppt.status !== apptStatus) {
-                                                await updateAppointmentStatus(relatedAppt.id, apptStatus)
-                                              }
-                                            }
-
-                                            refreshData()
-                                            fetchNotifications()
-                                            toast({ title: "Статус оновлено", variant: "success" })
-                                          }}
-                                          className="cursor-pointer"
-                                        >
-                                          {statusTranslations[status] || status}
-                                        </DropdownMenuItem>
-                                      ))}
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              ) : (
-                                <StatusBadge status={order.status.toLowerCase()} />
+                              {role !== "CLIENT" && (
+                                <TableCell className="text-foreground">
+                                  {customer ? `${customer.firstName} ${customer.lastName}` : "Невідомо"}
+                                </TableCell>
                               )}
-                            </TableCell>
-                            <TableCell className="font-medium text-foreground">
-                              {Number(order.totalAmount || 0).toLocaleString()} ₴
-                            </TableCell>
 
-                            <TableCell className="pr-6 text-right">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="gap-1.5 text-xs"
-                                onClick={() => router.push(`/orders-detail/${order.id}`)}
-                              >
-                                <Eye className="size-4" />
-                                Деталі
-                              </Button>
+                              <TableCell className="max-w-48 truncate text-foreground" title={order.description}>
+                                {order.description}
+                              </TableCell>
+                              <TableCell>
+                                {canEditOrderStatus ? (
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <button className="inline-flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity">
+                                        <StatusBadge status={order.status.toLowerCase()} />
+                                        <ChevronDown className="size-3 text-muted-foreground" />
+                                      </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="start" className="w-48">
+                                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                                        Змінити статус
+                                      </div>
+                                      {["CONFIRMED", "IN_PROGRESS", "WAITING_PARTS", "COMPLETED", "CANCELLED"]
+                                        .filter((s) => s !== order.status)
+                                        .map((status) => (
+                                          <DropdownMenuItem
+                                            key={status}
+                                            onClick={async () => {
+                                              await updateStatus(order.id, status)
+
+                                              // Синхронізація статусу запису в календарі
+                                              const orderToApptStatus: Record<string, string> = {
+                                                CONFIRMED: "CONFIRMED",
+                                                IN_PROGRESS: "ARRIVED",
+                                                COMPLETED: "COMPLETED",
+                                                PAID: "COMPLETED",
+                                                CANCELLED: "CANCELLED",
+                                              }
+                                              const apptStatus = orderToApptStatus[status]
+                                              if (apptStatus) {
+                                                const relatedAppt = appointments.find(a => a.orderId === order.id)
+                                                if (relatedAppt && relatedAppt.status !== apptStatus) {
+                                                  await updateAppointmentStatus(relatedAppt.id, apptStatus)
+                                                }
+                                              }
+
+                                              refreshData()
+                                              fetchNotifications()
+                                              toast({ title: "Статус оновлено", variant: "success" })
+                                            }}
+                                            className="cursor-pointer"
+                                          >
+                                            {statusTranslations[status] || status}
+                                          </DropdownMenuItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                ) : (
+                                  <StatusBadge status={order.status.toLowerCase()} />
+                                )}
+                              </TableCell>
+                              <TableCell className="font-medium text-foreground">
+                                {Number(order.totalAmount || 0).toLocaleString()} ₴
+                              </TableCell>
+
+                              <TableCell className="pr-6 text-right">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-1.5 text-xs"
+                                  onClick={() => router.push(`/orders-detail/${order.id}`)}
+                                >
+                                  <Eye className="size-4" />
+                                  Деталі
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })}
+                        {sorted.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={role !== "CLIENT" ? 7 : 6} className="py-12 text-center text-muted-foreground">
+                              Замовлень не знайдено
                             </TableCell>
                           </TableRow>
-                        )
-                      })}
-                      {sorted.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={role !== "CLIENT" ? 7 : 6} className="py-12 text-center text-muted-foreground">
-                            Замовлень не знайдено
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                        )}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
 
       {canCreateOrders && (

@@ -412,21 +412,23 @@ export default function OrderDetailsPage() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <PageHeader title={`Замовлення #${order.id}`} description="Деталі замовлення та історія сервісу">
-        <Button variant="outline" onClick={() => router.push('/orders')} className="gap-2">
-          <ArrowLeft className="size-4" /> До списку замовлень
+        <Button variant="outline" onClick={() => router.push('/orders')} className="gap-1 sm:gap-2 text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-4">
+          <ArrowLeft className="size-3 sm:size-4" />
+          <span className="hidden sm:inline">До списку замовлень</span>
+          <span className="sm:hidden">Назад</span>
         </Button>
       </PageHeader>
 
-      <div className="flex-1 overflow-auto p-6">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="flex-1 overflow-auto p-3 sm:p-4 md:p-6">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
 
-          <div className="col-span-1 lg:col-span-2 space-y-6">
+          <div className="col-span-1 lg:col-span-2 space-y-4 sm:space-y-6">
             <Card className="border-border bg-card">
               <CardHeader className="pb-3 border-b border-border">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg">Дані автомобіля</CardTitle>
-                    <CardDescription>
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
+                  <div className="min-w-0 flex-1">
+                    <CardTitle className="text-base sm:text-lg">Дані автомобіля</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm break-words">
                       {order.car.year} {order.car.brand} {order.car.model} — {order.car.plate || "Немає номерів"}
                     </CardDescription>
                   </div>
@@ -477,112 +479,116 @@ export default function OrderDetailsPage() {
             </Card>
 
             <Card className="border-border bg-card">
-              <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border">
+              <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-3 border-b border-border gap-2">
                 <div>
-                  <CardTitle className="text-lg">Деталізація замовлення</CardTitle>
-                  <CardDescription>Перелік робіт та запчастин</CardDescription>
+                  <CardTitle className="text-base sm:text-lg">Деталізація замовлення</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">Перелік робіт та запчастин</CardDescription>
                 </div>
                 {canManageItems && (
-                  <Button size="sm" onClick={() => setItemModalOpen(true)} className="gap-1">
+                  <Button size="sm" onClick={() => setItemModalOpen(true)} className="gap-1 text-xs sm:text-sm w-full sm:w-auto">
                     <Plus className="size-3" /> Додати позицію
                   </Button>
                 )}
               </CardHeader>
               <CardContent className="p-0">
                 {/* Таблиця послуг */}
-                <div className="bg-secondary/20 px-6 py-2 border-b border-border">
-                  <h3 className="text-sm font-semibold uppercase text-muted-foreground tracking-wider">🛠 Виконані Роботи (Послуги)</h3>
+                <div className="bg-secondary/20 px-3 sm:px-6 py-2 border-b border-border">
+                  <h3 className="text-xs sm:text-sm font-semibold uppercase text-muted-foreground tracking-wider">🛠 Виконані Роботи (Послуги)</h3>
                 </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-border hover:bg-transparent">
-                      <TableHead className="pl-6 w-1/2">Назва послуги</TableHead>
-                      <TableHead className="text-right">К-сть / Години</TableHead>
-                      <TableHead className="text-right">Ціна</TableHead>
-                      <TableHead className="text-right">Сума</TableHead>
-                      {canManageItems && <TableHead className="w-12 pr-6"></TableHead>}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {serviceItems.map((item) => (
-                      <TableRow key={item.id} className="border-border transition-colors hover:bg-muted/50">
-                        <TableCell className="pl-6 font-medium">{item.name}</TableCell>
-                        <TableCell className="text-right text-muted-foreground">{item.quantity}</TableCell>
-                        <TableCell className="text-right text-muted-foreground">{Number(item.price).toLocaleString()} ₴</TableCell>
-                        <TableCell className="text-right font-medium text-foreground">
-                          {(Number(item.price) * item.quantity).toLocaleString()} ₴
-                        </TableCell>
-                        {canManageItems && (
-                          <TableCell className="pr-6 text-right">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => confirmRemoveItem(item.id)}>
-                              <Trash2 className="size-4" />
-                            </Button>
+                <div className="overflow-x-auto">
+                  <Table className="min-w-[480px]">
+                    <TableHeader>
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="pl-3 sm:pl-6 w-1/2 text-xs sm:text-sm">Назва послуги</TableHead>
+                        <TableHead className="text-right text-xs sm:text-sm">К-сть</TableHead>
+                        <TableHead className="text-right text-xs sm:text-sm">Ціна</TableHead>
+                        <TableHead className="text-right text-xs sm:text-sm">Сума</TableHead>
+                        {canManageItems && <TableHead className="w-10 sm:w-12 pr-3 sm:pr-6"></TableHead>}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {serviceItems.map((item) => (
+                        <TableRow key={item.id} className="border-border transition-colors hover:bg-muted/50">
+                          <TableCell className="pl-3 sm:pl-6 font-medium text-xs sm:text-sm">{item.name}</TableCell>
+                          <TableCell className="text-right text-muted-foreground text-xs sm:text-sm">{item.quantity}</TableCell>
+                          <TableCell className="text-right text-muted-foreground text-xs sm:text-sm">{Number(item.price).toLocaleString()} ₴</TableCell>
+                          <TableCell className="text-right font-medium text-foreground text-xs sm:text-sm">
+                            {(Number(item.price) * item.quantity).toLocaleString()} ₴
                           </TableCell>
-                        )}
-                      </TableRow>
-                    ))}
-                    {serviceItems.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={canManageItems ? 5 : 4} className="py-6 text-center text-sm text-muted-foreground">
-                          Послуг ще не додано.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                          {canManageItems && (
+                            <TableCell className="pr-3 sm:pr-6 text-right">
+                              <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 text-destructive hover:bg-destructive/10" onClick={() => confirmRemoveItem(item.id)}>
+                                <Trash2 className="size-3.5 sm:size-4" />
+                              </Button>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))}
+                      {serviceItems.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={canManageItems ? 5 : 4} className="py-4 sm:py-6 text-center text-xs sm:text-sm text-muted-foreground">
+                            Послуг ще не додано.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
 
                 {/* Таблиця запчастин */}
-                <div className="bg-secondary/20 px-6 py-2 border-y border-border mt-4">
-                  <h3 className="text-sm font-semibold uppercase text-muted-foreground tracking-wider">📦 Використані Запчастини та Матеріали</h3>
+                <div className="bg-secondary/20 px-3 sm:px-6 py-2 border-y border-border mt-4">
+                  <h3 className="text-xs sm:text-sm font-semibold uppercase text-muted-foreground tracking-wider">📦 Використані Запчастини та Матеріали</h3>
                 </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-border hover:bg-transparent">
-                      <TableHead className="pl-6 w-1/2">Назва деталі / артикул</TableHead>
-                      <TableHead className="text-right">К-сть</TableHead>
-                      <TableHead className="text-right">Ціна</TableHead>
-                      <TableHead className="text-right">Сума</TableHead>
-                      {canManageItems && <TableHead className="w-12 pr-6"></TableHead>}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {partItems.map((item) => (
-                      <TableRow key={item.id} className="border-border transition-colors hover:bg-muted/50">
-                        <TableCell className="pl-6 font-medium">{item.name}</TableCell>
-                        <TableCell className="text-right text-muted-foreground">{item.quantity}</TableCell>
-                        <TableCell className="text-right text-muted-foreground">{Number(item.price).toLocaleString()} ₴</TableCell>
-                        <TableCell className="text-right font-medium text-foreground">
-                          {(Number(item.price) * item.quantity).toLocaleString()} ₴
-                        </TableCell>
-                        {canManageItems && (
-                          <TableCell className="pr-6 text-right">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => confirmRemoveItem(item.id)}>
-                              <Trash2 className="size-4" />
-                            </Button>
+                <div className="overflow-x-auto">
+                  <Table className="min-w-[480px]">
+                    <TableHeader>
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="pl-3 sm:pl-6 w-1/2 text-xs sm:text-sm">Назва деталі / артикул</TableHead>
+                        <TableHead className="text-right text-xs sm:text-sm">К-сть</TableHead>
+                        <TableHead className="text-right text-xs sm:text-sm">Ціна</TableHead>
+                        <TableHead className="text-right text-xs sm:text-sm">Сума</TableHead>
+                        {canManageItems && <TableHead className="w-10 sm:w-12 pr-3 sm:pr-6"></TableHead>}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {partItems.map((item) => (
+                        <TableRow key={item.id} className="border-border transition-colors hover:bg-muted/50">
+                          <TableCell className="pl-3 sm:pl-6 font-medium text-xs sm:text-sm">{item.name}</TableCell>
+                          <TableCell className="text-right text-muted-foreground text-xs sm:text-sm">{item.quantity}</TableCell>
+                          <TableCell className="text-right text-muted-foreground text-xs sm:text-sm">{Number(item.price).toLocaleString()} ₴</TableCell>
+                          <TableCell className="text-right font-medium text-foreground text-xs sm:text-sm">
+                            {(Number(item.price) * item.quantity).toLocaleString()} ₴
                           </TableCell>
-                        )}
-                      </TableRow>
-                    ))}
-                    {partItems.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={canManageItems ? 5 : 4} className="py-6 text-center text-sm text-muted-foreground">
-                          Запчастин ще не додано.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                          {canManageItems && (
+                            <TableCell className="pr-3 sm:pr-6 text-right">
+                              <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 text-destructive hover:bg-destructive/10" onClick={() => confirmRemoveItem(item.id)}>
+                                <Trash2 className="size-3.5 sm:size-4" />
+                              </Button>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))}
+                      {partItems.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={canManageItems ? 5 : 4} className="py-4 sm:py-6 text-center text-xs sm:text-sm text-muted-foreground">
+                            Запчастин ще не додано.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </div>
 
-          <div className="col-span-1 space-y-6">
+          <div className="col-span-1 space-y-4 sm:space-y-6">
             <Card className="border-border bg-card">
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <div className="flex justify-between items-end">
                   <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted-foreground">Загальна вартість</p>
-                    <p className="text-3xl font-bold text-foreground">
+                    <p className="text-xs sm:text-sm font-medium text-muted-foreground">Загальна вартість</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-foreground">
                       {Number(order.totalAmount).toLocaleString()} ₴
                     </p>
                   </div>
@@ -758,7 +764,7 @@ export default function OrderDetailsPage() {
             }
           }}
         >
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Додати послугу або запчастину</DialogTitle>
             </DialogHeader>
@@ -767,7 +773,10 @@ export default function OrderDetailsPage() {
                 <Label>Тип позиції</Label>
                 <RadioGroup
                   value={itemForm.type}
-                  onValueChange={(val: "SERVICE" | "PART") => setItemForm({ ...itemForm, type: val })}
+                  onValueChange={(val: "SERVICE" | "PART") => {
+                    setItemForm({ name: "", price: "", quantity: itemForm.quantity || "1", type: val })
+                    setSearchQuery("")
+                  }}
                   className="flex space-x-4"
                 >
                   <div className="flex items-center space-x-2 bg-secondary/30 p-2 rounded-md border border-border flex-1">
@@ -888,7 +897,7 @@ export default function OrderDetailsPage() {
                   </PopoverContent>
                 </Popover>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="i-price">Ціна продажу (₴)</Label>
                   <Input id="i-price" type="number" value={itemForm.price} onChange={(e) => setItemForm({ ...itemForm, price: e.target.value })} disabled={itemForm.type === "PART" && !!itemForm.name} placeholder="0.00" />

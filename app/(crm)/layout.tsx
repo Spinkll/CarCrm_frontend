@@ -46,7 +46,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
                     <InventoryProvider>
                       <div className="flex h-screen overflow-hidden bg-background">
                         <AppSidebar />
-                        <main className="flex flex-1 flex-col overflow-hidden">{children}</main>
+                        <main className="flex flex-1 flex-col overflow-hidden min-w-0">{children}</main>
                       </div>
                     </InventoryProvider>
                   </OrdersProvider>
