@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
-@custom-variant dark (&:is(.dark *));
+@variant dark (&:where(.dark, .dark *));
 
 :root {
   --background: oklch(1 0 0);
@@ -122,10 +122,11 @@
 
   html,
   body {
-    @apply bg-background text-foreground;
+    background-color: var(--background);
+    color: var(--foreground);
     height: auto;
     min-height: 100vh;
     overflow-y: auto !important;
-
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 }

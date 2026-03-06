@@ -23,6 +23,7 @@ import { useState, useEffect } from "react"
 import { useAuth, type UserRole } from "@/lib/auth-context"
 import { useServiceRequests } from "@/lib/service-requests-context"
 import { UserNav } from "@/components/user-nav"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 type NavItem = {
   label: string
@@ -204,16 +205,22 @@ export function AppSidebar() {
 
       <UserNav collapsed={collapsed} />
 
-      {/* Desktop only collapse button — hidden on mobile */}
+      {/* Desktop only collapse button + theme toggle — hidden on mobile */}
       <div className="hidden md:block border-t border-sidebar-border p-2">
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-          aria-label={collapsed ? "Розгорнути панель" : "Згорнути панель"}
-        >
-          {collapsed ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
-          {!collapsed && <span>Згорнути</span>}
-        </button>
+        <div className="flex items-center gap-1">
+          <ThemeToggle
+            variant="icon"
+            className="shrink-0 text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+          />
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            aria-label={collapsed ? "Розгорнути панель" : "Згорнути панель"}
+          >
+            {collapsed ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
+            {!collapsed && <span>Згорнути</span>}
+          </button>
+        </div>
       </div>
     </>
   )

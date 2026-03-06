@@ -99,6 +99,7 @@ export default function OrdersPage() {
   const [form, setForm] = useState({
     vehicleId: "",
     description: "",
+    mileage: "",
     services: "",
     estimatedDate: "",
     estimatedTime: "",
@@ -159,7 +160,10 @@ export default function OrdersPage() {
 
   // ПОЛНОСТЬЮ ОБНОВЛЕННАЯ ФУНКЦИЯ SUBMIT
   async function handleSubmit() {
-    if (!form.vehicleId || !form.description) return
+    if (!form.vehicleId || !form.description || !form.mileage) {
+      toast({ title: "Будь ласка, заповніть всі обов'язкові поля", variant: "destructive" })
+      return
+    }
     if (role !== "CLIENT" && (!form.estimatedDate || !form.estimatedTime)) {
       toast({ title: "Будь ласка, вкажіть дату та час запису", variant: "destructive" })
       return
@@ -174,12 +178,12 @@ export default function OrdersPage() {
         scheduledAt = new Date(`${dateStr}T${selectedTimeSlot}:00`).toISOString()
       }
 
-      const result = await createRequest(Number(form.vehicleId), form.description, scheduledAt);
+      const result = await createRequest(Number(form.vehicleId), form.description, Number(form.mileage), scheduledAt);
 
       setIsSubmitting(false);
 
       if (result.success) {
-        setForm({ vehicleId: "", description: "", services: "", estimatedDate: "", estimatedTime: "" });
+        setForm({ vehicleId: "", description: "", mileage: "", services: "", estimatedDate: "", estimatedTime: "" });
         setSelectedDate(undefined);
         setSelectedTimeSlot("");
         setOpen(false);
@@ -195,6 +199,7 @@ export default function OrdersPage() {
     const payload: any = {
       vehicleId: Number(form.vehicleId),
       description: form.description,
+      mileage: Number(form.mileage),
     }
 
     // Дата + час для створення запису в календарі
@@ -205,7 +210,7 @@ export default function OrdersPage() {
     setIsSubmitting(false)
 
     if (result.success) {
-      setForm({ vehicleId: "", description: "", services: "", estimatedDate: "", estimatedTime: "" })
+      setForm({ vehicleId: "", description: "", mileage: "", services: "", estimatedDate: "", estimatedTime: "" })
       setOpen(false)
       toast({ title: "Замовлення створено", variant: "success" })
       await Promise.all([fetchAppointments(), fetchNotifications()])
@@ -261,8 +266,8 @@ export default function OrdersPage() {
               <button
                 onClick={() => handleViewModeChange("table")}
                 className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${viewMode === "table"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
                   }`}
               >
                 <LayoutList className="size-3.5" />
@@ -271,8 +276,8 @@ export default function OrdersPage() {
               <button
                 onClick={() => handleViewModeChange("kanban")}
                 className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${viewMode === "kanban"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
                   }`}
               >
                 <KanbanSquare className="size-3.5" />
@@ -492,6 +497,18 @@ export default function OrdersPage() {
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   placeholder={role === "CLIENT" ? "Наприклад: Скриплять гальма, потрібна заміна мастила..." : "Скарги клієнта або необхідний сервіс..."}
                   rows={3}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="o-mileage">Пробіг</Label>
+                <Input
+                  id="o-mileage"
+                  type="number"
+                  value={form.mileage}
+                  onChange={(e) => setForm({ ...form, mileage: e.target.value })}
+                  placeholder="Введіть поточний пробіг авто..."
+                  required
                 />
               </div>
 

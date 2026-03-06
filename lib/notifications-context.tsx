@@ -42,10 +42,13 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
         api.get("/notifications/unread-count"),
       ])
 
-      setNotifications(listRes.data)
-      setUnreadCount(countRes.data.count)
+      setNotifications(listRes.data || [])
+      setUnreadCount(countRes.data?.count || 0)
     } catch (error) {
-      console.error("Помилка при завантаженні сповіщень:", error)
+      // Якщо ендпоінт ще не реалізований на бекенді або сервер вимкнений,
+      // просто тихо очищаємо сповіщення щоб не спамити помилками в консоль
+      setNotifications([])
+      setUnreadCount(0)
     } finally {
       setIsLoading(false)
     }

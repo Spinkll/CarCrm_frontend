@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -38,6 +39,7 @@ import { toast } from "@/hooks/use-toast"
 import { carBrandsAndModels, carYears } from "@/lib/cars"
 
 export default function VehiclesPage() {
+  const router = useRouter()
   const { user } = useAuth()
   const { vehicles, addVehicle, isLoading } = useVehicles()
   const { customers, filteredOrders } = useCrm()
@@ -216,7 +218,11 @@ export default function VehiclesPage() {
                     )[0]
 
                     return (
-                      <TableRow key={vehicle.id} className="border-border">
+                      <TableRow
+                        key={vehicle.id}
+                        className="border-border cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => router.push(`/vehicles/${vehicle.id}`)}
+                      >
                         <TableCell className="pl-6">
                           <div className="flex items-center gap-3">
                             <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">

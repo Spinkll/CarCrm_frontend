@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ArrowRight, Wrench, ShieldCheck, Clock, CheckCircle2, Star, CalendarDays, Phone, Mail, MapPin, ClipboardList, Search, ThumbsUp, Activity, Car, Disc, Cog, FileSearch, Wind, LifeBuoy, ArrowUp, MessageSquareQuote, ChevronDown, Users, Award, Timer } from "lucide-react"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function LandingPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -81,7 +82,8 @@ export default function LandingPage() {
             <a href="#features" onClick={(e) => handleScrollTo(e, 'features')} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">Переваги</a>
             <a href="#contacts" onClick={(e) => handleScrollTo(e, 'contacts')} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">Контакти</a>
           </nav>
-          <div className="flex items-center gap-2 md:gap-4">
+          <div className="flex items-center gap-2 md:gap-3">
+            <ThemeToggle variant="icon" />
             {!isAuthenticated && (
               <Link href="/login">
                 <Button variant="ghost" className="hidden sm:flex text-sm">Увійти</Button>
@@ -244,7 +246,7 @@ export default function LandingPage() {
                   className="w-full h-full"
                 >
                   <Card className="group h-full hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 bg-card w-full relative overflow-hidden animate-card-glow" style={{ animationDelay: `${i * 0.5}s` }}>
-                    <CardContent className="p-6 flex flex-col items-start gap-4 h-full">
+                    <CardContent className="p-6 flex flex-col items-center justify-center text-center gap-4 h-full">
                       <div className="p-2 rounded-lg bg-primary/5 group-hover:bg-primary/10 group-hover:scale-110 transition-all duration-300">
                         <service.icon className="size-5 text-primary" />
                       </div>

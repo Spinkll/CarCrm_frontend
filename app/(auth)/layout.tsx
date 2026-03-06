@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { AuthProvider, useAuth } from "@/lib/auth-context"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
@@ -33,6 +34,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <AuthProvider>
       <AuthGuard>
         <div className="fixed inset-0 flex justify-center overflow-y-auto bg-background px-4 py-8">
+          <div className="absolute top-4 right-4 md:top-8 md:right-8 z-50">
+            <ThemeToggle variant="icon" />
+          </div>
           <div className="m-auto">
             {children}
           </div>

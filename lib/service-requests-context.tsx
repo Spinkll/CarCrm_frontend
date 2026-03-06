@@ -22,7 +22,7 @@ interface ServiceRequestsContextType {
   requests: ServiceRequest[]
   isLoading: boolean
   fetchRequests: () => Promise<void>
-  createRequest: (carId: number, reason: string, scheduledAt?: string) => Promise<{ success: boolean; error?: string }>
+  createRequest: (carId: number, reason: string, mileage: number, scheduledAt?: string) => Promise<{ success: boolean; error?: string }>
   approveRequest: (id: number, data: { scheduledAt: string; estimatedMin?: number; mechanicId?: number; description?: string }) => Promise<{ success: boolean; error?: string }>
   rejectRequest: (id: number) => Promise<{ success: boolean; error?: string }>
 }
@@ -51,9 +51,9 @@ export function ServiceRequestsProvider({ children }: { children: React.ReactNod
     fetchRequests()
   }, [fetchRequests])
 
-  const createRequest = useCallback(async (carId: number, reason: string, scheduledAt?: string) => {
+  const createRequest = useCallback(async (carId: number, reason: string, mileage: number, scheduledAt?: string) => {
     try {
-      const payload: any = { carId, reason }
+      const payload: any = { carId, reason, mileage }
       if (scheduledAt) {
         payload.scheduledAt = scheduledAt
       }
