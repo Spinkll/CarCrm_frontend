@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Badge } from "@/components/ui/badge"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { StatusBadge } from "@/components/status-badge"
-import { ArrowLeft, Plus, Trash2, Wrench, Clock, ShieldCheck, Loader2, Check, ChevronsUpDown, ChevronDown, Banknote, CreditCard, Wallet, FileDown } from "lucide-react"
+import { ArrowLeft, Plus, Trash2, Wrench, Clock, ShieldCheck, Loader2, Check, ChevronsUpDown, ChevronDown, Banknote, CreditCard, Wallet, FileDown, ClipboardList } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -118,6 +118,7 @@ export default function OrderDetailsPage() {
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD">("CASH")
   const [isPaymentSubmitting, setIsPaymentSubmitting] = useState(false)
   const [isReceiptDownloading, setIsReceiptDownloading] = useState(false)
+  const [isWorkOrderDownloading, setIsWorkOrderDownloading] = useState(false)
 
   const role = user?.role?.toUpperCase() || "CLIENT"
 
@@ -197,6 +198,30 @@ export default function OrderDetailsPage() {
       toast({ title: Array.isArray(msg) ? msg[0] : msg, variant: "destructive" })
     } finally {
       setIsReceiptDownloading(false)
+    }
+  }
+
+  const handleDownloadWorkOrder = async () => {
+    setIsWorkOrderDownloading(true)
+    try {
+      const response = await api.get(`/orders/${orderId}/work-order`, {
+        responseType: 'blob',
+      })
+      const blob = new Blob([response.data], { type: 'application/pdf' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `work-order-${orderId}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+      toast({ title: "Заказ-наряд завантажено", variant: "success" })
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Не вдалося завантажити заказ-наряд"
+      toast({ title: Array.isArray(msg) ? msg[0] : msg, variant: "destructive" })
+    } finally {
+      setIsWorkOrderDownloading(false)
     }
   }
 
@@ -448,11 +473,26 @@ export default function OrderDetailsPage() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <PageHeader title={`Замовлення #${order.id}`} description="Деталі замовлення та історія сервісу">
-        <Button variant="outline" onClick={() => router.push('/orders')} className="gap-1 sm:gap-2 text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-4">
-          <ArrowLeft className="size-3 sm:size-4" />
-          <span className="hidden sm:inline">До списку замовлень</span>
-          <span className="sm:hidden">Назад</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={handleDownloadWorkOrder}
+            disabled={isWorkOrderDownloading}
+            className="gap-1 sm:gap-2 text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-4"
+          >
+            {isWorkOrderDownloading ? (
+              <Loader2 className="size-3 sm:size-4 animate-spin" />
+            ) : (
+              <ClipboardList className="size-3 sm:size-4" />
+            )}
+            <span className="hidden sm:inline">{isWorkOrderDownloading ? "Завантаження..." : "Заказ-наряд"}</span>
+          </Button>
+          <Button variant="outline" onClick={() => router.push('/orders')} className="gap-1 sm:gap-2 text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-4">
+            <ArrowLeft className="size-3 sm:size-4" />
+            <span className="hidden sm:inline">До списку замовлень</span>
+            <span className="sm:hidden">Назад</span>
+          </Button>
+        </div>
       </PageHeader>
 
       <div className="flex-1 overflow-auto p-3 sm:p-4 md:p-6">
