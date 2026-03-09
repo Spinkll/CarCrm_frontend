@@ -153,26 +153,9 @@ export default function OrderDetailsPage() {
     setIsPaymentSubmitting(true)
     try {
       if (role === "CLIENT" && paymentMethod === "CARD") {
-        // Liqpay online payment redirect
-        const { data: liqpayData } = await api.post(`/liqpay/generate/${orderId}`)
-
-        const form = document.createElement("form")
-        form.method = "POST"
-        form.action = "https://www.liqpay.ua/api/3/checkout"
-        form.acceptCharset = "utf-8"
-
-        for (const [key, value] of Object.entries(liqpayData)) {
-          const input = document.createElement("input")
-          input.type = "hidden"
-          input.name = key
-          input.value = String(value)
-          form.appendChild(input)
-        }
-
-        document.body.appendChild(form)
-        form.submit()
-
-        // Do not unset isPaymentSubmitting because the page will redirect to Liqpay
+        // Stripe Checkout redirect
+        const { data } = await api.post(`/stripe/generate/${orderId}`)
+        window.location.href = data.url
         return
       }
 
@@ -238,9 +221,24 @@ export default function OrderDetailsPage() {
   const hasToastedRef = useRef(false)
   useEffect(() => {
     const paymentStatus = searchParams.get("payment");
+    const sessionId = searchParams.get("session_id");
     if (paymentStatus && !hasToastedRef.current) {
-      if (paymentStatus === "success") {
-        toast({ title: "Успішно!", description: "Оплата онлайн пройшла успішно.", variant: "success" })
+      if (paymentStatus === "success" && sessionId) {
+        // Верифікація оплати через Stripe
+        api.post(`/stripe/verify/${sessionId}`)
+          .then(() => {
+            toast({ title: "Успішно!", description: "Оплата онлайн пройшла успішно.", variant: "success" })
+            fetchOrderDetails()
+            fetchPayments()
+            refreshOrders()
+            refreshCrmData()
+            fetchNotifications()
+          })
+          .catch(() => {
+            toast({ title: "Помилка", description: "Не вдалося підтвердити оплату.", variant: "destructive" })
+          })
+      } else if (paymentStatus === "cancel") {
+        toast({ title: "Оплату скасовано", description: "Ви скасували оплату. Спробуйте ще раз.", variant: "destructive" })
       } else if (paymentStatus === "error") {
         toast({ title: "Помилка оплати", description: "Оплата була відхилена системою або скасована.", variant: "destructive" })
       }
@@ -1099,7 +1097,7 @@ export default function OrderDetailsPage() {
                   .map((method) => {
                     const info = paymentMethodLabels[method]
                     const Icon = info.icon
-                    const isWayForPay = role === "CLIENT" && method === "CARD"
+                    const isStripe = role === "CLIENT" && method === "CARD"
                     const isSelected = paymentMethod === method
 
                     return (
@@ -1129,11 +1127,11 @@ export default function OrderDetailsPage() {
 
                         <div className="flex flex-col items-center gap-0.5">
                           <span className={cn("text-sm font-bold", isSelected ? "text-primary" : "text-foreground")}>
-                            {isWayForPay ? "Онлайн карткою" : info.label}
+                            {isStripe ? "Онлайн карткою" : info.label}
                           </span>
-                          {isWayForPay && (
+                          {isStripe && (
                             <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
-                              через <span className="font-bold text-foreground">WayForPay</span>
+                              через <span className="font-bold text-foreground">Stripe</span>
                             </span>
                           )}
                         </div>
