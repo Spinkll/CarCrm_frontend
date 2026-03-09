@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useEffect, useState, useRef } from "react"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -82,6 +82,7 @@ const statusTranslations: Record<string, string> = {
 export default function OrderDetailsPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user } = useAuth()
 
   const orderId = Number(params.id)
@@ -114,7 +115,7 @@ export default function OrderDetailsPage() {
   // Payment state
   const [payments, setPayments] = useState<Payment[]>([])
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
-  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD" | "TRANSFER">("CASH")
+  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD">("CASH")
   const [isPaymentSubmitting, setIsPaymentSubmitting] = useState(false)
   const [isReceiptDownloading, setIsReceiptDownloading] = useState(false)
 
@@ -151,6 +152,30 @@ export default function OrderDetailsPage() {
     if (!order) return
     setIsPaymentSubmitting(true)
     try {
+      if (role === "CLIENT" && paymentMethod === "CARD") {
+        // Liqpay online payment redirect
+        const { data: liqpayData } = await api.post(`/liqpay/generate/${orderId}`)
+
+        const form = document.createElement("form")
+        form.method = "POST"
+        form.action = "https://www.liqpay.ua/api/3/checkout"
+        form.acceptCharset = "utf-8"
+
+        for (const [key, value] of Object.entries(liqpayData)) {
+          const input = document.createElement("input")
+          input.type = "hidden"
+          input.name = key
+          input.value = String(value)
+          form.appendChild(input)
+        }
+
+        document.body.appendChild(form)
+        form.submit()
+
+        // Do not unset isPaymentSubmitting because the page will redirect to Liqpay
+        return
+      }
+
       await api.post(`/payments/order/${orderId}`, {
         method: paymentMethod,
         amount: Number(order.totalAmount),
@@ -164,7 +189,6 @@ export default function OrderDetailsPage() {
     } catch (error: any) {
       const msg = error.response?.data?.message || "Не вдалося зафіксувати оплату"
       toast({ title: Array.isArray(msg) ? msg[0] : msg, variant: "destructive" })
-    } finally {
       setIsPaymentSubmitting(false)
     }
   }
@@ -210,6 +234,20 @@ export default function OrderDetailsPage() {
       console.error("Failed to fetch catalog services", error)
     }
   }
+
+  const hasToastedRef = useRef(false)
+  useEffect(() => {
+    const paymentStatus = searchParams.get("payment");
+    if (paymentStatus && !hasToastedRef.current) {
+      if (paymentStatus === "success") {
+        toast({ title: "Успішно!", description: "Оплата онлайн пройшла успішно.", variant: "success" })
+      } else if (paymentStatus === "error") {
+        toast({ title: "Помилка оплати", description: "Оплата була відхилена системою або скасована.", variant: "destructive" })
+      }
+      hasToastedRef.current = true;
+      router.replace(`/orders-detail/${orderId}`)
+    }
+  }, [searchParams, orderId, router])
 
   useEffect(() => {
     setIsLoading(true)
@@ -1030,56 +1068,89 @@ export default function OrderDetailsPage() {
 
       {/* Payment Dialog */}
       <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{role === "CLIENT" ? "Оплата замовлення" : "Прийняти оплату"}</DialogTitle>
+        <DialogContent className="sm:max-w-md border-0 p-0 overflow-hidden shadow-2xl bg-card">
+          <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-primary via-blue-500 to-primary"></div>
+          <DialogHeader className="px-6 pt-6 pb-2">
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <Wallet className="size-5 text-primary" />
+              {role === "CLIENT" ? "Оплата замовлення" : "Прийняти оплату"}
+            </DialogTitle>
           </DialogHeader>
-          <div className="py-4 space-y-4">
-            <div className="text-center space-y-1">
-              <p className="text-sm text-muted-foreground">Сума до сплати</p>
-              <p className="text-3xl font-bold text-foreground">
-                {Number(order?.totalAmount || 0).toLocaleString()} ₴
-              </p>
+          <div className="px-6 py-4 space-y-6">
+            <div className="flex flex-col items-center justify-center p-6 bg-secondary/30 rounded-2xl border border-primary/10 shadow-inner">
+              <p className="text-sm text-muted-foreground font-medium mb-1">До сплати</p>
+              <div className="flex items-baseline gap-1">
+                <p className="text-4xl font-extrabold text-foreground tracking-tight">
+                  {Number(order?.totalAmount || 0).toLocaleString()}
+                </p>
+                <span className="text-xl font-bold text-muted-foreground">₴</span>
+              </div>
             </div>
 
-            <div className="grid gap-2">
-              <Label>Спосіб оплати</Label>
+            <div className="grid gap-3">
+              <Label className="text-sm font-semibold">Оберіть спосіб оплати</Label>
               <RadioGroup
                 value={paymentMethod}
-                onValueChange={(val: "CASH" | "CARD" | "TRANSFER") => setPaymentMethod(val)}
-                className={cn("grid gap-2", role === "CLIENT" ? "grid-cols-3" : "grid-cols-1")}
+                onValueChange={(val: "CASH" | "CARD") => setPaymentMethod(val)}
+                className={cn("grid gap-3", role === "CLIENT" ? "grid-cols-2" : "grid-cols-1")}
               >
-                {(["CASH", "CARD", "TRANSFER"] as const)
+                {(["CASH", "CARD"] as const)
                   .filter((method) => role === "CLIENT" || method === "CASH")
                   .map((method) => {
                     const info = paymentMethodLabels[method]
                     const Icon = info.icon
+                    const isWayForPay = role === "CLIENT" && method === "CARD"
+                    const isSelected = paymentMethod === method
+
                     return (
                       <Label
                         key={method}
                         htmlFor={`pay-${method}`}
                         className={cn(
-                          "flex flex-col items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all",
-                          paymentMethod === method
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:border-primary/40"
+                          "relative flex flex-col items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all duration-300 overflow-hidden",
+                          isSelected
+                            ? "border-primary bg-primary/5 shadow-md scale-[1.02]"
+                            : "border-border hover:border-primary/40 hover:bg-muted/50"
                         )}
                       >
                         <RadioGroupItem value={method} id={`pay-${method}`} className="sr-only" />
-                        <Icon className={cn("size-5", paymentMethod === method ? "text-primary" : "text-muted-foreground")} />
-                        <span className={cn("text-xs font-medium", paymentMethod === method ? "text-primary" : "text-muted-foreground")}>
-                          {info.label}
-                        </span>
+
+                        {isSelected && (
+                          <div className="absolute top-2 right-2 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                            <Check className="size-3" />
+                          </div>
+                        )}
+
+                        <div className={cn("flex size-12 items-center justify-center rounded-full transition-colors",
+                          isSelected ? "bg-primary/20" : "bg-secondary"
+                        )}>
+                          <Icon className={cn("size-6 transition-colors", isSelected ? "text-primary" : "text-muted-foreground")} />
+                        </div>
+
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className={cn("text-sm font-bold", isSelected ? "text-primary" : "text-foreground")}>
+                            {isWayForPay ? "Онлайн карткою" : info.label}
+                          </span>
+                          {isWayForPay && (
+                            <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                              через <span className="font-bold text-foreground">WayForPay</span>
+                            </span>
+                          )}
+                        </div>
                       </Label>
                     )
                   })}
               </RadioGroup>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPaymentModalOpen(false)} disabled={isPaymentSubmitting}>Скасувати</Button>
-            <Button onClick={handlePayment} disabled={isPaymentSubmitting} className="gap-2">
-              {isPaymentSubmitting ? "Обробка..." : "Підтвердити оплату"}
+          <DialogFooter className="px-6 py-4 bg-muted/30 border-t border-border mt-2">
+            <Button variant="outline" onClick={() => setPaymentModalOpen(false)} disabled={isPaymentSubmitting} className="rounded-xl font-medium">Скасувати</Button>
+            <Button onClick={handlePayment} disabled={isPaymentSubmitting} className="gap-2 rounded-xl font-bold shadow-md hover:shadow-lg transition-all">
+              {isPaymentSubmitting ? (
+                <><Loader2 className="size-4 animate-spin" /> Обробка...</>
+              ) : (
+                role === "CLIENT" && paymentMethod === "CARD" ? "Перейти до оплати" : "Підтвердити оплату"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
