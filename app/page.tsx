@@ -1,544 +1,897 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import Link from "next/link"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, useScroll, useTransform, useInView } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ArrowRight, Wrench, ShieldCheck, Clock, CheckCircle2, Star, CalendarDays, Phone, Mail, MapPin, ClipboardList, Search, ThumbsUp, Activity, Car, Disc, Cog, FileSearch, Wind, LifeBuoy, ArrowUp, MessageSquareQuote, ChevronDown, Users, Award, Timer } from "lucide-react"
+import {
+  ArrowRight,
+  Wrench,
+  ShieldCheck,
+  Clock,
+  CheckCircle2,
+  Star,
+  CalendarDays,
+  Phone,
+  Mail,
+  MapPin,
+  ClipboardList,
+  Search,
+  ThumbsUp,
+  Activity,
+  Car,
+  Disc,
+  Cog,
+  FileSearch,
+  Wind,
+  LifeBuoy,
+  ArrowUp,
+  MessageSquareQuote,
+  ChevronDown,
+  Users,
+  Award,
+  Timer,
+  Sparkles,
+  Play,
+  ChevronRight,
+  Zap,
+  Shield,
+  BarChart3,
+} from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
+
+// Animated counter component
+function AnimatedCounter({ value, suffix = "" }: { value: string; suffix?: string }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const isInView = useInView(ref, { once: true, margin: "-100px" })
+  const [displayValue, setDisplayValue] = useState("0")
+
+  useEffect(() => {
+    if (isInView) {
+      const numericValue = parseInt(value.replace(/[^0-9]/g, ""))
+      const duration = 2000
+      const steps = 60
+      const increment = numericValue / steps
+      let current = 0
+
+      const timer = setInterval(() => {
+        current += increment
+        if (current >= numericValue) {
+          setDisplayValue(value)
+          clearInterval(timer)
+        } else {
+          setDisplayValue(Math.floor(current).toLocaleString())
+        }
+      }, duration / steps)
+
+      return () => clearInterval(timer)
+    }
+  }, [isInView, value])
+
+  return (
+    <span ref={ref} className="tabular-nums">
+      {displayValue}
+      {suffix}
+    </span>
+  )
+}
+
+// Floating shapes component
+function FloatingShapes() {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {/* Gradient orbs */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-blob opacity-60" />
+      <div className="absolute top-1/2 right-1/4 w-80 h-80 bg-primary/8 rounded-full blur-3xl animate-blob-delay-2 opacity-50" />
+      <div className="absolute bottom-1/4 left-1/2 w-72 h-72 bg-primary/5 rounded-full blur-3xl animate-blob-delay-4 opacity-40" />
+    </div>
+  )
+}
+
+// Section wrapper with scroll animations
+function AnimatedSection({
+  children,
+  className = "",
+  delay = 0,
+}: {
+  children: React.ReactNode
+  className?: string
+  delay?: number
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] }}
+      viewport={{ once: true, margin: "-100px" }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  )
+}
 
 export default function LandingPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [showScrollTopButton, setShowScrollTopButton] = useState(false)
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null)
+  const [activeNavItem, setActiveNavItem] = useState("")
+  const heroRef = useRef<HTMLElement>(null)
+  const { scrollYProgress } = useScroll()
+  const headerOpacity = useTransform(scrollYProgress, [0, 0.1], [0, 1])
 
   useEffect(() => {
     setIsAuthenticated(!!localStorage.getItem("access_token"))
 
-    const handleWindowScroll = () => {
-      if (window.scrollY > 400) {
-        setShowScrollTopButton(true)
-      } else {
-        setShowScrollTopButton(false)
+    const handleScroll = () => {
+      setShowScrollTopButton(window.scrollY > 400)
+
+      // Update active nav based on scroll position
+      const sections = ["features", "services", "how-it-works", "contacts"]
+      for (const section of sections) {
+        const element = document.getElementById(section)
+        if (element) {
+          const rect = element.getBoundingClientRect()
+          if (rect.top <= 100 && rect.bottom >= 100) {
+            setActiveNavItem(section)
+            break
+          }
+        }
       }
     }
 
-    window.addEventListener("scroll", handleWindowScroll)
-    return () => window.removeEventListener("scroll", handleWindowScroll)
+    window.addEventListener("scroll", handleScroll)
+    return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
   const smoothScrollTo = (targetY: number) => {
-    const scrollElement = document.scrollingElement || document.documentElement;
-    const startY = scrollElement.scrollTop;
-    const diff = targetY - startY;
-    if (diff === 0) return;
+    const scrollElement = document.scrollingElement || document.documentElement
+    const startY = scrollElement.scrollTop
+    const diff = targetY - startY
+    if (diff === 0) return
 
-    const duration = 600;
-    const startTime = performance.now();
+    const duration = 800
+    const startTime = performance.now()
 
-    const easeInOutCubic = (t: number) =>
-      t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    const easeInOutQuart = (t: number) =>
+      t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2
 
     const animateScroll = (currentTime: number) => {
-      const elapsed = currentTime - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = easeInOutCubic(progress);
-      scrollElement.scrollTop = startY + diff * eased;
+      const elapsed = currentTime - startTime
+      const progress = Math.min(elapsed / duration, 1)
+      const eased = easeInOutQuart(progress)
+      scrollElement.scrollTop = startY + diff * eased
 
       if (progress < 1) {
-        requestAnimationFrame(animateScroll);
+        requestAnimationFrame(animateScroll)
       }
-    };
+    }
 
-    requestAnimationFrame(animateScroll);
+    requestAnimationFrame(animateScroll)
   }
 
-  const scrollToTop = () => smoothScrollTo(0);
+  const scrollToTop = () => smoothScrollTo(0)
 
   const handleScrollTo = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
-    e.preventDefault();
-    const element = document.getElementById(id);
+    e.preventDefault()
+    const element = document.getElementById(id)
     if (element) {
-      const rect = element.getBoundingClientRect();
-      const scrollElement = document.scrollingElement || document.documentElement;
-      smoothScrollTo(scrollElement.scrollTop + rect.top);
+      const rect = element.getBoundingClientRect()
+      const scrollElement = document.scrollingElement || document.documentElement
+      smoothScrollTo(scrollElement.scrollTop + rect.top - 80)
     }
   }
 
+  const navItems = [
+    { id: "features", label: "Переваги" },
+    { id: "services", label: "Послуги" },
+    { id: "how-it-works", label: "Як працюємо" },
+    { id: "contacts", label: "Контакти" },
+  ]
+
+  const features = [
+    {
+      icon: ShieldCheck,
+      title: "Гарантія якості",
+      desc: "Даємо гарантію на всі виконані роботи та встановлені запчастини від 1 року.",
+    },
+    {
+      icon: Clock,
+      title: "Виконання в строк",
+      desc: "Цінуємо ваш час. Роботи виконуються чітко у попередньо обумовлені терміни.",
+    },
+    {
+      icon: CheckCircle2,
+      title: "Прозорі ціни",
+      desc: "Ви завжди знаєте за що платите. Жодного нав'язування додаткових послуг.",
+    },
+  ]
+
+  const services = [
+    { title: "Комп'ютерна діагностика", icon: Activity, color: "from-blue-500/20 to-blue-600/10" },
+    { title: "Планове ТО", icon: ClipboardList, color: "from-emerald-500/20 to-emerald-600/10" },
+    { title: "Ремонт ходової частини", icon: Car, color: "from-amber-500/20 to-amber-600/10" },
+    { title: "Гальмівна система", icon: Disc, color: "from-red-500/20 to-red-600/10" },
+    { title: "Ремонт двигунів", icon: Cog, color: "from-slate-500/20 to-slate-600/10" },
+    { title: "Діагностика перед покупкою", icon: FileSearch, color: "from-violet-500/20 to-violet-600/10" },
+    { title: "Обслуговування кондиціонерів", icon: Wind, color: "from-cyan-500/20 to-cyan-600/10" },
+    { title: "Шиномонтаж", icon: LifeBuoy, color: "from-orange-500/20 to-orange-600/10" },
+  ]
+
+  const steps = [
+    {
+      icon: ClipboardList,
+      step: "01",
+      title: "Запис онлайн",
+      desc: "Залишаєте заявку або записуєтесь через кабінет.",
+    },
+    {
+      icon: Search,
+      step: "02",
+      title: "Діагностика",
+      desc: "Проводимо ретельну перевірку вашого автомобіля.",
+    },
+    {
+      icon: Wrench,
+      step: "03",
+      title: "Ремонт",
+      desc: "Професійне виконання робіт та заміна деталей.",
+    },
+    {
+      icon: ThumbsUp,
+      step: "04",
+      title: "Результат",
+      desc: "Отримуєте цілком справне авто з гарантією.",
+    },
+  ]
+
+  const stats = [
+    { icon: Car, value: "5 000", suffix: "+", label: "Авто обслужено" },
+    { icon: Users, value: "3 200", suffix: "+", label: "Задоволених клієнтів" },
+    { icon: Award, value: "12", suffix: "+", label: "Років досвіду" },
+    { icon: Timer, value: "98", suffix: "%", label: "Вчасне виконання" },
+  ]
+
+  const testimonials = [
+    {
+      name: "Олександр К.",
+      car: "BMW X5, 2020",
+      rating: 5,
+      text: "Чудовий сервіс! Зробили діагностику за годину, знайшли проблему з підвіскою, яку інші СТО не могли виявити. Рекомендую всім!",
+    },
+    {
+      name: "Марина В.",
+      car: "Toyota Camry, 2019",
+      rating: 5,
+      text: "Записалася онлайн, все було готово точно в строк. Дуже зручний CRM-кабінет, де видно всю історію обслуговування мого авто.",
+    },
+    {
+      name: "Дмитро Л.",
+      car: "Volkswagen Golf, 2021",
+      rating: 5,
+      text: "Прозорі ціни, ніхто не нав'язує непотрібні послуги. Залишив авто на планове ТО — все ідеально. Буду повертатись!",
+    },
+  ]
+
+  const faqs = [
+    {
+      q: "Як записатися на сервіс?",
+      a: "Ви можете записатися онлайн через наш CRM-кабінет, зателефонувати нам або залишити заявку на сайті. Після реєстрації вам буде доступний зручний особистий кабінет.",
+    },
+    {
+      q: "Скільки часу займає діагностика?",
+      a: "Комп'ютерна діагностика зазвичай займає від 30 хвилин до 1 години, залежно від складності. Ми завжди повідомляємо орієнтовний час при записі.",
+    },
+    {
+      q: "Чи надаєте ви гарантію на роботи?",
+      a: "Так, ми даємо гарантію від 6 місяців до 2 років на всі виконані роботи та встановлені запчастини. Термін гарантії залежить від типу послуги.",
+    },
+    {
+      q: "Які марки автомобілів ви обслуговуєте?",
+      a: "Ми обслуговуємо автомобілі всіх популярних марок: BMW, Mercedes, Audi, Volkswagen, Toyota, Honda, Hyundai, Kia та інші.",
+    },
+    {
+      q: "Чи можна залишити авто на ніч?",
+      a: "Так, у нас є охоронювана стоянка. Ви можете залишити автомобіль на ніч або на кілька днів, якщо ремонт потребує більше часу.",
+    },
+  ]
+
   return (
-    <div className="flex min-h-screen flex-col bg-background font-sans w-full">
+    <div className="flex min-h-screen flex-col bg-background font-sans w-full animate-page-fade-in">
       {/* HEADER */}
-      <header className="relative z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex h-14 md:h-16 items-center justify-between px-4 md:px-6">
-          <div className="flex items-center gap-2">
-            <div className="flex size-7 md:size-8 items-center justify-center rounded-lg bg-primary">
-              <Wrench className="size-3.5 md:size-4 text-primary-foreground" />
+      <motion.header
+        style={{ opacity: headerOpacity }}
+        className="fixed top-0 left-0 right-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60"
+      >
+        <div className="container mx-auto flex h-16 md:h-18 items-center justify-between px-4 md:px-6">
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/20 group-hover:shadow-primary/40 transition-shadow">
+              <Wrench className="size-4.5 text-primary-foreground" />
             </div>
-            <span className="text-lg md:text-xl font-bold tracking-tight text-foreground">WagGarage</span>
-          </div>
-          <nav className="hidden md:flex gap-6">
-            <a href="#services" onClick={(e) => handleScrollTo(e, 'services')} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">Послуги</a>
-            <a href="#features" onClick={(e) => handleScrollTo(e, 'features')} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">Переваги</a>
-            <a href="#contacts" onClick={(e) => handleScrollTo(e, 'contacts')} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">Контакти</a>
+            <span className="text-xl font-bold tracking-tight text-foreground">WagGarage</span>
+          </Link>
+
+          <nav className="hidden lg:flex items-center gap-1">
+            {navItems.map((item) => (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                onClick={(e) => handleScrollTo(e, item.id)}
+                className={`relative px-4 py-2 text-sm font-medium transition-colors rounded-lg ${
+                  activeNavItem === item.id
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                }`}
+              >
+                {item.label}
+                {activeNavItem === item.id && (
+                  <motion.div
+                    layoutId="activeNav"
+                    className="absolute bottom-0 left-2 right-2 h-0.5 bg-primary rounded-full"
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  />
+                )}
+              </a>
+            ))}
           </nav>
-          <div className="flex items-center gap-2 md:gap-3">
+
+          <div className="flex items-center gap-3">
             <ThemeToggle variant="icon" />
             {!isAuthenticated && (
-              <Link href="/login">
-                <Button variant="ghost" className="hidden sm:flex text-sm">Увійти</Button>
+              <Link href="/login" className="hidden sm:block">
+                <Button variant="ghost" className="text-sm font-medium">
+                  Увійти
+                </Button>
               </Link>
             )}
             <Link href="/dashboard">
-              <Button className="gap-2 rounded-full h-8 px-3 md:h-10 md:px-4 text-xs md:text-sm">
+              <Button className="gap-2 rounded-full h-10 px-5 text-sm font-medium shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:scale-105 active:scale-95">
                 <span className="hidden sm:inline">Особистий кабінет</span>
                 <span className="sm:hidden">Кабінет</span>
-                <ArrowRight className="size-4 hidden sm:block" />
+                <ArrowRight className="size-4" />
               </Button>
             </Link>
           </div>
         </div>
-      </header>
+      </motion.header>
+
+      {/* Spacer for fixed header */}
+      <div className="h-16 md:h-18" />
 
       <main className="flex-1 w-full">
         {/* HERO SECTION */}
-        <section className="relative w-full py-14 md:py-24 lg:py-32 overflow-hidden bg-black flex items-center min-h-[40vh]">
-          {/* ФОНОВЕ ЗОБРАЖЕННЯ */}
-          <div
-            className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: "url('/hero-bg.jpg')" }}
-          >
-            {/* Затемнення фону */}
-            <div className="absolute inset-0 bg-black/70"></div>
-          </div>
+        <section
+          ref={heroRef}
+          className="relative w-full py-20 md:py-32 lg:py-40 overflow-hidden bg-background"
+        >
+          <FloatingShapes />
 
-          {/* Градієнт для плавного переходу вниз */}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/5 to-transparent z-0 pointer-events-none"></div>
+          {/* Grid pattern background */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,theme(colors.border/30)_1px,transparent_1px),linear-gradient(to_bottom,theme(colors.border/30)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)]" />
 
-          {/* Floating particles */}
-          <div className="absolute inset-0 z-[1] pointer-events-none overflow-hidden">
-            <div className="absolute top-[15%] left-[10%] w-3 h-3 rounded-full bg-primary/20 animate-float-slow" />
-            <div className="absolute top-[25%] right-[15%] w-2 h-2 rounded-full bg-primary/30 animate-float-medium" />
-            <div className="absolute top-[60%] left-[20%] w-4 h-4 rounded-full bg-primary/10 animate-float-medium" style={{ animationDelay: '1s' }} />
-            <div className="absolute top-[40%] right-[25%] w-2.5 h-2.5 rounded-full bg-white/10 animate-float-fast" />
-            <div className="absolute top-[70%] left-[60%] w-3.5 h-3.5 rounded-full bg-primary/15 animate-float-slow" style={{ animationDelay: '3s' }} />
-            <div className="absolute top-[20%] left-[45%] w-1.5 h-1.5 rounded-full bg-white/15 animate-float-fast" style={{ animationDelay: '2s' }} />
-            <div className="absolute top-[80%] right-[10%] w-2 h-2 rounded-full bg-primary/20 animate-float-medium" style={{ animationDelay: '4s' }} />
-            <div className="absolute top-[50%] left-[80%] w-3 h-3 rounded-full bg-white/5 animate-float-slow" style={{ animationDelay: '2s' }} />
-          </div>
-
-          <div className="container relative mx-auto px-4 md:px-6 z-10 w-full mb-8 md:mb-12">
+          <div className="container relative mx-auto px-4 md:px-6 z-10 w-full">
             <motion.div
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, ease: "easeOut" }}
-              className="flex flex-col items-center gap-4 md:gap-6 text-center max-w-4xl mx-auto w-full"
+              transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+              className="flex flex-col items-center gap-6 text-center max-w-4xl mx-auto w-full"
             >
+              {/* Badge */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="inline-flex items-center rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs md:text-sm font-medium text-white mb-2 md:mb-4 backdrop-blur-md"
               >
-                <Star className="mr-1.5 md:mr-2 size-3 md:size-4 text-primary fill-primary" /> Сучасний сервіс
+                <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 backdrop-blur-sm px-4 py-2 text-sm font-medium text-foreground shadow-sm">
+                  <Sparkles className="size-4 text-primary" />
+                  <span>Сучасний автосервіс нового покоління</span>
+                </div>
               </motion.div>
+
+              {/* Main heading */}
               <motion.h1
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                className="text-3xl font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl w-full text-white drop-shadow-sm leading-tight"
+                transition={{ duration: 0.6, delay: 0.3 }}
+                className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl w-full leading-[1.1]"
               >
-                Професійне обслуговування <br className="hidden sm:block" /><span className="text-primary drop-shadow-[0_2px_10px_rgba(255,255,255,0.1)] animate-shimmer">без компромісів</span>
+                <span className="text-foreground">Професійне</span>
+                <br />
+                <span className="text-foreground">обслуговування </span>
+                <span className="animate-gradient-text">без компромісів</span>
               </motion.h1>
+
+              {/* Subheading */}
               <motion.p
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-                className="mx-auto max-w-[700px] text-base md:text-lg text-gray-300 lg:text-xl leading-relaxed w-full drop-shadow-sm px-2 sm:px-0 mt-2"
+                transition={{ duration: 0.6, delay: 0.4 }}
+                className="max-w-2xl text-lg md:text-xl text-muted-foreground leading-relaxed"
               >
-                Довірте своє авто професіоналам WagGarage. Швидка діагностика, оригінальні запчастини та гарантія на всі види робіт. Ваш спокій — наш пріоритет.
+                Довірте своє авто професіоналам WagGarage. Швидка діагностика, оригінальні запчастини
+                та гарантія на всі види робіт.
               </motion.p>
+
+              {/* CTA Buttons */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.5 }}
-                className="flex flex-col sm:flex-row gap-3 mt-6 md:mt-8 w-full sm:w-auto px-4 sm:px-0"
+                transition={{ duration: 0.6, delay: 0.5 }}
+                className="flex flex-col sm:flex-row gap-4 mt-4 w-full sm:w-auto"
               >
                 <Link href="/dashboard" className="w-full sm:w-auto">
-                  <Button size="lg" className="w-full gap-2 rounded-full text-sm md:text-base h-12 md:h-14 px-6 md:px-8 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-shadow animate-pulse-glow">
-                    <CalendarDays className="size-4 md:size-5" /> Записатися онлайн
+                  <Button
+                    size="lg"
+                    className="w-full gap-2.5 rounded-full text-base h-14 px-8 shadow-xl shadow-primary/25 hover:shadow-primary/40 transition-all hover:scale-105 active:scale-95 animate-glow-pulse"
+                  >
+                    <CalendarDays className="size-5" />
+                    Записатися онлайн
                   </Button>
                 </Link>
-                <a href="#services" onClick={(e) => handleScrollTo(e, 'services')} className="w-full sm:w-auto">
-                  <Button size="lg" variant="outline" className="w-full rounded-full text-sm md:text-base h-12 md:h-14 px-6 md:px-8 bg-black/30 text-white border-white/20 hover:bg-white/10 hover:text-white backdrop-blur-md transition-all">
+                <a
+                  href="#services"
+                  onClick={(e) => handleScrollTo(e, "services")}
+                  className="w-full sm:w-auto"
+                >
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="w-full rounded-full text-base h-14 px-8 bg-card/50 backdrop-blur-sm border-border hover:bg-card hover:border-primary/30 transition-all group"
+                  >
                     Наші послуги
+                    <ChevronRight className="size-4 ml-1 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </a>
               </motion.div>
+
+              {/* Trust indicators */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6, delay: 0.7 }}
+                className="flex flex-wrap items-center justify-center gap-6 mt-8 pt-8 border-t border-border/50 w-full"
+              >
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex -space-x-2">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div
+                        key={i}
+                        className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/80 to-primary border-2 border-background flex items-center justify-center text-primary-foreground text-xs font-medium"
+                      >
+                        {String.fromCharCode(64 + i)}
+                      </div>
+                    ))}
+                  </div>
+                  <span>3 200+ задоволених клієнтів</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-sm">
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <Star key={i} className="size-4 text-amber-500 fill-amber-500" />
+                    ))}
+                  </div>
+                  <span className="text-muted-foreground">4.9 на Google</span>
+                </div>
+              </motion.div>
             </motion.div>
           </div>
+
+          {/* Scroll indicator */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1, duration: 0.5 }}
+            className="absolute bottom-8 left-1/2 -translate-x-1/2 hidden md:block"
+          >
+            <motion.div
+              animate={{ y: [0, 8, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+              className="w-6 h-10 rounded-full border-2 border-muted-foreground/30 flex items-start justify-center p-1"
+            >
+              <motion.div className="w-1.5 h-2.5 rounded-full bg-primary" />
+            </motion.div>
+          </motion.div>
         </section>
 
-        {/* FEATURES */}
-        <section id="features" className="w-full py-16 md:py-24 bg-background border-y border-border/50 relative overflow-hidden">
-          {/* Decorative blobs */}
-          <div className="absolute -top-40 -left-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl animate-blob pointer-events-none" />
-          <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl animate-blob-delay-2 pointer-events-none" />
-          <div className="container mx-auto px-4 md:px-6 w-full">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto w-full">
-              {[
-                { icon: ShieldCheck, title: "Гарантія якості", desc: "Даємо гарантію на всі виконані роботи та встановлені запчастини від 1 року." },
-                { icon: Clock, title: "Виконання в строк", desc: "Цінуємо ваш час. Роботи виконуються чітко у попередньо обумовлені терміни." },
-                { icon: CheckCircle2, title: "Прозорі ціни", desc: "Ви завжди знаєте за що платите. Жодного нав'язування додаткових послуг." }
-              ].map((feature, i) => (
-                <motion.div
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: i * 0.15 }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  key={i}
-                  className="flex flex-col items-center text-center space-y-4 p-6 rounded-2xl bg-secondary/30 hover:bg-secondary/50 transition-colors border border-border/50 w-full"
-                >
-                  <div className="p-3 bg-primary/10 rounded-xl">
-                    <feature.icon className="size-8 text-primary" />
-                  </div>
-                  <h3 className="text-xl font-bold">{feature.title}</h3>
-                  <p className="text-muted-foreground">{feature.desc}</p>
-                </motion.div>
+        {/* FEATURES SECTION */}
+        <section
+          id="features"
+          className="w-full py-20 md:py-28 bg-muted/30 border-y border-border/50 relative overflow-hidden"
+        >
+          <div className="container mx-auto px-4 md:px-6 w-full relative z-10">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto w-full">
+              {features.map((feature, i) => (
+                <AnimatedSection key={i} delay={i * 0.1}>
+                  <Card className="h-full border-border/50 bg-card/70 backdrop-blur-sm hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 transition-all duration-500 group hover-lift">
+                    <CardContent className="p-8 flex flex-col items-center text-center gap-5">
+                      <div className="p-4 bg-primary/10 rounded-2xl group-hover:bg-primary/15 group-hover:scale-110 transition-all duration-500">
+                        <feature.icon className="size-8 text-primary" />
+                      </div>
+                      <h3 className="text-xl font-bold text-foreground">{feature.title}</h3>
+                      <p className="text-muted-foreground leading-relaxed">{feature.desc}</p>
+                    </CardContent>
+                  </Card>
+                </AnimatedSection>
               ))}
             </div>
           </div>
         </section>
 
-        {/* SERVICES */}
-        <section id="services" className="w-full py-16 md:py-24 bg-secondary/10">
-          <div className="container mx-auto px-4 md:px-6 w-full">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true, margin: "-50px" }}
-              className="flex flex-col items-center justify-center space-y-4 text-center mb-12 w-full"
-            >
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">Популярні послуги</h2>
-              <p className="max-w-[700px] text-muted-foreground md:text-lg">
-                Надаємо повний спектр послуг з ремонту та технічного обслуговування автомобілів.
-              </p>
-            </motion.div>
+        {/* SERVICES SECTION */}
+        <section id="services" className="w-full py-20 md:py-28 bg-background relative overflow-hidden">
+          <FloatingShapes />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto w-full">
-              {[
-                { title: "Комп'ютерна діагностика", icon: Activity },
-                { title: "Планове ТО", icon: ClipboardList },
-                { title: "Ремонт ходової частини", icon: Car },
-                { title: "Обслуговування гальмівної системи", icon: Disc },
-                { title: "Ремонт двигунів", icon: Cog },
-                { title: "Діагностика авто перед покупкою", icon: FileSearch },
-                { title: "Обслуговування кондиціонерів", icon: Wind },
-                { title: "Шиномонтаж та балансування", icon: LifeBuoy }
-              ].map((service, i) => (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: 15 }}
-                  whileInView={{ opacity: 1, scale: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: i * 0.05 }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  key={i}
-                  className="w-full h-full"
-                >
-                  <Card className="group h-full hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 bg-card w-full relative overflow-hidden animate-card-glow" style={{ animationDelay: `${i * 0.5}s` }}>
-                    <CardContent className="p-6 flex flex-col items-center justify-center text-center gap-4 h-full">
-                      <div className="p-2 rounded-lg bg-primary/5 group-hover:bg-primary/10 group-hover:scale-110 transition-all duration-300">
-                        <service.icon className="size-5 text-primary" />
+          <div className="container mx-auto px-4 md:px-6 w-full relative z-10">
+            <AnimatedSection className="flex flex-col items-center justify-center space-y-4 text-center mb-16 w-full">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm font-medium text-muted-foreground">
+                <Zap className="size-4 text-primary" />
+                Повний спектр послуг
+              </div>
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl text-foreground">
+                Популярні послуги
+              </h2>
+              <p className="max-w-2xl text-muted-foreground md:text-lg">
+                Надаємо повний спектр послуг з ремонту та технічного обслуговування автомобілів
+                будь-якої складності.
+              </p>
+            </AnimatedSection>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 max-w-6xl mx-auto w-full">
+              {services.map((service, i) => (
+                <AnimatedSection key={i} delay={i * 0.05}>
+                  <Card
+                    className={`h-full border-border/50 bg-card hover:border-primary/40 transition-all duration-500 group cursor-pointer hover-lift animate-card-glow`}
+                    style={{ animationDelay: `${i * 0.6}s` }}
+                  >
+                    <CardContent className="p-6 flex flex-col items-center justify-center text-center gap-4 h-full min-h-[140px]">
+                      <div
+                        className={`p-3 rounded-xl bg-gradient-to-br ${service.color} group-hover:scale-110 transition-all duration-500`}
+                      >
+                        <service.icon className="size-6 text-foreground" />
                       </div>
                       <h3 className="font-semibold text-foreground leading-tight">{service.title}</h3>
                     </CardContent>
                   </Card>
-                </motion.div>
+                </AnimatedSection>
               ))}
             </div>
+
+            <AnimatedSection delay={0.4} className="flex justify-center mt-12">
+              <Link href="/dashboard">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="rounded-full gap-2 group hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all"
+                >
+                  Переглянути всі послуги
+                  <ArrowRight className="size-4 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
+            </AnimatedSection>
           </div>
         </section>
 
-        {/* HOW IT WORKS */}
-        <section className="w-full py-16 md:py-24 bg-background">
+        {/* HOW IT WORKS SECTION */}
+        <section id="how-it-works" className="w-full py-20 md:py-28 bg-muted/30 border-y border-border/50">
           <div className="container mx-auto px-4 md:px-6 w-full">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true, margin: "-50px" }}
-              className="flex flex-col items-center justify-center space-y-4 text-center mb-16 w-full"
-            >
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">Як ми працюємо</h2>
-              <p className="max-w-[700px] text-muted-foreground md:text-lg">
-                4 простих кроки від проблеми з авто до її вирішення.
+            <AnimatedSection className="flex flex-col items-center justify-center space-y-4 text-center mb-16 w-full">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm font-medium text-muted-foreground">
+                <Play className="size-4 text-primary" />
+                Простий процес
+              </div>
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl text-foreground">
+                Як ми працюємо
+              </h2>
+              <p className="max-w-2xl text-muted-foreground md:text-lg">
+                4 простих кроки від проблеми з авто до її вирішення. Швидко, зручно та прозоро.
               </p>
-            </motion.div>
+            </AnimatedSection>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-4 lg:gap-8 max-w-6xl mx-auto w-full relative">
-              {/* З'єднувальна лінія для десктопу */}
-              <div className="hidden md:block absolute top-[48px] left-[12%] right-[12%] h-[2px] bg-border z-0"></div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-4 lg:gap-6 max-w-6xl mx-auto w-full relative">
+              {/* Connecting line for desktop */}
+              <div className="hidden md:block absolute top-16 left-[15%] right-[15%] h-0.5 bg-gradient-to-r from-transparent via-border to-transparent z-0" />
 
-              {[
-                { icon: ClipboardList, step: "01", title: "Запис онлайн", desc: "Залишаєте заявку або записуєтесь через кабінет." },
-                { icon: Search, step: "02", title: "Діагностика", desc: "Проводимо ретельну перевірку вашого автомобіля." },
-                { icon: Wrench, step: "03", title: "Ремонт", desc: "Професійне виконання робіт та заміна деталей." },
-                { icon: ThumbsUp, step: "04", title: "Результат", desc: "Отримуєте цілком справне авто з гарантією." },
-              ].map((step, i) => (
-                <motion.div
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: i * 0.15 }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  key={i}
-                  className="flex flex-col items-center text-center space-y-4 relative z-10"
-                >
-                  <div className="w-24 h-24 rounded-full bg-card border-[4px] border-background flex items-center justify-center shadow-lg relative group transition-transform duration-300 hover:scale-105">
-                    <step.icon className="size-10 text-primary group-hover:scale-110 transition-transform duration-300" />
-                    <div className="absolute -top-1 -right-1 w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold flex items-center justify-center text-sm ring-4 ring-background shadow-sm">
-                      {step.step}
+              {steps.map((step, i) => (
+                <AnimatedSection key={i} delay={i * 0.15}>
+                  <div className="flex flex-col items-center text-center space-y-5 relative z-10">
+                    <div className="relative">
+                      <div className="w-28 h-28 rounded-full bg-card border-4 border-background flex items-center justify-center shadow-xl group transition-transform duration-500 hover:scale-105">
+                        <step.icon className="size-12 text-primary group-hover:scale-110 transition-transform duration-500" />
+                      </div>
+                      <div className="absolute -top-2 -right-2 w-10 h-10 rounded-full bg-primary text-primary-foreground font-bold flex items-center justify-center text-sm ring-4 ring-background shadow-lg">
+                        {step.step}
+                      </div>
+                    </div>
+                    <div className="pt-2 px-2">
+                      <h3 className="text-xl font-bold mb-2 text-foreground">{step.title}</h3>
+                      <p className="text-muted-foreground text-sm leading-relaxed">{step.desc}</p>
                     </div>
                   </div>
-                  <div className="pt-2 px-2">
-                    <h3 className="text-xl font-bold mb-2">{step.title}</h3>
-                    <p className="text-muted-foreground text-sm leading-relaxed">{step.desc}</p>
-                  </div>
-                </motion.div>
+                </AnimatedSection>
               ))}
             </div>
           </div>
         </section>
 
-        {/* STATISTICS */}
-        <section className="w-full py-16 md:py-24 bg-primary/5 border-y border-border/50 relative overflow-hidden">
-          {/* Decorative blobs */}
-          <div className="absolute top-1/2 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/5 rounded-full blur-3xl animate-blob-delay-4 pointer-events-none" />
+        {/* STATISTICS SECTION */}
+        <section className="w-full py-20 md:py-28 bg-foreground text-background relative overflow-hidden">
+          {/* Background pattern */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,theme(colors.background/5)_1px,transparent_1px),linear-gradient(to_bottom,theme(colors.background/5)_1px,transparent_1px)] bg-[size:4rem_4rem]" />
+
           <div className="container mx-auto px-4 md:px-6 w-full relative z-10">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-5xl mx-auto w-full">
-              {[
-                { icon: Car, value: "5 000+", label: "Авто обслужено" },
-                { icon: Users, value: "3 200+", label: "Задоволених клієнтів" },
-                { icon: Award, value: "12+", label: "Років досвіду" },
-                { icon: Timer, value: "98%", label: "Вчасне виконання" },
-              ].map((stat, i) => (
-                <motion.div
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: i * 0.1 }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  key={i}
-                  className="flex flex-col items-center text-center space-y-3 p-6"
-                >
-                  <div className="p-3 bg-primary/10 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                    <stat.icon className="size-7 text-primary" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 lg:gap-12 max-w-5xl mx-auto w-full">
+              {stats.map((stat, i) => (
+                <AnimatedSection key={i} delay={i * 0.1}>
+                  <div className="flex flex-col items-center text-center space-y-4">
+                    <div className="p-4 bg-background/10 rounded-2xl backdrop-blur-sm">
+                      <stat.icon className="size-8 text-primary-foreground" />
+                    </div>
+                    <div className="text-4xl md:text-5xl font-bold tracking-tight">
+                      <AnimatedCounter value={stat.value} suffix={stat.suffix} />
+                    </div>
+                    <span className="text-sm text-background/70 font-medium">{stat.label}</span>
                   </div>
-                  <span className="text-3xl md:text-4xl font-extrabold text-foreground animate-number-glow">{stat.value}</span>
-                  <span className="text-sm text-muted-foreground">{stat.label}</span>
-                </motion.div>
+                </AnimatedSection>
               ))}
             </div>
           </div>
         </section>
 
-        {/* TESTIMONIALS */}
-        <section className="w-full py-16 md:py-24 bg-background">
-          <div className="container mx-auto px-4 md:px-6 w-full">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true, margin: "-50px" }}
-              className="flex flex-col items-center justify-center space-y-4 text-center mb-12 w-full"
-            >
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">Що кажуть наші клієнти</h2>
-              <p className="max-w-[700px] text-muted-foreground md:text-lg">
+        {/* TESTIMONIALS SECTION */}
+        <section className="w-full py-20 md:py-28 bg-background relative overflow-hidden">
+          <FloatingShapes />
+
+          <div className="container mx-auto px-4 md:px-6 w-full relative z-10">
+            <AnimatedSection className="flex flex-col items-center justify-center space-y-4 text-center mb-16 w-full">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm font-medium text-muted-foreground">
+                <MessageSquareQuote className="size-4 text-primary" />
+                Відгуки клієнтів
+              </div>
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl text-foreground">
+                Що кажуть наші клієнти
+              </h2>
+              <p className="max-w-2xl text-muted-foreground md:text-lg">
                 Реальні відгуки від людей, які довірили нам свої автомобілі.
               </p>
-            </motion.div>
+            </AnimatedSection>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto w-full">
-              {[
-                { name: "Олександр К.", car: "BMW X5, 2020", rating: 5, text: "Чудовий сервіс! Зробили діагностику за годину, знайшли проблему з підвіскою, яку інші СТО не могли виявити. Рекомендую всім!" },
-                { name: "Марина В.", car: "Toyota Camry, 2019", rating: 5, text: "Записалася онлайн, все було готово точно в строк. Дуже зручний CRM-кабінет, де видно всю історію обслуговування мого авто." },
-                { name: "Дмитро Л.", car: "Volkswagen Golf, 2021", rating: 5, text: "Прозорі ціни, ніхто не нав'язує непотрібні послуги. Залишив авто на планове ТО — все ідеально. Буду повертатись!" },
-              ].map((review, i) => (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: i * 0.1 }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  key={i}
-                  className="w-full"
-                >
-                  <Card className="h-full bg-card hover:border-primary/30 transition-colors">
-                    <CardContent className="p-6 flex flex-col gap-4 h-full">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              {testimonials.map((review, i) => (
+                <AnimatedSection key={i} delay={i * 0.1}>
+                  <Card className="h-full bg-card border-border/50 hover:border-primary/30 transition-all duration-500 hover-lift">
+                    <CardContent className="p-7 flex flex-col gap-5 h-full">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
                           <MessageSquareQuote className="size-5 text-primary" />
                         </div>
                         <div>
-                          <p className="font-semibold text-foreground text-sm">{review.name}</p>
-                          <p className="text-xs text-muted-foreground">{review.car}</p>
+                          <p className="font-semibold text-foreground">{review.name}</p>
+                          <p className="text-sm text-muted-foreground">{review.car}</p>
                         </div>
                       </div>
                       <div className="flex gap-0.5">
                         {Array.from({ length: review.rating }).map((_, j) => (
-                          <Star key={j} className="size-4 text-yellow-500 fill-yellow-500" />
+                          <Star key={j} className="size-4 text-amber-500 fill-amber-500" />
                         ))}
                       </div>
-                      <p className="text-muted-foreground text-sm leading-relaxed flex-1">{review.text}</p>
+                      <p className="text-muted-foreground leading-relaxed flex-1">{review.text}</p>
                     </CardContent>
                   </Card>
-                </motion.div>
+                </AnimatedSection>
               ))}
             </div>
           </div>
         </section>
 
-        {/* FAQ */}
-        <section className="w-full py-16 md:py-24 bg-secondary/10">
+        {/* FAQ SECTION */}
+        <section className="w-full py-20 md:py-28 bg-muted/30 border-y border-border/50">
           <div className="container mx-auto px-4 md:px-6 w-full">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true, margin: "-50px" }}
-              className="flex flex-col items-center justify-center space-y-4 text-center mb-12 w-full"
-            >
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">Часті питання</h2>
-              <p className="max-w-[700px] text-muted-foreground md:text-lg">
+            <AnimatedSection className="flex flex-col items-center justify-center space-y-4 text-center mb-16 w-full">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm font-medium text-muted-foreground">
+                <Shield className="size-4 text-primary" />
+                Питання та відповіді
+              </div>
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl text-foreground">
+                Часті питання
+              </h2>
+              <p className="max-w-2xl text-muted-foreground md:text-lg">
                 Відповіді на популярні запитання наших клієнтів.
               </p>
-            </motion.div>
+            </AnimatedSection>
 
             <div className="max-w-3xl mx-auto w-full space-y-3">
-              {[
-                { q: "Як записатися на сервіс?", a: "Ви можете записатися онлайн через наш CRM-кабінет, зателефонувати нам або залишити заявку на сайті. Після реєстрації вам буде доступний зручний особистий кабінет." },
-                { q: "Скільки часу займає діагностика?", a: "Комп'ютерна діагностика зазвичай займає від 30 хвилин до 1 години, залежно від складності. Ми завжди повідомляємо орієнтовний час при записі." },
-                { q: "Чи надаєте ви гарантію на роботи?", a: "Так, ми даємо гарантію від 6 місяців до 2 років на всі виконані роботи та встановлені запчастини. Термін гарантії залежить від типу послуги." },
-                { q: "Які марки автомобілів ви обслуговуєте?", a: "Ми обслуговуємо автомобілі всіх популярних марок: BMW, Mercedes, Audi, Volkswagen, Toyota, Honda, Hyundai, Kia та інші. Наші спеціалісти мають досвід роботи з різними брендами." },
-                { q: "Чи можна залишити авто на ніч?", a: "Так, у нас є охоронювана стоянка. Ви можете залишити автомобіль на ніч або на кілька днів, якщо ремонт потребує більше часу." },
-              ].map((faq, i) => (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: i * 0.05 }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  key={i}
-                  className="w-full"
-                >
-                  <div
-                    className="rounded-xl border border-border/50 bg-card overflow-hidden transition-colors hover:border-primary/30"
-                  >
+              {faqs.map((faq, i) => (
+                <AnimatedSection key={i} delay={i * 0.05}>
+                  <div className="rounded-2xl border border-border/50 bg-card overflow-hidden transition-all duration-300 hover:border-primary/30">
                     <button
                       onClick={() => setOpenFaqIndex(openFaqIndex === i ? null : i)}
-                      className="w-full flex items-center justify-between p-5 text-left cursor-pointer"
+                      className="w-full flex items-center justify-between p-6 text-left cursor-pointer"
                     >
                       <span className="font-semibold text-foreground pr-4">{faq.q}</span>
-                      <ChevronDown className={`size-5 text-muted-foreground shrink-0 transition-transform duration-300 ${openFaqIndex === i ? 'rotate-180' : ''}`} />
-                    </button>
-                    <div
-                      className={`overflow-hidden transition-all duration-300 ease-in-out ${openFaqIndex === i ? 'max-h-60 opacity-100' : 'max-h-0 opacity-0'
+                      <div
+                        className={`p-2 rounded-full bg-muted transition-all duration-300 ${
+                          openFaqIndex === i ? "bg-primary text-primary-foreground rotate-180" : ""
                         }`}
-                    >
-                      <p className="px-5 pb-5 text-sm text-muted-foreground leading-relaxed">{faq.a}</p>
-                    </div>
+                      >
+                        <ChevronDown className="size-4" />
+                      </div>
+                    </button>
+                    <AnimatePresence>
+                      {openFaqIndex === i && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                        >
+                          <p className="px-6 pb-6 text-muted-foreground leading-relaxed">{faq.a}</p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
-                </motion.div>
+                </AnimatedSection>
               ))}
             </div>
           </div>
         </section>
 
         {/* CTA SECTION */}
-        <section className="w-full py-20 bg-primary/5 border-y border-border/50 relative overflow-hidden">
+        <section className="w-full py-24 md:py-32 bg-foreground text-background relative overflow-hidden">
+          {/* Background decoration */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,theme(colors.background/5)_1px,transparent_1px),linear-gradient(to_bottom,theme(colors.background/5)_1px,transparent_1px)] bg-[size:4rem_4rem]" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/20 rounded-full blur-[128px] opacity-50" />
+
           <div className="container mx-auto px-4 md:px-6 relative z-10 w-full">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true, margin: "-50px" }}
-              className="flex flex-col md:flex-row items-center justify-between gap-8 max-w-5xl mx-auto w-full"
-            >
-              <div className="space-y-4 max-w-lg text-center md:text-left px-2 sm:px-0">
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">Готові записатися на сервіс?</h2>
-                <p className="text-muted-foreground text-base sm:text-lg">
-                  Реєструйтесь в нашому CRM-кабінеті, щоб легко керувати історією авто та записуватись онлайн.
-                </p>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-4 shrink-0 w-full sm:w-auto">
+            <AnimatedSection className="flex flex-col items-center justify-center text-center gap-8 max-w-3xl mx-auto w-full">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight">
+                Готові записатися на сервіс?
+              </h2>
+              <p className="text-lg md:text-xl text-background/70 max-w-2xl">
+                Реєструйтесь в нашому CRM-кабінеті, щоб легко керувати історією авто та записуватись
+                онлайн в будь-який час.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 mt-4">
                 {!isAuthenticated ? (
                   <>
-                    <Link href="/register" className="w-full sm:w-auto">
-                      <Button size="lg" className="rounded-full shadow-lg hover:shadow-xl transition-all gap-2 h-12 sm:h-14 px-6 sm:px-8 text-sm sm:text-base w-full">
+                    <Link href="/register">
+                      <Button
+                        size="lg"
+                        className="rounded-full shadow-xl gap-2 h-14 px-8 text-base bg-background text-foreground hover:bg-background/90 transition-all hover:scale-105 active:scale-95"
+                      >
+                        <Sparkles className="size-5" />
                         Реєстрація клієнта
                       </Button>
                     </Link>
-                    <Link href="/login" className="w-full sm:w-auto">
-                      <Button size="lg" variant="outline" className="rounded-full h-12 sm:h-14 px-6 sm:px-8 text-sm sm:text-base bg-background w-full">
+                    <Link href="/login">
+                      <Button
+                        size="lg"
+                        variant="outline"
+                        className="rounded-full h-14 px-8 text-base border-background/30 text-background hover:bg-background/10 transition-all"
+                      >
                         Увійти
                       </Button>
                     </Link>
                   </>
                 ) : (
-                  <Link href="/dashboard" className="w-full sm:w-auto">
-                    <Button size="lg" className="rounded-full shadow-lg hover:shadow-xl transition-all gap-2 h-12 sm:h-14 px-6 sm:px-8 text-sm sm:text-base w-full">
+                  <Link href="/dashboard">
+                    <Button
+                      size="lg"
+                      className="rounded-full shadow-xl gap-2 h-14 px-8 text-base bg-background text-foreground hover:bg-background/90 transition-all hover:scale-105 active:scale-95"
+                    >
                       Перейти в кабінет
+                      <ArrowRight className="size-5" />
                     </Button>
                   </Link>
                 )}
               </div>
-            </motion.div>
+            </AnimatedSection>
           </div>
         </section>
       </main>
 
       {/* FOOTER */}
-      <footer id="contacts" className="w-full bg-card border-t border-border py-12">
+      <footer id="contacts" className="w-full bg-card border-t border-border py-16">
         <div className="container mx-auto px-4 md:px-6 w-full">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 w-full">
-            <div className="space-y-4 md:col-span-1">
-              <div className="flex items-center gap-2">
-                <div className="flex size-6 items-center justify-center rounded bg-primary">
-                  <Wrench className="size-3 text-primary-foreground" />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-10 w-full">
+            <div className="space-y-5 md:col-span-1">
+              <Link href="/" className="flex items-center gap-2.5">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-primary">
+                  <Wrench className="size-4.5 text-primary-foreground" />
                 </div>
-                <span className="text-lg font-bold">WagGarage</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Ваш надійний партнер у питаннях автосервісу.
+                <span className="text-xl font-bold">WagGarage</span>
+              </Link>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Ваш надійний партнер у питаннях автосервісу. Працюємо для вас з 2012 року.
               </p>
+              <div className="flex gap-3">
+                {["facebook", "instagram", "youtube"].map((social) => (
+                  <a
+                    key={social}
+                    href="#"
+                    className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                    aria-label={social}
+                  >
+                    <span className="text-xs font-bold uppercase">{social[0]}</span>
+                  </a>
+                ))}
+              </div>
             </div>
 
-            <div className="space-y-4">
-              <h4 className="font-semibold">Контакти</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground w-full">
-                <li className="flex items-center gap-2 break-all"><Phone className="size-4 shrink-0" /> +380 (99) 123-45-67</li>
-                <li className="flex items-center gap-2 break-all"><Mail className="size-4 shrink-0" /> info@waggarage.com</li>
-                <li className="flex items-start gap-2 break-words"><MapPin className="size-4 shrink-0 mt-0.5" /> м. Запоріжжя, вул. Перемоги, 20</li>
+            <div className="space-y-5">
+              <h4 className="font-semibold text-foreground">Контакти</h4>
+              <ul className="space-y-3 text-sm text-muted-foreground w-full">
+                <li className="flex items-center gap-3">
+                  <Phone className="size-4 text-primary shrink-0" />
+                  +380 (99) 123-45-67
+                </li>
+                <li className="flex items-center gap-3">
+                  <Mail className="size-4 text-primary shrink-0" />
+                  info@waggarage.com
+                </li>
+                <li className="flex items-start gap-3">
+                  <MapPin className="size-4 text-primary shrink-0 mt-0.5" />
+                  м. Запоріжжя, вул. Перемоги, 20
+                </li>
               </ul>
             </div>
 
-            <div className="space-y-4">
-              <h4 className="font-semibold">Графік роботи</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground w-full max-w-[180px]">
-                <li className="flex justify-between w-full"><span>Пн-Пт:</span> <span>09:00 - 19:00</span></li>
-                <li className="flex justify-between w-full"><span>Сб:</span> <span>10:00 - 16:00</span></li>
-                <li className="flex justify-between w-full"><span>Нд:</span> <span>Вихідний</span></li>
+            <div className="space-y-5">
+              <h4 className="font-semibold text-foreground">Графік роботи</h4>
+              <ul className="space-y-3 text-sm text-muted-foreground w-full">
+                <li className="flex justify-between max-w-[180px]">
+                  <span>Пн-Пт:</span> <span className="font-medium">09:00 - 19:00</span>
+                </li>
+                <li className="flex justify-between max-w-[180px]">
+                  <span>Сб:</span> <span className="font-medium">10:00 - 16:00</span>
+                </li>
+                <li className="flex justify-between max-w-[180px]">
+                  <span>Нд:</span> <span className="text-muted-foreground/60">Вихідний</span>
+                </li>
               </ul>
             </div>
 
-            <div className="space-y-4">
-              <h4 className="font-semibold">Клієнтам</h4>
-              <ul className="space-y-2 text-sm w-full">
-                <li><Link href="/login" className="text-muted-foreground hover:text-primary transition-colors">Особистий кабінет</Link></li>
-                <li><Link href="/register" className="text-muted-foreground hover:text-primary transition-colors">Реєстрація</Link></li>
-                <li><Link href="/dashboard" className="text-muted-foreground hover:text-primary transition-colors">Запис на сервіс</Link></li>
+            <div className="space-y-5">
+              <h4 className="font-semibold text-foreground">Клієнтам</h4>
+              <ul className="space-y-3 text-sm w-full">
+                <li>
+                  <Link
+                    href="/login"
+                    className="text-muted-foreground hover:text-primary transition-colors animated-underline"
+                  >
+                    Особистий кабінет
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/register"
+                    className="text-muted-foreground hover:text-primary transition-colors animated-underline"
+                  >
+                    Реєстрація
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/dashboard"
+                    className="text-muted-foreground hover:text-primary transition-colors animated-underline"
+                  >
+                    Запис на сервіс
+                  </Link>
+                </li>
               </ul>
             </div>
           </div>
 
-          <div className="mt-12 pt-8 border-t border-border/50 text-center text-sm text-muted-foreground flex flex-col items-center justify-center w-full">
+          <div className="mt-16 pt-8 border-t border-border/50 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
             <p>© {new Date().getFullYear()} WagGarage CRM. Всі права захищені.</p>
+            <div className="flex gap-6">
+              <a href="#" className="hover:text-foreground transition-colors">
+                Політика конфіденційності
+              </a>
+              <a href="#" className="hover:text-foreground transition-colors">
+                Умови використання
+              </a>
+            </div>
           </div>
         </div>
       </footer>
@@ -550,13 +903,13 @@ export default function LandingPage() {
             initial={{ opacity: 0, scale: 0.5, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.5, y: 20 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-50"
           >
             <Button
               onClick={scrollToTop}
               size="icon"
-              className="rounded-full w-12 h-12 shadow-xl hover:shadow-primary/50 transition-shadow"
+              className="rounded-full w-12 h-12 shadow-xl hover:shadow-primary/40 transition-all hover:scale-110 active:scale-95"
               aria-label="Повернутись нагору"
             >
               <ArrowUp className="size-5" />
