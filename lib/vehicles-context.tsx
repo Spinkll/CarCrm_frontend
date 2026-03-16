@@ -1,6 +1,7 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react"
+import React, { createContext, useContext, useCallback } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api from "./api"
 import { useAuth } from "./auth-context"
 
@@ -26,33 +27,38 @@ type VehiclesContextType = {
 const VehiclesContext = createContext<VehiclesContextType | undefined>(undefined)
 
 export function VehiclesProvider({ children }: { children: React.ReactNode }) {
-  const [vehicles, setVehicles] = useState<Car[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const { user } = useAuth() 
+  const queryClient = useQueryClient()
 
-  const fetchVehicles = useCallback(async () => {
-    if (!user) return
-    try {
-      setIsLoading(true)
+  // 1. Запит для отримання автомобілів
+  const {
+    data: vehicles = [],
+    isLoading,
+    refetch
+  } = useQuery({
+    queryKey: ["vehicles"],
+    queryFn: async () => {
       const { data } = await api.get("/cars") 
-      setVehicles(data)
-    } catch (error) {
-      console.error("Failed to fetch vehicles:", error)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [user])
+      return data as Car[]
+    },
+    enabled: !!user,
+  })
 
-  useEffect(() => {
-    fetchVehicles()
-  }, [fetchVehicles])
+  // 2. Мутація для додавання автомобіля
+  const addVehicleMutation = useMutation({
+    mutationFn: async (carData: Omit<Car, "id" | "userId">) => {
+      const { data } = await api.post("/cars", carData)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] })
+    },
+  })
 
+  // Обгортки для сумісності з існуючим кодом
   const addVehicle = async (carData: Omit<Car, "id" | "userId">) => {
     try {
-      const { data } = await api.post("/cars", carData)
-      
-      setVehicles((prev) => [...prev, data])
-      
+      await addVehicleMutation.mutateAsync(carData)
       return { success: true }
     } catch (error: any) {
       const msg = error.response?.data?.message || "Failed to add vehicle"
@@ -60,13 +66,17 @@ export function VehiclesProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const refreshVehicles = useCallback(async () => {
+    await refetch()
+  }, [refetch])
+
   return (
     <VehiclesContext.Provider
       value={{
         vehicles,
         isLoading,
         addVehicle,
-        refreshVehicles: fetchVehicles,
+        refreshVehicles,
       }}
     >
       {children}

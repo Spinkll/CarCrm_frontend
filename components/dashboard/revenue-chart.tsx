@@ -11,11 +11,16 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import { useCrm } from "@/lib/crm-context"
-import { useMemo } from "react"
+import { useOrders } from "@/lib/orders-context"
 import { Loader2 } from "lucide-react"
+import { useEffect, useMemo } from "react"
 
 export function RevenueChart() {
-  const { orders, isLoading } = useCrm()
+  const { orders, fetchOrders, isLoading: isOrdersLoading } = useOrders()
+
+  useEffect(() => {
+    fetchOrders()
+  }, [fetchOrders])
 
   const chartData = useMemo(() => {
     const dataMap = new Map<string, { month: string; revenue: number }>()
@@ -49,16 +54,14 @@ export function RevenueChart() {
     return Array.from(dataMap.values())
   }, [orders])
 
-  if (isLoading) {
+  if (isOrdersLoading) {
     return (
       <Card className="border-border bg-card">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-foreground">
-            Щомісячний дохід
-          </CardTitle>
+          <CardTitle className="text-base font-medium">Дохід за останні 7 днів</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex h-72 items-center justify-center">
+          <div className="flex h-[300px] items-center justify-center">
             <Loader2 className="size-8 animate-spin text-muted-foreground" />
           </div>
         </CardContent>

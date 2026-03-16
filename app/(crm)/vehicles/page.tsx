@@ -35,14 +35,20 @@ import { Plus, Car, User, Loader2, Wrench } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useVehicles } from "@/lib/vehicles-context"
 import { useCrm } from "@/lib/crm-context"
+import { useOrders } from "@/lib/orders-context"
 import { toast } from "@/hooks/use-toast"
 import { carBrandsAndModels, carYears } from "@/lib/cars"
+import { useEffect } from "react"
 
 export default function VehiclesPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const { vehicles, addVehicle, isLoading } = useVehicles()
-  const { customers, filteredOrders } = useCrm()
+  const { vehicles, addVehicle, isLoading: isVehiclesLoading } = useVehicles()
+  const { customers } = useCrm()
+  const { orders, fetchOrders, isLoading: isOrdersLoading } = useOrders()
+
+
+  const isLoading = isVehiclesLoading || isOrdersLoading
 
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState("")
@@ -212,7 +218,7 @@ export default function VehiclesPage() {
                   {filtered.map((vehicle: any) => {
                     const owner = customers.find(c => c.id === vehicle.userId)
 
-                    const vehicleOrders = filteredOrders.filter(o => o.carId === vehicle.id)
+                    const vehicleOrders = orders.filter((o: any) => o.carId === vehicle.id)
                     const lastOrder = [...vehicleOrders].sort((a, b) =>
                       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
                     )[0]

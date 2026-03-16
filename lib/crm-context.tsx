@@ -1,6 +1,7 @@
 "use client"
 
-import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from "react"
+import React, { createContext, useContext, useCallback, useMemo } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useAuth } from "./auth-context"
 import { api } from "./api"
 
@@ -54,16 +55,10 @@ export interface Appointment {
 
 type CrmContextType = {
   customers: Customer[]
-  vehicles: Vehicle[]
-  orders: ServiceOrder[]
   appointments: Appointment[]
-  filteredVehicles: Vehicle[]
-  filteredOrders: ServiceOrder[]
   filteredAppointments: Appointment[]
   isLoading: boolean
   refreshData: () => Promise<void>
-  addVehicle: (data: any) => Promise<{ success: boolean; error?: string }>
-  updateOrderStatus: (id: number, status: string) => Promise<void>
   // 👇 ДОДАНО НОВІ ТИПИ
   addAppointment: (data: any) => Promise<{ success: boolean; error?: string }>
   updateAppointmentStatus: (id: number, status: string) => Promise<void>
@@ -73,60 +68,65 @@ const CrmContext = createContext<CrmContextType | undefined>(undefined)
 
 export function CrmProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
-
-  const [customers, setCustomers] = useState<Customer[]>([])
-  const [vehicles, setVehicles] = useState<Vehicle[]>([])
-  const [orders, setOrders] = useState<ServiceOrder[]>([])
-  const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const queryClient = useQueryClient()
 
   const userRole = user?.role?.toUpperCase()
   const currentUserId = user?.id
+  const isClient = user?.role === "CLIENT"
+
+  // 1. Запит для клієнтів (Customers)
+  const { data: customers = [], isLoading: isCustomersLoading, refetch: refetchCustomers } = useQuery({
+    queryKey: ["customers"],
+    queryFn: async () => {
+      if (isClient) return []
+      const { data } = await api.get("/users/customers")
+      return data as Customer[]
+    },
+    enabled: !!user,
+  })
+
+  // 2. Запит для записів (Appointments)
+  const { data: appointments = [], isLoading: isAppointmentsLoading, refetch: refetchAppointments } = useQuery({
+    queryKey: ["all_appointments"], // Відрізняємо від appointments-context.tsx якщо потрібно, або юзаємо той самий кеш
+    queryFn: async () => {
+      const { data } = await api.get("/appointments")
+      return data as Appointment[]
+    },
+    enabled: !!user,
+  })
+
+  const isLoading = isCustomersLoading || isAppointmentsLoading
+
+  // Мутація для додавання
+  const addAppointmentMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const { data } = await api.post("/appointments", payload)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all_appointments"] })
+      // Якщо ми хочемо інвалідувати і в appointments-context:
+      queryClient.invalidateQueries({ queryKey: ["appointments"] })
+    },
+  })
+
+  // Мутація для оновлення
+  const updateAppointmentStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
+      await api.patch(`/appointments/${id}/status`, { status })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all_appointments"] })
+      queryClient.invalidateQueries({ queryKey: ["appointments"] })
+    },
+  })
 
   const refreshData = useCallback(async () => {
-    if (!user) return
-    setIsLoading(true)
-    try {
-      const isClient = user.role === "CLIENT"
-      const [custRes, vehRes, ordRes, appRes] = await Promise.all([
-        isClient ? { data: [] } : api.get('/users/customers').catch(() => ({ data: [] })),
-        api.get('/cars').catch(() => ({ data: [] })),
-        api.get('/orders').catch(() => ({ data: [] })),
-        api.get('/appointments').catch(() => ({ data: [] })),
-      ])
-
-      setCustomers(custRes.data)
-      setVehicles(vehRes.data)
-      setOrders(ordRes.data)
-      setAppointments(appRes.data)
-    } catch (err) {
-      console.error("CRM Data fetch error:", err)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [user])
-
-  useEffect(() => {
-    refreshData()
-  }, [refreshData])
-
-
-  const filteredOrders = useMemo(() => {
-    if (userRole === "ADMIN" || userRole === "MANAGER") return orders
-    if (userRole === "MECHANIC") {
-      return orders.filter(o => o.status !== "completed")
-    }
-    return orders.filter(o => o.car?.userId === currentUserId || (vehicles.find(v => v.id === o.carId)?.userId === currentUserId))
-  }, [orders, userRole, currentUserId, vehicles])
-
-  const filteredVehicles = useMemo(() => {
-    if (userRole === "ADMIN" || userRole === "MANAGER") return vehicles
-    if (userRole === "MECHANIC") {
-      const activeVehicleIds = new Set(filteredOrders.map(o => o.carId))
-      return vehicles.filter(v => activeVehicleIds.has(v.id))
-    }
-    return vehicles.filter(v => Number(v.userId) === Number(currentUserId))
-  }, [vehicles, userRole, currentUserId, filteredOrders])
+    await Promise.all([
+      refetchCustomers(),
+      refetchAppointments()
+    ])
+  }, [refetchCustomers, refetchAppointments])
 
   const filteredAppointments = useMemo(() => {
     if (userRole === "ADMIN" || userRole === "MANAGER") return appointments
@@ -137,32 +137,9 @@ export function CrmProvider({ children }: { children: React.ReactNode }) {
   }, [appointments, userRole, currentUserId])
 
   // --- Екшни (Actions) ---
-
-  const addVehicle = async (payload: any) => {
-    try {
-      const { data } = await api.post('/cars', payload)
-      setVehicles(prev => [...prev, data])
-      return { success: true }
-    } catch (err: any) {
-      return { success: false, error: err.response?.data?.message || "Error adding vehicle" }
-    }
-  }
-
-  const updateOrderStatus = async (id: number, status: string) => {
-    try {
-      await api.patch(`/orders/${id}/status`, { status })
-      setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o))
-    } catch (err) {
-      console.error("Status update failed", err)
-    }
-  }
-
-  // 👇 ДОДАНО НОВІ ФУНКЦІЇ ДЛЯ APPOINTMENTS
-
   const addAppointment = async (payload: any) => {
     try {
-      const { data } = await api.post('/appointments', payload)
-      setAppointments(prev => [...prev, data])
+      await addAppointmentMutation.mutateAsync(payload)
       return { success: true }
     } catch (err: any) {
       return { success: false, error: err.response?.data?.message || "Error scheduling appointment" }
@@ -171,9 +148,7 @@ export function CrmProvider({ children }: { children: React.ReactNode }) {
 
   const updateAppointmentStatus = async (id: number, status: string) => {
     try {
-      // Переконайся, що ендпоінт на бекенді саме такий (або просто /appointments/${id})
-      await api.patch(`/appointments/${id}/status`, { status })
-      setAppointments(prev => prev.map(a => a.id === id ? { ...a, status } : a))
+      await updateAppointmentStatusMutation.mutateAsync({ id, status })
     } catch (err) {
       console.error("Appointment status update failed", err)
     }
@@ -183,16 +158,10 @@ export function CrmProvider({ children }: { children: React.ReactNode }) {
     <CrmContext.Provider
       value={{
         customers,
-        vehicles,
-        orders,
         appointments,
-        filteredVehicles,
-        filteredOrders,
         filteredAppointments,
         isLoading,
         refreshData,
-        addVehicle,
-        updateOrderStatus,
         addAppointment,
         updateAppointmentStatus,
       }}

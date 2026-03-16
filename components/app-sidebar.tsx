@@ -99,6 +99,7 @@ const navItems: NavItem[] = [
     icon: Banknote,
     roles: ["MECHANIC"]
   },
+
 ]
 
 export function AppSidebar() {

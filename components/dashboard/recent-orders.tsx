@@ -4,11 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { StatusBadge } from "@/components/status-badge"
 import { useCrm } from "@/lib/crm-context"
+import { useOrders } from "@/lib/orders-context"
+import { useVehicles } from "@/lib/vehicles-context"
 import { Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 export function RecentOrders() {
-  const { orders, customers, vehicles, isLoading } = useCrm()
+  const { customers, isLoading: isCrmLoading } = useCrm()
+  const { vehicles, isLoading: isVehiclesLoading } = useVehicles()
+  const { orders, isLoading: isOrdersLoading } = useOrders()
+
+  const isLoading = isCrmLoading || isVehiclesLoading || isOrdersLoading
   const router = useRouter()
 
   // 1. Використовуємо правильну назву стейту 'orders'

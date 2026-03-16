@@ -2,25 +2,41 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { StatusBadge } from "@/components/status-badge"
-import { useCrm } from "@/lib/crm-context"
+import { useAuth } from "@/lib/auth-context"
+import { useOrders, type Order } from "@/lib/orders-context"
+import { useVehicles, type Car as VehicleType } from "@/lib/vehicles-context"
 import { useAppointments } from "@/lib/appointments-context"
 import { Car, ClipboardList, CalendarDays, DollarSign, Clock, Loader2, Wrench } from "lucide-react"
 import { useMemo } from "react"
 
 export function ClientDashboard() {
-  const { filteredOrders, filteredVehicles, isLoading } = useCrm()
-  const { appointments, isLoading: appointmentsLoading } = useAppointments()
+  const { user } = useAuth()
+  const { orders = [], isLoading: ordersLoading } = useOrders()
+  const { vehicles = [], isLoading: vehiclesLoading } = useVehicles()
+  const { appointments = [], isLoading: appointmentsLoading } = useAppointments()
+
+  const isLoading = ordersLoading || vehiclesLoading || appointmentsLoading
+
+  const filteredOrders = useMemo(() => {
+    if (!user) return []
+    return orders.filter((o: Order) => o.customerId === user.id || o.car?.userId === user.id)
+  }, [orders, user])
+
+  const filteredVehicles = useMemo(() => {
+    if (!user) return []
+    return vehicles.filter((v: VehicleType) => v.userId === user.id)
+  }, [vehicles, user])
 
   const totalSpent = useMemo(() => {
     return filteredOrders
-      .filter((o) => o.status?.toLowerCase() === "completed" || o.status?.toLowerCase() === "paid")
-      .reduce((sum, o) => sum + Number(o.totalAmount || 0), 0)
+      .filter((o: Order) => o.status?.toLowerCase() === "completed" || o.status?.toLowerCase() === "paid")
+      .reduce((sum, o: Order) => sum + Number(o.totalAmount || 0), 0)
   }, [filteredOrders])
 
   // 2. Активні замовлення (додаємо статус 'received' та 'pending')
   const activeOrdersCount = useMemo(() => {
     const activeStatuses = ["in_progress", "pending", "received", "scheduled", "confirmed", "waiting_parts"]
-    return filteredOrders.filter((o) =>
+    return filteredOrders.filter((o: Order) =>
       activeStatuses.includes(o.status?.toLowerCase())
     ).length
   }, [filteredOrders])
@@ -81,7 +97,7 @@ export function ClientDashboard() {
                   <p className="mt-2 text-sm">Немає зареєстрованих автомобілів</p>
                 </div>
               ) : (
-                filteredVehicles.map((vehicle) => (
+                filteredVehicles.map((vehicle: VehicleType) => (
                   <div
                     key={vehicle.id}
                     className="flex items-center gap-3 rounded-lg border border-border bg-secondary/30 p-3"
@@ -180,42 +196,40 @@ export function ClientDashboard() {
           <CardTitle className="text-sm font-medium text-foreground">Історія обслуговування</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
             {filteredOrders.length === 0 ? (
-              <div className="flex flex-col items-center py-8 text-muted-foreground opacity-50">
-                <ClipboardList className="size-8" />
-                <p className="mt-2 text-sm">Історія обслуговування порожня</p>
-              </div>
-            ) : (
-              [...filteredOrders]
-                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                .slice(0, 5)
-                .map((order) => {
-                  const vehicle = filteredVehicles.find((v) => v.id === order.carId)
-                  return (
-                    <div key={order.id} className="flex items-center justify-between gap-4 rounded-lg border border-border bg-secondary/30 p-3">
-                      <div className="flex items-center gap-3 overflow-hidden">
-                        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                          <ClipboardList className="size-5 text-primary" />
+                <div className="flex flex-col items-center py-8 text-muted-foreground opacity-50">
+                  <ClipboardList className="size-8" />
+                  <p className="mt-2 text-sm">Історія обслуговування порожня</p>
+                </div>
+              ) : (
+                [...filteredOrders]
+                  .sort((a, b: Order) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                  .slice(0, 5)
+                  .map((order: Order) => {
+                    const vehicle = filteredVehicles.find((v: VehicleType) => v.id === order.carId)
+                    return (
+                      <div key={order.id} className="flex items-center justify-between gap-4 rounded-lg border border-border bg-secondary/30 p-3">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                            <ClipboardList className="size-5 text-primary" />
+                          </div>
+                          <div className="overflow-hidden">
+                            <p className="truncate text-sm font-medium text-foreground">{order.description || "Обслуговування авто"}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {vehicle ? `${vehicle.brand} ${vehicle.model}` : "Автомобіль"} • {new Date(order.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
                         </div>
-                        <div className="overflow-hidden">
-                          <p className="truncate text-sm font-medium text-foreground">{order.description || "Обслуговування авто"}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {vehicle ? `${vehicle.brand} ${vehicle.model}` : "Автомобіль"} • {new Date(order.createdAt).toLocaleDateString()}
-                          </p>
+                        <div className="flex shrink-0 items-center gap-3">
+                          <StatusBadge status={order.status} />
+                          <span className="text-sm font-bold text-foreground whitespace-nowrap">
+                            {Number(order.totalAmount || 0).toLocaleString()} ₴
+                          </span>
                         </div>
                       </div>
-                      <div className="flex shrink-0 items-center gap-3">
-                        <StatusBadge status={order.status} />
-                        <span className="text-sm font-bold text-foreground whitespace-nowrap">
-                          {Number(order.totalAmount || 0).toLocaleString()} ₴
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })
-            )}
-          </div>
+                    )
+                  })
+              )}
         </CardContent>
       </Card>
     </div>

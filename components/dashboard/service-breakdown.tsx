@@ -2,11 +2,16 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useCrm } from "@/lib/crm-context"
-import { useMemo } from "react"
+import { useOrders } from "@/lib/orders-context"
 import { Loader2 } from "lucide-react"
+import { useEffect, useMemo } from "react"
 
 export function ServiceBreakdown() {
-  const { orders, isLoading } = useCrm()
+  const { orders, fetchOrders, isLoading: isOrdersLoading } = useOrders()
+
+  useEffect(() => {
+    fetchOrders()
+  }, [fetchOrders])
 
   // Динамічно рахуємо статистику на основі реальних замовлень
   const breakdownData = useMemo(() => {
@@ -14,12 +19,13 @@ export function ServiceBreakdown() {
 
     const serviceMap = new Map<string, { name: string; count: number; revenue: number }>()
 
-    orders.forEach((order) => {
-      const status = order.status?.toLowerCase()
+    // Агрегуємо реальні послуги з масиву `services` (strings або objects)
+    orders.forEach((o) => {
+      const status = o.status?.toLowerCase()
       const isRevenueCounted = status === "completed" || status === "paid"
 
-      if (order.items && Array.isArray(order.items)) {
-        order.items.forEach((item) => {
+      if (o.services && Array.isArray(o.services)) {
+        o.services.forEach((item: any) => {
           // Рахуємо тільки послуги, пропускаємо запчастини
           if (item.type === "PART") return
 
@@ -48,25 +54,17 @@ export function ServiceBreakdown() {
 
   const maxCount = breakdownData.length > 0 ? Math.max(...breakdownData.map((s) => s.count)) : 1
 
-  if (isLoading) {
-    return (
-      <Card className="border-border bg-card">
-        <CardContent className="flex h-64 items-center justify-center">
-          <Loader2 className="size-6 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
     <Card className="border-border bg-card">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-foreground">
-          Популярні послуги
-        </CardTitle>
+        <CardTitle className="text-base font-medium">Популярні послуги (Топ-5)</CardTitle>
       </CardHeader>
       <CardContent>
-        {breakdownData.length === 0 ? (
+        {isOrdersLoading ? (
+          <div className="flex h-[300px] items-center justify-center">
+            <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : breakdownData.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
             Дані про послуги наразі відсутні.
           </div>

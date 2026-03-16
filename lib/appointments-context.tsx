@@ -1,6 +1,7 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react"
+import React, { createContext, useContext, useCallback, useMemo } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useAuth } from "./auth-context"
 import api from "./api"
 
@@ -15,7 +16,7 @@ export interface Appointment {
     carId: number
     description: string
     car: { brand: string; model: string; plate: string; user?: { firstName: string; lastName: string } }
-    mechanic?: { firstName: string; lastName: string }
+    mechanic?: { id: number; firstName: string; lastName: string }
   }
 }
 
@@ -32,19 +33,21 @@ const AppointmentsContext = createContext<AppointmentsContextType | undefined>(u
 
 export function AppointmentsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
-  const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const queryClient = useQueryClient()
 
-  const fetchAppointments = useCallback(async () => {
-    if (!user) return
-    setIsLoading(true)
-    try {
+  // 1. Запит для отримання записів
+  const {
+    data: appointments = [],
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["appointments"],
+    queryFn: async () => {
       const res = await api.get("/appointments")
       const fetchedAppointments = res.data
 
       // Auto-cancel past appointments (SCHEDULED or CONFIRMED)
       const now = new Date()
-      // Normalize to today midnight to only cancel if the day has fully passed
       const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
 
       const processedAppointments = await Promise.all(
@@ -73,37 +76,53 @@ export function AppointmentsProvider({ children }: { children: React.ReactNode }
         })
       )
 
-      setAppointments(processedAppointments)
-    } catch (error) {
-      console.error("Помилка завантаження записів", error)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [user])
+      return processedAppointments as Appointment[]
+    },
+    enabled: !!user,
+  })
 
-  useEffect(() => {
-    fetchAppointments()
-  }, [fetchAppointments])
+  // 2. Мутація для оновлення статусу
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
+      await api.patch(`/appointments/${id}/status`, { status })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["appointments"] })
+    },
+  })
+
+  // 3. Мутація для перенесення запису
+  const rescheduleMutation = useMutation({
+    mutationFn: async ({ id, scheduledAt, estimatedMin }: { id: number; scheduledAt: string; estimatedMin?: number }) => {
+      await api.patch(`/appointments/${id}/reschedule`, { scheduledAt, estimatedMin })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["appointments"] })
+    },
+  })
+
+  // Обгортки для сумісності з існуючим кодом
+  const fetchAppointments = useCallback(async () => {
+    await refetch()
+  }, [refetch])
 
   const updateStatus = useCallback(async (id: number, status: string) => {
     try {
-      await api.patch(`/appointments/${id}/status`, { status })
-      await fetchAppointments()
+      await updateStatusMutation.mutateAsync({ id, status })
       return { success: true }
     } catch (error: any) {
       return { success: false, error: error.response?.data?.message || error.message }
     }
-  }, [fetchAppointments])
+  }, [updateStatusMutation])
 
   const reschedule = useCallback(async (id: number, scheduledAt: string, estimatedMin?: number) => {
     try {
-      await api.patch(`/appointments/${id}/reschedule`, { scheduledAt, estimatedMin })
-      await fetchAppointments()
+      await rescheduleMutation.mutateAsync({ id, scheduledAt, estimatedMin })
       return { success: true }
     } catch (error: any) {
       return { success: false, error: error.response?.data?.message || error.message }
     }
-  }, [fetchAppointments])
+  }, [rescheduleMutation])
 
   const getAvailableSlots = useCallback(async (date: string) => {
     try {

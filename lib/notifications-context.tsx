@@ -1,6 +1,7 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react"
+import React, { createContext, useContext, useCallback, useMemo, useRef, useEffect } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useAuth } from "./auth-context"
 import api from "./api"
 import { useToast } from "@/components/ui/use-toast"
@@ -28,47 +29,42 @@ const NotificationsContext = createContext<NotificationsContextType | undefined>
 
 export function NotificationsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
-  const [notifications, setNotifications] = useState<Notification[]>([])
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [isLoading, setIsLoading] = useState(false)
-
-  const fetchNotifications = useCallback(async () => {
-    if (!user) return
-
-    setIsLoading(true)
-    try {
-      const [listRes, countRes] = await Promise.all([
-        api.get("/notifications"),
-        api.get("/notifications/unread-count"),
-      ])
-
-      setNotifications(listRes.data || [])
-      setUnreadCount(countRes.data?.count || 0)
-    } catch (error) {
-      // Якщо ендпоінт ще не реалізований на бекенді або сервер вимкнений,
-      // просто тихо очищаємо сповіщення щоб не спамити помилками в консоль
-      setNotifications([])
-      setUnreadCount(0)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [user])
-
-  // Початкове завантаження та очищення при виході
-  useEffect(() => {
-    if (user) {
-      fetchNotifications()
-      const interval = setInterval(fetchNotifications, 60000) // Опитування раз на хвилину
-      return () => clearInterval(interval)
-    } else {
-      setNotifications([])
-      setUnreadCount(0)
-    }
-  }, [user, fetchNotifications])
-
   const { toast } = useToast()
-  const prevUnreadCount = React.useRef(0)
+  const queryClient = useQueryClient()
 
+  // 1. Запит для списку сповіщень
+  const { data: notifications = [], isLoading: isListLoading, refetch: refetchList } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: async () => {
+      try {
+        const res = await api.get("/notifications")
+        return res.data as Notification[]
+      } catch (e) {
+        return []
+      }
+    },
+    enabled: !!user,
+  })
+
+  // 2. Запит для рахунку (полінг кожну хвилину)
+  const { data: unreadCount = 0, isLoading: isCountLoading, refetch: refetchCount } = useQuery({
+    queryKey: ["notifications_count"],
+    queryFn: async () => {
+      try {
+        const res = await api.get("/notifications/unread-count")
+        return res.data?.count || 0
+      } catch (e) {
+        return 0
+      }
+    },
+    enabled: !!user,
+    refetchInterval: 60000, // Автоматичний запит кожну хвилину (замість setInterval)
+  })
+
+  const isLoading = isListLoading || isCountLoading
+
+  // Тостинг нового сповіщення (лишаємо локальний відслідковувач)
+  const prevUnreadCount = useRef(0)
   useEffect(() => {
     if (unreadCount > prevUnreadCount.current && prevUnreadCount.current !== 0) {
       toast({
@@ -79,33 +75,60 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     prevUnreadCount.current = unreadCount
   }, [unreadCount, toast])
 
-  // Оптимистичное обновление для быстрого отклика UI
-  const markAsRead = useCallback(async (id: number) => {
-    // Сначала обновляем локальный стейт (UI реагирует мгновенно)
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))
-    setUnreadCount(prev => Math.max(0, prev - 1))
-
-    try {
+  // Мутація: прочитати одне
+  const markAsReadMutation = useMutation({
+    mutationFn: async (id: number) => {
       await api.patch(`/notifications/${id}/read`)
-    } catch (error) {
-      // Если запрос не удался — откатываем стейт
-      console.error("Ошибка markAsRead:", error)
-      fetchNotifications()
+    },
+    onMutate: async (id) => {
+      // Оптимістичне оновлення перед тим, як дочекаємось відповіді
+      await queryClient.cancelQueries({ queryKey: ["notifications"] })
+      await queryClient.cancelQueries({ queryKey: ["notifications_count"] })
+
+      queryClient.setQueryData(["notifications"], (old: Notification[] | undefined) => 
+        old ? old.map(n => n.id === id ? { ...n, isRead: true } : n) : []
+      )
+      queryClient.setQueryData(["notifications_count"], (old: number | undefined) => 
+        old ? Math.max(0, old - 1) : 0
+      )
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] })
+      queryClient.invalidateQueries({ queryKey: ["notifications_count"] })
     }
-  }, [fetchNotifications])
+  })
+
+  // Мутація: прочитати всі
+  const markAllAsReadMutation = useMutation({
+    mutationFn: async () => {
+      await api.patch("/notifications/read-all")
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["notifications"] })
+      await queryClient.cancelQueries({ queryKey: ["notifications_count"] })
+
+      queryClient.setQueryData(["notifications"], (old: Notification[] | undefined) => 
+        old ? old.map(n => ({ ...n, isRead: true })) : []
+      )
+      queryClient.setQueryData(["notifications_count"], () => 0)
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] })
+      queryClient.invalidateQueries({ queryKey: ["notifications_count"] })
+    }
+  })
+
+  const markAsRead = useCallback(async (id: number) => {
+    markAsReadMutation.mutate(id)
+  }, [markAsReadMutation])
 
   const markAllAsRead = useCallback(async () => {
-    // Оптимистичное обновление
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
-    setUnreadCount(0)
+    markAllAsReadMutation.mutate()
+  }, [markAllAsReadMutation])
 
-    try {
-      await api.patch("/notifications/read-all")
-    } catch (error) {
-      console.error("Помилка markAllAsRead:", error)
-      fetchNotifications()
-    }
-  }, [fetchNotifications])
+  const fetchNotifications = useCallback(async () => {
+    await Promise.all([refetchList(), refetchCount()])
+  }, [refetchList, refetchCount])
 
   const value = useMemo(() => ({
     notifications,

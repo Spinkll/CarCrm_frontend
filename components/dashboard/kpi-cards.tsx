@@ -3,10 +3,21 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Users, Car, ClipboardList, DollarSign, TrendingUp, TrendingDown, Loader2 } from "lucide-react"
 import { useCrm } from "@/lib/crm-context"
-import { useMemo, useEffect } from "react"
+import { useOrders } from "@/lib/orders-context"
+import { useVehicles } from "@/lib/vehicles-context"
+import { useEffect, useMemo } from "react"
+import { format, subDays, isWithinInterval, startOfMonth, endOfMonth } from "date-fns"
 
 export function KpiCards() {
-  const { customers, vehicles, orders, isLoading, refreshData } = useCrm()
+  const { customers, isLoading: isCrmLoading, refreshData } = useCrm()
+  const { vehicles, isLoading: isVehiclesLoading } = useVehicles()
+  const { orders, fetchOrders, isLoading: isOrdersLoading } = useOrders()
+
+  useEffect(() => {
+    fetchOrders()
+  }, [fetchOrders])
+
+  const isLoading = isCrmLoading || isVehiclesLoading || isOrdersLoading
 
   // Автоматично оновлюємо дані при поверненні на дашборд
   useEffect(() => {
@@ -15,9 +26,10 @@ export function KpiCards() {
 
   const stats = useMemo(() => {
     const now = new Date()
-    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-    const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999)
+    const currentMonthStart = startOfMonth(now)
+    const currentMonthEnd = endOfMonth(now)
+    const prevMonthStart = startOfMonth(subDays(currentMonthStart, 1))
+    const prevMonthEnd = endOfMonth(subDays(currentMonthStart, 1))
 
     // Допоміжна функція для обчислення відсотків
     const calculateTrend = (current: number, previous: number) => {
@@ -29,61 +41,60 @@ export function KpiCards() {
     }
 
     // 1. Клієнти (Нових цього місяця vs Минулого)
-    const currentCustomers = customers.filter(c => new Date(c.createdAt) >= currentMonthStart).length
-    const previousCustomers = customers.filter(c => {
-      const d = new Date(c.createdAt)
-      return d >= previousMonthStart && d <= previousMonthEnd
-    }).length
-    const cChangeStr = calculateTrend(currentCustomers, previousCustomers)
+    const currentCustomers = customers.filter(c =>
+      c.createdAt && isWithinInterval(new Date(c.createdAt), { start: currentMonthStart, end: currentMonthEnd })
+    ).length
+    const prevCustomers = customers.filter(c =>
+      c.createdAt && isWithinInterval(new Date(c.createdAt), { start: prevMonthStart, end: prevMonthEnd })
+    ).length
+    const cChangeStr = calculateTrend(currentCustomers, prevCustomers)
 
     // 2. Авто (Нових цього місяця vs Минулого)
-    const currentVehicles = vehicles.filter(v => v.createdAt && new Date(v.createdAt) >= currentMonthStart).length
-    const previousVehicles = vehicles.filter(v => {
-      if (!v.createdAt) return false
-      const d = new Date(v.createdAt)
-      return d >= previousMonthStart && d <= previousMonthEnd
-    }).length
-    const vChangeStr = calculateTrend(currentVehicles, previousVehicles)
+    const currentVehicles = vehicles.filter((v: any) =>
+      v.createdAt && isWithinInterval(new Date(v.createdAt), { start: currentMonthStart, end: currentMonthEnd })
+    ).length
+    const prevVehicles = vehicles.filter((v: any) =>
+      v.createdAt && isWithinInterval(new Date(v.createdAt), { start: prevMonthStart, end: prevMonthEnd })
+    ).length
+    const vChangeStr = calculateTrend(currentVehicles, prevVehicles)
 
     // 3. Замовлення (Активні зараз, але тренд по створенню нових)
     const active = orders.filter((o) => {
       const s = o.status?.toLowerCase()
-      return s === "in_progress" || s === "pending" || s === "received" || s === "confirmed" || s === "waiting_parts"
+      return s === "in_progress" || s === "pending" || s === "received" || s === "waiting_parts" || s === "confirmed"
     }).length
-
-    const currentCreatedOrders = orders.filter(o => new Date(o.createdAt) >= currentMonthStart).length
-    const previousCreatedOrders = orders.filter(o => {
+    const currentOrders = orders.filter(o => new Date(o.createdAt) >= currentMonthStart).length
+    const prevOrders = orders.filter(o => {
       const d = new Date(o.createdAt)
-      return d >= previousMonthStart && d <= previousMonthEnd
+      return d >= prevMonthStart && d <= prevMonthEnd
     }).length
-    const oChangeStr = calculateTrend(currentCreatedOrders, previousCreatedOrders)
+    const oChangeStr = calculateTrend(currentOrders, prevOrders)
 
-    // 4. Дохід (Зароблене цього місяця vs Минулого)
+    // Revenue
     const currentRevenue = orders
+      .filter(o => o.status === "COMPLETED" || o.status === "PAID")
       .filter(o => {
-        const s = o.status?.toLowerCase()
-        return (s === "completed" || s === "paid") && new Date(o.createdAt) >= currentMonthStart
+        const d = new Date((o as any).updatedAt || o.createdAt)
+        return d >= currentMonthStart && d <= currentMonthEnd
       })
       .reduce((sum, o) => sum + Number(o.totalAmount || 0), 0)
 
-    const previousRevenue = orders
+    const prevRevenue = orders
+      .filter(o => o.status === "COMPLETED" || o.status === "PAID")
       .filter(o => {
-        const s = o.status?.toLowerCase()
-        if (s !== "completed" && s !== "paid") return false
-        const d = new Date(o.createdAt)
-        return d >= previousMonthStart && d <= previousMonthEnd
+        const d = new Date((o as any).updatedAt || o.createdAt)
+        return d >= prevMonthStart && d <= prevMonthEnd
       })
       .reduce((sum, o) => sum + Number(o.totalAmount || 0), 0)
-
-    const rChangeStr = calculateTrend(currentRevenue, previousRevenue)
+    const rChangeStr = calculateTrend(currentRevenue, prevRevenue)
 
     return {
       active,
       currentRevenue,
-      customersTrend: { value: cChangeStr, direction: currentCustomers >= previousCustomers ? "up" as const : "down" as const },
-      vehiclesTrend: { value: vChangeStr, direction: currentVehicles >= previousVehicles ? "up" as const : "down" as const },
-      ordersTrend: { value: oChangeStr, direction: currentCreatedOrders >= previousCreatedOrders ? "up" as const : "down" as const },
-      revenueTrend: { value: rChangeStr, direction: currentRevenue >= previousRevenue ? "up" as const : "down" as const },
+      customersTrend: { value: cChangeStr, direction: currentCustomers >= prevCustomers ? "up" as const : "down" as const },
+      vehiclesTrend: { value: vChangeStr, direction: currentVehicles >= prevVehicles ? "up" as const : "down" as const },
+      ordersTrend: { value: oChangeStr, direction: currentOrders >= prevOrders ? "up" as const : "down" as const },
+      revenueTrend: { value: rChangeStr, direction: currentRevenue >= prevRevenue ? "up" as const : "down" as const },
     }
   }, [customers, vehicles, orders])
 

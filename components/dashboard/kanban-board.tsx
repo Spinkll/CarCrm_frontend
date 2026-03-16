@@ -6,7 +6,6 @@ import { StatusBadge } from "@/components/status-badge"
 import { cn } from "@/lib/utils"
 import { GripVertical, Eye, Car, User, Hash } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
-import { useAppointments } from "@/lib/appointments-context"
 import { useCrm } from "@/lib/crm-context"
 import { useNotifications } from "@/lib/notifications-context"
 
@@ -107,7 +106,6 @@ export function KanbanBoard({ orders, vehicles, customers, updateStatus, canDrag
     const [draggedOrderId, setDraggedOrderId] = useState<number | null>(null)
     const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
 
-    const { appointments, updateStatus: updateAppointmentStatus } = useAppointments()
     const { refreshData } = useCrm()
     const { fetchNotifications } = useNotifications()
 
@@ -153,22 +151,6 @@ export function KanbanBoard({ orders, vehicles, customers, updateStatus, canDrag
 
         try {
             await updateStatus(orderId, column.dropStatus)
-
-            // Sync appointment status
-            const orderToApptStatus: Record<string, string> = {
-                CONFIRMED: "CONFIRMED",
-                IN_PROGRESS: "ARRIVED",
-                COMPLETED: "COMPLETED",
-                PAID: "COMPLETED",
-                CANCELLED: "CANCELLED",
-            }
-            const apptStatus = orderToApptStatus[column.dropStatus]
-            if (apptStatus) {
-                const relatedAppt = appointments.find(a => a.orderId === orderId)
-                if (relatedAppt && relatedAppt.status !== apptStatus) {
-                    await updateAppointmentStatus(relatedAppt.id, apptStatus)
-                }
-            }
 
             refreshData()
             fetchNotifications()

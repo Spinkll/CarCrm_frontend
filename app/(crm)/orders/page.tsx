@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "@/hooks/use-toast"
 import { PageHeader } from "@/components/page-header"
@@ -71,9 +71,9 @@ const statusTranslations: Record<string, string> = {
 export default function OrdersPage() {
   const { user } = useAuth()
   const router = useRouter()
-  const { orders, createOrder, updateStatus, isLoading } = useOrders()
-  const { vehicles } = useVehicles()
-  const { customers, refreshData } = useCrm()
+  const { orders, createOrder, updateStatus, isLoading: isOrdersLoading, fetchOrders } = useOrders()
+  const { vehicles, isLoading: isVehiclesLoading } = useVehicles()
+  const { customers, refreshData: refreshCrm } = useCrm()
 
   const { createRequest } = useServiceRequests()
   const { appointments, fetchAppointments, getAvailableSlots, updateStatus: updateAppointmentStatus } = useAppointments()
@@ -82,6 +82,9 @@ export default function OrdersPage() {
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState("all")
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+
+  const isLoading = isOrdersLoading || isVehiclesLoading
 
   // View mode toggle (table / kanban) with localStorage persistence
   const [viewMode, setViewMode] = useState<"table" | "kanban">(() => {
@@ -137,9 +140,16 @@ export default function OrdersPage() {
     fetchSlots()
   }, [selectedDate, getAvailableSlots])
 
-  if (!user) return null
+  // Розрахунок role-based фільтрованих замовлень локально
+  const role = user?.role?.toUpperCase() || "CLIENT"
+  
+  const roleFilteredOrders = useMemo(() => {
+    if (role === "ADMIN" || role === "MANAGER") return orders
+    if (role === "MECHANIC") return orders.filter(o => o.status !== "COMPLETED" && o.status !== "PAID" && o.status !== "CANCELLED")
+    // Client
+    return orders.filter(o => o.car?.userId === user?.id || (vehicles.find(v => v.id === o.carId)?.userId === user?.id))
+  }, [orders, role, user?.id, vehicles])
 
-  const role = user.role?.toUpperCase() || "CLIENT"
   const canCreateOrders = role === "CLIENT" || role === "ADMIN" || role === "MANAGER"
   const canEditOrderStatus = role === "ADMIN" || role === "MECHANIC" || role === "MANAGER"
 
@@ -151,8 +161,8 @@ export default function OrdersPage() {
   }
 
   const filtered = tab === "all"
-    ? orders
-    : orders.filter((o) => (tabStatusMap[tab] || []).includes(o.status))
+    ? roleFilteredOrders
+    : roleFilteredOrders.filter((o) => (tabStatusMap[tab] || []).includes(o.status))
 
   const sorted = [...filtered].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -213,17 +223,17 @@ export default function OrdersPage() {
       setForm({ vehicleId: "", description: "", mileage: "", services: "", estimatedDate: "", estimatedTime: "" })
       setOpen(false)
       toast({ title: "Замовлення створено", variant: "success" })
-      await Promise.all([fetchAppointments(), fetchNotifications()])
+      await fetchNotifications()
     } else {
       toast({ title: result.error || "Не вдалося створити замовлення", variant: "destructive" })
     }
   }
 
   const statusCounts = {
-    all: orders.length,
-    pending: orders.filter((o) => o.status === "PENDING").length,
-    inProgress: orders.filter((o) => ["IN_PROGRESS", "CONFIRMED", "WAITING_PARTS"].includes(o.status)).length,
-    completed: orders.filter((o) => ["COMPLETED", "PAID"].includes(o.status)).length,
+    all: roleFilteredOrders.length,
+    pending: roleFilteredOrders.filter((o: any) => o.status === "PENDING").length,
+    inProgress: roleFilteredOrders.filter((o: any) => ["IN_PROGRESS", "CONFIRMED", "WAITING_PARTS"].includes(o.status)).length,
+    completed: roleFilteredOrders.filter((o: any) => ["COMPLETED", "PAID"].includes(o.status)).length,
   }
 
   const descriptions: Record<string, string> = {
@@ -367,7 +377,7 @@ export default function OrdersPage() {
                                 {order.description}
                               </TableCell>
                               <TableCell>
-                                {canEditOrderStatus ? (
+                                {canEditOrderStatus && order.status !== "PAID" && order.status !== "CANCELLED" ? (
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                       <button className="inline-flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity">
@@ -387,23 +397,8 @@ export default function OrdersPage() {
                                             onClick={async () => {
                                               await updateStatus(order.id, status)
 
-                                              // Синхронізація статусу запису в календарі
-                                              const orderToApptStatus: Record<string, string> = {
-                                                CONFIRMED: "CONFIRMED",
-                                                IN_PROGRESS: "ARRIVED",
-                                                COMPLETED: "COMPLETED",
-                                                PAID: "COMPLETED",
-                                                CANCELLED: "CANCELLED",
-                                              }
-                                              const apptStatus = orderToApptStatus[status]
-                                              if (apptStatus) {
-                                                const relatedAppt = appointments.find(a => a.orderId === order.id)
-                                                if (relatedAppt && relatedAppt.status !== apptStatus) {
-                                                  await updateAppointmentStatus(relatedAppt.id, apptStatus)
-                                                }
-                                              }
-
-                                              refreshData()
+                                              fetchOrders(true)
+                                              refreshCrm()
                                               fetchNotifications()
                                               toast({ title: "Статус оновлено", variant: "success" })
                                             }}

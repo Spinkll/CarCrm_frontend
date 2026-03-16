@@ -38,6 +38,8 @@ interface EarningsData {
         start: string
         end: string
     }
+    commissionEarnings: number
+    baseSalary: number
     totalEarnings: number
     works: WorkItem[]
 }
@@ -137,34 +139,47 @@ export default function EarningsPage() {
                     </Card>
                 ) : data ? (
                     <>
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                            <Card className="border-border bg-card">
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            <Card className="border-border bg-card shadow-sm">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Загальний дохід</CardTitle>
-                                    <Banknote className="size-4 text-muted-foreground" />
+                                    <CardTitle className="text-sm font-semibold text-muted-foreground">Ставка</CardTitle>
+                                    <Calendar className="size-4 text-primary/60" />
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold">
-                                        {data.totalEarnings.toLocaleString()} ₴
+                                    <div className="text-2xl font-bold text-foreground">
+                                        {data.baseSalary.toLocaleString()} ₴
                                     </div>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        {monthNames[Number(selectedMonth) - 1]} {selectedYear}
-                                    </p>
+                                    <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider font-medium">Фіксована частина</p>
                                 </CardContent>
                             </Card>
 
-                            <Card className="border-border bg-card">
+                            <Card className="border-border bg-card shadow-sm">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Період</CardTitle>
-                                    <Calendar className="size-4 text-muted-foreground" />
+                                    <CardTitle className="text-sm font-semibold text-muted-foreground">Відсоток з робіт</CardTitle>
+                                    <Banknote className="size-4 text-primary/60" />
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-sm font-medium">
-                                        {format(new Date(data.period.start), "d MMMM", { locale: uk })} -{" "}
-                                        {format(new Date(data.period.end), "d MMMM yyyy", { locale: uk })}
+                                    <div className="text-2xl font-bold text-foreground">
+                                        {data.commissionEarnings.toLocaleString()} ₴
                                     </div>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        Виконано робіт: {data.works.length}
+                                    <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider font-medium">За {data.works.length} виконаних робіт</p>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="border-primary/20 bg-primary/5 shadow-md relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-1">
+                                     <div className="bg-primary/10 text-primary text-[8px] font-bold px-1.5 py-0.5 rounded uppercase">Разом</div>
+                                </div>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-bold text-primary">До виплати</CardTitle>
+                                    <Banknote className="size-4 text-primary" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-3xl font-black text-primary">
+                                        {data.totalEarnings.toLocaleString()} ₴
+                                    </div>
+                                    <p className="text-[10px] text-primary/70 mt-1 font-medium italic">
+                                        За {monthNames[Number(selectedMonth) - 1]} {selectedYear}
                                     </p>
                                 </CardContent>
                             </Card>

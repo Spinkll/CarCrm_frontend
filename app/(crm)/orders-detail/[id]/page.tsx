@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Badge } from "@/components/ui/badge"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { StatusBadge } from "@/components/status-badge"
-import { ArrowLeft, Plus, Trash2, Wrench, Clock, ShieldCheck, Loader2, Check, ChevronsUpDown, ChevronDown, Banknote, CreditCard, Wallet, FileDown, ClipboardList } from "lucide-react"
+import { ArrowLeft, Plus, Trash2, Wrench, Clock, ShieldCheck, Loader2, Check, ChevronsUpDown, ChevronDown, Banknote, CreditCard, Wallet, FileDown, ClipboardList, Package, AlertTriangle } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,7 +30,6 @@ import { useOrders } from "@/lib/orders-context"
 import { useNotifications } from "@/lib/notifications-context"
 import { useCrm } from "@/lib/crm-context"
 import { useInventory } from "@/lib/inventory-context"
-import { useAppointments } from "@/lib/appointments-context"
 
 // Локальні типи
 interface OrderDetails {
@@ -90,7 +89,6 @@ export default function OrderDetailsPage() {
   const { fetchNotifications } = useNotifications()
   const { refreshData: refreshCrmData } = useCrm()
   const { inventory, fetchInventory } = useInventory()
-  const { appointments, updateStatus: updateAppointmentStatus } = useAppointments()
 
   const [order, setOrder] = useState<OrderDetails | null>(null)
   const [employees, setEmployees] = useState<any[]>([])
@@ -122,10 +120,11 @@ export default function OrderDetailsPage() {
 
   const role = user?.role?.toUpperCase() || "CLIENT"
 
-  // ЗМІНЕНО ТУТ: Додано MECHANIC до прав управління позиціями
-  const canManageItems = role === "ADMIN" || role === "MANAGER" || role === "MECHANIC"
+  // ЗМІНЕНО ТУТ: Додано MECHANIC до прав управління позиціями + заборона при закритих статусах
+  const isOrderClosed = order?.status === "COMPLETED" || order?.status === "PAID" || order?.status === "CANCELLED"
+  const canManageItems = (role === "ADMIN" || role === "MANAGER" || role === "MECHANIC") && !isOrderClosed
   const canAssign = role === "ADMIN" || role === "MANAGER"
-  const canEditStatus = role === "ADMIN" || role === "MANAGER" || role === "MECHANIC"
+  const canEditStatus = (role === "ADMIN" || role === "MANAGER" || role === "MECHANIC") && order?.status !== "PAID" && order?.status !== "CANCELLED"
 
   const managers = employees.filter(e => e.role === "MANAGER" || e.role === "ADMIN")
   const mechanics = employees.filter(e => e.role === "MECHANIC")
@@ -430,23 +429,6 @@ export default function OrderDetailsPage() {
     setIsSubmitting(true)
     try {
       await updateOrderStatus(order.id, newStatus)
-
-      // Синхронізація статусу запису в календарі
-      const orderToApptStatus: Record<string, string> = {
-        CONFIRMED: "CONFIRMED",
-        IN_PROGRESS: "ARRIVED",
-        COMPLETED: "COMPLETED",
-        PAID: "COMPLETED",
-        CANCELLED: "CANCELLED",
-      }
-      const apptStatus = orderToApptStatus[newStatus]
-      if (apptStatus) {
-        const relatedAppt = appointments.find(a => a.orderId === order.id)
-        if (relatedAppt && relatedAppt.status !== apptStatus) {
-          await updateAppointmentStatus(relatedAppt.id, apptStatus)
-        }
-      }
-
       await fetchOrderDetails()
       refreshOrders()
       refreshCrmData()
@@ -474,6 +456,23 @@ export default function OrderDetailsPage() {
     <div className="flex flex-1 flex-col overflow-hidden">
       <PageHeader title={`Замовлення #${order.id}`} description="Деталі замовлення та історія сервісу">
         <div className="flex items-center gap-2">
+          {/* Mechanic: Request Parts button */}
+          {role === "MECHANIC" && order.status === "IN_PROGRESS" && (
+            <Button
+              variant="outline"
+              onClick={() => handleStatusChange("WAITING_PARTS")}
+              disabled={isSubmitting}
+              className="gap-1 sm:gap-2 text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-4 border-amber-500/30 text-amber-600 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+            >
+              {isSubmitting ? (
+                <Loader2 className="size-3 sm:size-4 animate-spin" />
+              ) : (
+                <Package className="size-3 sm:size-4" />
+              )}
+              <span className="hidden sm:inline">Потрібна запчастина</span>
+              <span className="sm:hidden">Запчастина</span>
+            </Button>
+          )}
           <Button
             variant="outline"
             onClick={handleDownloadWorkOrder}
@@ -690,19 +689,21 @@ export default function OrderDetailsPage() {
                         <p className="text-xs text-success font-medium flex items-center gap-1">
                           <Check className="size-3" /> Замовлення повністю оплачено
                         </p>
-                        <Button
-                          variant="outline"
-                          className="w-full mt-2 gap-2"
-                          onClick={handleDownloadReceipt}
-                          disabled={isReceiptDownloading}
-                        >
-                          {isReceiptDownloading ? (
-                            <Loader2 className="size-4 animate-spin" />
-                          ) : (
-                            <FileDown className="size-4" />
-                          )}
-                          {isReceiptDownloading ? "Завантаження..." : "Завантажити чек (PDF)"}
-                        </Button>
+                        {role !== "MECHANIC" && (
+                          <Button
+                            variant="outline"
+                            className="w-full mt-2 gap-2"
+                            onClick={handleDownloadReceipt}
+                            disabled={isReceiptDownloading}
+                          >
+                            {isReceiptDownloading ? (
+                              <Loader2 className="size-4 animate-spin" />
+                            ) : (
+                              <FileDown className="size-4" />
+                            )}
+                            {isReceiptDownloading ? "Завантаження..." : "Завантажити чек (PDF)"}
+                          </Button>
+                        )}
                       </>
                     ) : order.status === "COMPLETED" && payments.length === 0 ? (
                       <p className="text-xs text-warning font-medium">Очікує оплати</p>
@@ -710,8 +711,8 @@ export default function OrderDetailsPage() {
                   </div>
                 )}
 
-                {/* Accept payment button */}
-                {order.status === "COMPLETED" && payments.length === 0 && (
+                {/* Accept payment button — not for mechanics */}
+                {order.status === "COMPLETED" && payments.length === 0 && role !== "MECHANIC" && (
                   <Button
                     className="w-full mt-4 gap-2"
                     onClick={() => {
@@ -1130,10 +1131,10 @@ export default function OrderDetailsPage() {
               <RadioGroup
                 value={paymentMethod}
                 onValueChange={(val: "CASH" | "CARD") => setPaymentMethod(val)}
-                className={cn("grid gap-3", role === "CLIENT" ? "grid-cols-2" : "grid-cols-1")}
+                className="grid gap-3 grid-cols-1"
               >
                 {(["CASH", "CARD"] as const)
-                  .filter((method) => role === "CLIENT" || method === "CASH")
+                  .filter((method) => role === "CLIENT" ? method !== "CASH" : method === "CASH")
                   .map((method) => {
                     const info = paymentMethodLabels[method]
                     const Icon = info.icon

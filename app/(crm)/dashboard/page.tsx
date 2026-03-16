@@ -6,6 +6,9 @@ import { RevenueChart } from "@/components/dashboard/revenue-chart"
 import { ServiceBreakdown } from "@/components/dashboard/service-breakdown"
 import { RecentOrders } from "@/components/dashboard/recent-orders"
 import { UpcomingAppointments } from "@/components/dashboard/upcoming-appointments"
+import { MechanicProductivityChart } from "@/components/dashboard/mechanic-productivity-chart"
+import { ServiceRequestsChart } from "@/components/dashboard/service-requests-chart"
+import { InventoryStatus } from "@/components/dashboard/inventory-status"
 import { useAuth } from "@/lib/auth-context"
 import { MechanicDashboard } from "@/components/dashboard/mechanic-dashboard"
 import { ClientDashboard } from "@/components/dashboard/client-dashboard"
@@ -54,7 +57,12 @@ export default function DashboardPage() {
                     <KpiCards />
                     <div className="grid gap-6 lg:grid-cols-2">
                         <RevenueChart />
+                        <MechanicProductivityChart />
+                    </div>
+                    <div className="grid gap-6 lg:grid-cols-3">
                         <ServiceBreakdown />
+                        <ServiceRequestsChart />
+                        <InventoryStatus />
                     </div>
                     <div className="grid gap-6 lg:grid-cols-3">
                         <div className="lg:col-span-2">

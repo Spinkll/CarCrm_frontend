@@ -116,7 +116,7 @@ export default function ServiceRequestsPage() {
       setSelectedRequestId(null)
       setApproveForm({ date: "", time: "10:00", estimatedMin: 60 })
       toast({ title: "Заявку схвалено", description: "Створено замовлення та запис в календарі.", variant: "success" })
-      await Promise.all([refreshOrders(), fetchAppointments(), fetchNotifications()])
+      await fetchNotifications()
     } else {
       toast({ title: result.error || "Не вдалося схвалити заявку", variant: "destructive" })
     }
