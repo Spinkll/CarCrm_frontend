@@ -1,16 +1,15 @@
 import type { Metadata } from 'next'
-import { Inter, Playfair_Display, Geist_Mono } from 'next/font/google'
+import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
 import { ThemeProvider } from '@/components/theme-provider'
 
-const _inter = Inter({ subsets: ["latin", "cyrillic"], variable: '--font-inter' });
-const _playfair = Playfair_Display({ subsets: ["latin", "cyrillic"], variable: '--font-playfair' });
-const _geistMono = Geist_Mono({ subsets: ["latin"], variable: '--font-geist-mono' });
+const _geist = Geist({ subsets: ["latin"] });
+const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'WagGarage - Car Service Management',
-  description: 'Modern CRM system for car service and auto repair shops. Manage customers, vehicles, service orders, and appointments with ease.',
+  title: 'AutoCare CRM - Car Service Management',
+  description: 'Comprehensive CRM system for car service and auto repair shops. Manage customers, vehicles, service orders, and appointments.',
   icons: {
     icon: [
       {
