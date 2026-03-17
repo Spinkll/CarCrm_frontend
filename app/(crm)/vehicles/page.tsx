@@ -87,6 +87,9 @@ export default function VehiclesPage() {
 
   const filtered = vehicles.filter(
     (v: any) => {
+      // Якщо це клієнт, показуємо тільки його авто
+      if (role === "client" && v.userId !== user.id) return false;
+
       const owner = customers.find(c => c.id === v.userId)
       const ownerName = owner ? `${owner.firstName} ${owner.lastName}`.toLowerCase() : ""
       const searchLower = search.toLowerCase()

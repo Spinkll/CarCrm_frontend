@@ -1,8 +1,7 @@
 "use client"
 
-import { Input } from "@/components/ui/input"
-import { Search } from "lucide-react"
 import { NotificationsList } from "./ui/notifications-list"
+import { GlobalSearch } from "./global-search"
 
 
 export function PageHeader({
@@ -15,21 +14,15 @@ export function PageHeader({
   children?: React.ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-3 border-b border-border bg-card px-4 py-4 sm:px-6 sm:py-5 md:flex-row md:items-center md:justify-between">
-      <div className="pl-10 md:pl-0">
-        <h1 className="text-lg sm:text-xl font-semibold text-foreground">{title}</h1>
+    <div className="flex flex-col gap-3 border-b border-border bg-card px-3 py-3 sm:px-6 sm:py-5 md:flex-row md:items-center md:justify-between">
+      <div className="min-w-0 pr-2 pl-10 md:pl-0">
+        <h1 className="break-words text-base font-semibold text-foreground sm:text-xl">{title}</h1>
         {description && (
-          <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm text-muted-foreground">{description}</p>
+          <p className="mt-0.5 break-words text-xs text-muted-foreground sm:mt-1 sm:text-sm">{description}</p>
         )}
       </div>
-      <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-        <div className="relative hidden sm:block">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Пошук..."
-            className="h-9 w-40 bg-secondary pl-9 text-sm sm:w-48 lg:w-64"
-          />
-        </div>
+      <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:gap-3 md:w-auto md:justify-end">
+        <GlobalSearch />
 
         <NotificationsList />
 

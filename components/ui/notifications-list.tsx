@@ -20,7 +20,7 @@ export function NotificationsList() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
+        <Button variant="ghost" size="icon" className="relative h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground sm:h-10 sm:w-10">
           <Bell className="size-5" />
           {unreadCount > 0 && (
             <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-primary" />
@@ -28,7 +28,7 @@ export function NotificationsList() {
           <span className="sr-only">Сповіщення</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 p-0">
+      <DropdownMenuContent align="end" sideOffset={8} className="w-[min(calc(100vw-1rem),20rem)] p-0 sm:w-80">
         <div className="flex items-center justify-between p-4 pb-2">
           <h4 className="font-semibold">Сповіщення</h4>
           {unreadCount > 0 && (

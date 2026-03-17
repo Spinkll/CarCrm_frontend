@@ -150,6 +150,12 @@ export default function OrdersPage() {
     return orders.filter(o => o.car?.userId === user?.id || (vehicles.find(v => v.id === o.carId)?.userId === user?.id))
   }, [orders, role, user?.id, vehicles])
 
+  // Фильтруем автомобили для выпадающего списка (чтобы клиент не видел чужие)
+  const availableVehicles = useMemo(() => {
+    if (role === "ADMIN" || role === "MANAGER") return vehicles
+    return vehicles.filter(v => v.userId === user?.id)
+  }, [vehicles, role, user?.id])
+
   const canCreateOrders = role === "CLIENT" || role === "ADMIN" || role === "MANAGER"
   const canEditOrderStatus = role === "ADMIN" || role === "MECHANIC" || role === "MANAGER"
 
@@ -466,16 +472,16 @@ export default function OrdersPage() {
                     <SelectValue placeholder="Оберіть автомобіль" />
                   </SelectTrigger>
                   <SelectContent>
-                    {vehicles.map((v) => {
+                    {availableVehicles.map((v) => {
                       const owner = customers.find(c => c.id === v.userId)
-                      const ownerStr = owner ? ` - ${owner.firstName} ${owner.lastName}` : ''
+                      const ownerStr = (owner && (role === "ADMIN" || role === "MANAGER")) ? ` - ${owner.firstName} ${owner.lastName}` : ''
                       return (
                         <SelectItem key={v.id} value={v.id.toString()}>
                           {v.brand} {v.model} ({v.plate}){ownerStr}
                         </SelectItem>
                       )
                     })}
-                    {vehicles.length === 0 && (
+                    {availableVehicles.length === 0 && (
                       <div className="p-2 text-sm text-muted-foreground">Транспортних засобів не знайдено. Додайте авто спочатку.</div>
                     )}
                   </SelectContent>
