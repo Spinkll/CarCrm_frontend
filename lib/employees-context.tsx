@@ -53,8 +53,30 @@ export function EmployeesProvider({ children }: { children: React.ReactNode }) {
   }, [fetchEmployees])
 
   const createEmployee = async (payload: any) => {
+    const { baseSalary, commissionRate, ...basePayload } = payload
     try {
-      const { data } = await api.post("/users/employee", payload)
+      // 1. Створюємо працівника з базовими даними
+      const { data } = await api.post("/users/employee", basePayload)
+
+      // 2. Якщо створення успішне і є дані про ставку/комісію — оновлюємо їх окремо
+      // Це потрібно, бо базовий DTO створення може не підтримувати ці поля
+      if (baseSalary != null || commissionRate != null) {
+        try {
+          const updateData: any = {}
+          if (baseSalary != null) updateData.baseSalary = baseSalary
+          if (commissionRate != null) updateData.commissionRate = commissionRate
+
+          const { data: updatedData } = await api.patch(`/users/${data.id}`, updateData)
+          setEmployees((prev) => [...prev, { ...data, ...updatedData }])
+          return { success: true }
+        } catch (updateError) {
+          console.error("Employee created but failed to set salary/commission:", updateError)
+          // Все одно повертаємо успіх, оскільки користувач створений
+          setEmployees((prev) => [...prev, data])
+          return { success: true }
+        }
+      }
+
       setEmployees((prev) => [...prev, data])
       return { success: true }
     } catch (error: any) {

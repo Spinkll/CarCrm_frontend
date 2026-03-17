@@ -19,17 +19,24 @@ export function ServiceBreakdown() {
 
     const serviceMap = new Map<string, { name: string; count: number; revenue: number }>()
 
-    // Агрегуємо реальні послуги з масиву `services` (strings або objects)
-    orders.forEach((o) => {
+    // Агрегуємо реальні послуги з масиву `items` або `services`
+    orders.forEach((o: any) => {
       const status = o.status?.toLowerCase()
       const isRevenueCounted = status === "completed" || status === "paid"
 
-      if (o.services && Array.isArray(o.services)) {
-        o.services.forEach((item: any) => {
-          // Рахуємо тільки послуги, пропускаємо запчастини
-          if (item.type === "PART") return
+      // Перевіряємо обидва можливі поля для послуг
+      const items = o.items || o.services
 
-          const rawName = item.name || "Невідома послуга"
+      if (items && Array.isArray(items)) {
+        items.forEach((item: any) => {
+          // Якщо це рядок (старий формат), перетворюємо в об'єкт
+          const isString = typeof item === 'string'
+          
+          // Рахуємо тільки послуги, пропускаємо запчастини
+          // Якщо це рядок, вважаємо це послугою
+          if (!isString && item.type === "PART") return
+
+          const rawName = isString ? item : (item.name || "Невідома послуга")
           const name = rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase().trim()
 
           if (!serviceMap.has(name)) {
@@ -37,10 +44,10 @@ export function ServiceBreakdown() {
           }
 
           const entry = serviceMap.get(name)!
-          entry.count += Number(item.quantity) || 1
+          entry.count += isString ? 1 : (Number(item.quantity) || 1)
 
           if (isRevenueCounted) {
-            entry.revenue += (Number(item.price) || 0) * (Number(item.quantity) || 1)
+            entry.revenue += isString ? 0 : ((Number(item.price) || 0) * (Number(item.quantity) || 1))
           }
         })
       }

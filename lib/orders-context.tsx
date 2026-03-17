@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useCallback } from "react"
+import React, { createContext, useContext, useCallback, useMemo } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api from "./api"
 import { useAuth } from "./auth-context"
@@ -24,6 +24,7 @@ export interface Order {
     plate: string;
     userId: number
   }
+  items?: Array<{ id: number; name: string; quantity: number; price: number; type?: "SERVICE" | "PART" }>
 }
 
 type OrdersContextType = {
@@ -125,8 +126,17 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
     }
   }, [refetch])
 
+  const value = useMemo(() => ({ 
+    orders, 
+    isLoading, 
+    createOrder, 
+    updateStatus, 
+    refreshOrders: () => fetchOrders(true), 
+    fetchOrders 
+  }), [orders, isLoading, createOrder, updateStatus, fetchOrders])
+
   return (
-    <OrdersContext.Provider value={{ orders, isLoading, createOrder, updateStatus, refreshOrders: () => fetchOrders(true), fetchOrders }}>
+    <OrdersContext.Provider value={value}>
       {children}
     </OrdersContext.Provider>
   )

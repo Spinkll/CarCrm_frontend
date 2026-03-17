@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Badge } from "@/components/ui/badge"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { StatusBadge } from "@/components/status-badge"
-import { ArrowLeft, Plus, Trash2, Wrench, Clock, ShieldCheck, Loader2, Check, ChevronsUpDown, ChevronDown, Banknote, CreditCard, Wallet, FileDown, ClipboardList, Package, AlertTriangle } from "lucide-react"
+import { ArrowLeft, Plus, Trash2, Wrench, Clock, ShieldCheck, Loader2, Check, ChevronsUpDown, ChevronDown, Banknote, CreditCard, Wallet, FileDown, ClipboardList, Package, AlertTriangle, User, Phone, Mail } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,7 +39,8 @@ interface OrderDetails {
   totalAmount: number
   scheduledAt: string | null
   createdAt: string
-  car: { brand: string; model: string; plate: string; vin: string; year: number }
+  car: { brand: string; model: string; plate: string; vin: string; year: number; userId: number }
+  customer?: { firstName: string; lastName: string; phone: string; email: string }
   manager: { id: number; firstName: string; lastName: string } | null
   mechanic: { id: number; firstName: string; lastName: string } | null
   items: Array<{ id: number; name: string; quantity: number; price: number; type?: "SERVICE" | "PART" }>
@@ -78,6 +79,92 @@ const statusTranslations: Record<string, string> = {
   CANCELLED: "Скасовано",
 }
 
+function OrderStepper({ currentStatus }: { currentStatus: string }) {
+  const steps = [
+    { key: "CONFIRMED", label: "Підтверджено", icon: Check },
+    { key: "IN_PROGRESS", label: "В роботі", icon: Wrench },
+    { key: "COMPLETED", label: "Виконано", icon: ClipboardList },
+    { key: "PAID", label: "Оплачено", icon: Banknote },
+  ]
+
+  const getStatusIndex = (status: string) => {
+    if (status === "PENDING" || status === "CONFIRMED") return 0
+    if (status === "IN_PROGRESS" || status === "WAITING_PARTS") return 1
+    if (status === "COMPLETED") return 2
+    if (status === "PAID") return 3
+    return -1
+  }
+
+  const currentIndex = getStatusIndex(currentStatus)
+  const isWaiting = currentStatus === "WAITING_PARTS"
+
+  if (currentStatus === "CANCELLED") {
+    return (
+      <div className="mb-8 bg-destructive/5 border border-destructive/20 p-4 rounded-xl flex items-center justify-center gap-3 shadow-sm">
+        <AlertTriangle className="size-5 text-destructive" />
+        <p className="font-bold text-destructive uppercase tracking-widest text-sm">Замовлення скасовано</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mb-10 w-full px-2 sm:px-6">
+      <div className="relative flex justify-between items-start max-w-3xl mx-auto">
+        {/* Background Line */}
+        <div className="absolute top-5 left-[10%] right-[10%] h-0.5 bg-secondary -z-0" />
+        
+        {/* Active Line Progress */}
+        <div 
+          className="absolute top-5 left-[10%] h-0.5 bg-primary transition-all duration-700 ease-in-out -z-0" 
+          style={{ width: `${currentIndex >= 0 ? (currentIndex / (steps.length - 1)) * 80 : 0}%` }}
+        />
+
+        {steps.map((step, idx) => {
+          const isCompleted = idx < currentIndex || (currentStatus === "PAID" && idx === 3)
+          const isActive = idx === currentIndex
+          const isStepWaiting = isWaiting && step.key === "IN_PROGRESS"
+          const Icon = step.icon
+
+          return (
+            <div key={step.key} className="flex flex-col items-center relative z-10 w-16 sm:w-24">
+              <div 
+                className={cn(
+                  "size-10 sm:size-11 rounded-full flex items-center justify-center border-2 transition-all duration-500",
+                  isCompleted ? "bg-primary border-primary text-primary-foreground shadow-sm" : 
+                  isActive ? "bg-card border-primary text-primary shadow-[0_0_20px_rgba(var(--primary),0.2)] ring-4 ring-primary/5" : 
+                  "bg-card border-secondary text-muted-foreground"
+                )}
+              >
+                {isCompleted && idx !== 3 ? <Check className="size-5 sm:size-6" /> : <Icon className="size-5 sm:size-5" />}
+                
+                {isStepWaiting && (
+                  <div className="absolute -top-1 -right-1 size-5 bg-amber-500 rounded-full flex items-center justify-center border-2 border-card shadow-sm">
+                    <AlertTriangle className="size-2.5 text-white" />
+                  </div>
+                )}
+              </div>
+              
+              <div className="mt-3 text-center">
+                <p className={cn(
+                  "text-[9px] sm:text-[11px] font-bold uppercase tracking-tight transition-colors",
+                  isActive ? "text-primary" : isCompleted ? "text-foreground/70" : "text-muted-foreground"
+                )}>
+                  {step.label}
+                </p>
+                {isStepWaiting && (
+                  <p className="text-[8px] sm:text-[9px] text-amber-600 font-extrabold uppercase mt-1 leading-none animate-pulse">
+                    Очікуємо запчастин
+                  </p>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function OrderDetailsPage() {
   const params = useParams()
   const router = useRouter()
@@ -89,6 +176,7 @@ export default function OrderDetailsPage() {
   const { fetchNotifications } = useNotifications()
   const { refreshData: refreshCrmData } = useCrm()
   const { inventory, fetchInventory } = useInventory()
+  const { customers, appointments } = useCrm()
 
   const [order, setOrder] = useState<OrderDetails | null>(null)
   const [employees, setEmployees] = useState<any[]>([])
@@ -272,7 +360,8 @@ export default function OrderDetailsPage() {
   }, [searchParams, orderId, router])
 
   useEffect(() => {
-    setIsLoading(true)
+    if (!order) setIsLoading(true)
+    
     const promises = [fetchOrderDetails(), fetchPayments()]
     if (canAssign) promises.push(fetchEmployees())
     if (canManageItems) {
@@ -459,6 +548,7 @@ export default function OrderDetailsPage() {
           {/* Mechanic: Request Parts button */}
           {role === "MECHANIC" && order.status === "IN_PROGRESS" && (
             <Button
+              type="button"
               variant="outline"
               onClick={() => handleStatusChange("WAITING_PARTS")}
               disabled={isSubmitting}
@@ -474,6 +564,7 @@ export default function OrderDetailsPage() {
             </Button>
           )}
           <Button
+            type="button"
             variant="outline"
             onClick={handleDownloadWorkOrder}
             disabled={isWorkOrderDownloading}
@@ -486,7 +577,12 @@ export default function OrderDetailsPage() {
             )}
             <span className="hidden sm:inline">{isWorkOrderDownloading ? "Завантаження..." : "Заказ-наряд"}</span>
           </Button>
-          <Button variant="outline" onClick={() => router.push('/orders')} className="gap-1 sm:gap-2 text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-4">
+          <Button 
+            type="button"
+            variant="outline" 
+            onClick={() => router.push('/orders')} 
+            className="gap-1 sm:gap-2 text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-4"
+          >
             <ArrowLeft className="size-3 sm:size-4" />
             <span className="hidden sm:inline">До списку замовлень</span>
             <span className="sm:hidden">Назад</span>
@@ -495,6 +591,9 @@ export default function OrderDetailsPage() {
       </PageHeader>
 
       <div className="flex-1 overflow-auto p-3 sm:p-4 md:p-6">
+        {/* Візуальний прогрес */}
+        <OrderStepper currentStatus={order.status} />
+
         <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
 
           <div className="col-span-1 lg:col-span-2 space-y-4 sm:space-y-6">
@@ -510,7 +609,10 @@ export default function OrderDetailsPage() {
                   {canEditStatus ? (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="inline-flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity">
+                        <button 
+                          type="button"
+                          className="inline-flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity outline-none"
+                        >
                           <StatusBadge status={order.status.toLowerCase()} />
                           <ChevronDown className="size-3 text-muted-foreground" />
                         </button>
@@ -524,7 +626,7 @@ export default function OrderDetailsPage() {
                           .map((status) => (
                             <DropdownMenuItem
                               key={status}
-                              onClick={() => handleStatusChange(status)}
+                              onSelect={() => handleStatusChange(status)}
                               className="cursor-pointer"
                             >
                               {statusTranslations[status] || status}
@@ -560,7 +662,12 @@ export default function OrderDetailsPage() {
                   <CardDescription className="text-xs sm:text-sm">Перелік робіт та запчастин</CardDescription>
                 </div>
                 {canManageItems && (
-                  <Button size="sm" onClick={() => setItemModalOpen(true)} className="gap-1 text-xs sm:text-sm w-full sm:w-auto">
+                  <Button 
+                    type="button"
+                    size="sm" 
+                    onClick={() => setItemModalOpen(true)} 
+                    className="gap-1 text-xs sm:text-sm w-full sm:w-auto"
+                  >
                     <Plus className="size-3" /> Додати позицію
                   </Button>
                 )}
@@ -592,7 +699,13 @@ export default function OrderDetailsPage() {
                           </TableCell>
                           {canManageItems && (
                             <TableCell className="pr-3 sm:pr-6 text-right">
-                              <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 text-destructive hover:bg-destructive/10" onClick={() => confirmRemoveItem(item.id)}>
+                              <Button 
+                                type="button"
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-7 w-7 sm:h-8 sm:w-8 text-destructive hover:bg-destructive/10" 
+                                onClick={() => confirmRemoveItem(item.id)}
+                              >
                                 <Trash2 className="size-3.5 sm:size-4" />
                               </Button>
                             </TableCell>
@@ -636,7 +749,13 @@ export default function OrderDetailsPage() {
                           </TableCell>
                           {canManageItems && (
                             <TableCell className="pr-3 sm:pr-6 text-right">
-                              <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 text-destructive hover:bg-destructive/10" onClick={() => confirmRemoveItem(item.id)}>
+                              <Button 
+                                type="button"
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-7 w-7 sm:h-8 sm:w-8 text-destructive hover:bg-destructive/10" 
+                                onClick={() => confirmRemoveItem(item.id)}
+                              >
                                 <Trash2 className="size-3.5 sm:size-4" />
                               </Button>
                             </TableCell>
@@ -762,12 +881,57 @@ export default function OrderDetailsPage() {
               </Card>
             )}
 
+            {(() => {
+              const customer = order.customer || customers.find(c => c.id === order.car?.userId)
+              if (!customer) return null
+              return (
+                <Card className="border-border bg-card">
+                  <CardHeader className="pb-3 border-b border-border">
+                    <CardTitle className="text-sm">Клієнт</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-4 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 transition-colors">
+                        <User className="size-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-foreground">{customer.firstName} {customer.lastName}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase font-medium tracking-wider">Замовник</p>
+                      </div>
+                    </div>
+                    {customer.phone && (
+                      <div className="flex items-center gap-3 group">
+                        <div className="flex size-8 items-center justify-center rounded-full bg-secondary transition-colors group-hover:bg-primary/5">
+                          <Phone className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                        </div>
+                        <p className="text-sm text-foreground font-medium">{customer.phone}</p>
+                      </div>
+                    )}
+                    {customer.email && (
+                      <div className="flex items-center gap-3 group">
+                        <div className="flex size-8 items-center justify-center rounded-full bg-secondary transition-colors group-hover:bg-primary/5">
+                          <Mail className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                        </div>
+                        <p className="text-sm text-foreground break-all">{customer.email}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })()}
+
             <Card className="border-border bg-card">
               <CardHeader className="pb-3 border-b border-border">
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-sm">Призначена команда</CardTitle>
                   {canAssign && (
-                    <Button variant="ghost" size="sm" onClick={openAssignModal} className="h-8 text-xs">
+                    <Button 
+                      type="button"
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={openAssignModal} 
+                      className="h-8 text-xs"
+                    >
                       Змінити
                     </Button>
                   )}
@@ -805,17 +969,28 @@ export default function OrderDetailsPage() {
               </CardHeader>
               <CardContent className="pt-4">
                 <div className="space-y-4 relative before:absolute before:inset-0 before:ml-2 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
-                  {order.history.map((log) => (
-                    <div key={log.id} className="relative flex items-start justify-between gap-4">
-                      <div className="flex flex-col gap-1 w-full">
-                        <div className="flex justify-between items-center">
-                          <p className="text-xs font-semibold text-foreground">
+                  {order.history.map((log, idx) => (
+                    <div key={log.id} className="relative flex items-start gap-4 mb-3">
+                      <div className="flex flex-col items-center">
+                        <div className={cn(
+                          "size-4 rounded-full border-2 bg-card z-10",
+                          idx === 0 ? "border-primary" : "border-muted-foreground/30"
+                        )} />
+                      </div>
+                      <div className="flex flex-col gap-1 w-full -mt-0.5">
+                        <div className="flex justify-between items-start">
+                          <p className="text-[11px] font-bold text-foreground leading-tight">
                             {actionTranslations[log.action] || log.action}
                           </p>
-                          <span className="text-[10px] text-muted-foreground">{new Date(log.timestamp).toLocaleString()}</span>
+                          <span className="text-[9px] text-muted-foreground whitespace-nowrap ml-2">
+                            {new Date(log.timestamp).toLocaleDateString()} {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
                         </div>
-                        <p className="text-xs text-muted-foreground">{log.comment}</p>
-                        <p className="text-[10px] text-muted-foreground italic mt-1 text-right">Автор: {log.changedBy.firstName}</p>
+                        {log.comment && <p className="text-[10px] text-muted-foreground leading-relaxed italic">&quot;{log.comment}&quot;</p>}
+                        <div className="flex items-center gap-1 mt-0.5">
+                           <ShieldCheck className="size-2.5 text-muted-foreground" />
+                           <p className="text-[9px] text-muted-foreground font-medium">{log.changedBy.firstName} {log.changedBy.lastName}</p>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -890,7 +1065,7 @@ export default function OrderDetailsPage() {
                       <CommandList>
                         <CommandEmpty className="py-4 px-2 text-center text-sm text-muted-foreground">
                           Не знайдено серед існуючих.<br />
-                          {itemForm.type === "SERVICE" ? (
+                          {itemForm.type === "SERVICE" && role !== "MECHANIC" ? (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -908,7 +1083,7 @@ export default function OrderDetailsPage() {
                           )}
                         </CommandEmpty>
                         <CommandGroup>
-                          {searchQuery && itemForm.type === "SERVICE" && !catalogServices.some(s => s.name.toLowerCase() === searchQuery.toLowerCase()) && (
+                          {searchQuery && itemForm.type === "SERVICE" && role !== "MECHANIC" && !catalogServices.some(s => s.name.toLowerCase() === searchQuery.toLowerCase()) && (
                             <CommandItem
                               value={searchQuery}
                               onSelect={() => {
@@ -977,7 +1152,7 @@ export default function OrderDetailsPage() {
               <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="i-price">Ціна продажу (₴)</Label>
-                  <Input id="i-price" type="number" value={itemForm.price} onChange={(e) => setItemForm({ ...itemForm, price: e.target.value })} disabled={itemForm.type === "PART" && !!itemForm.name} placeholder="0.00" />
+                  <Input id="i-price" type="number" value={itemForm.price} onChange={(e) => setItemForm({ ...itemForm, price: e.target.value })} disabled={(itemForm.type === "PART" && !!itemForm.name) || (itemForm.type === "SERVICE" && role === "MECHANIC")} placeholder="0.00" />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="i-qty">Кількість</Label>

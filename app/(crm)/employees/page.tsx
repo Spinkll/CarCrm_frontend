@@ -139,7 +139,7 @@ export default function EmployeesPage() {
       phone: cleanPhone,
       role: form.role,
       baseSalary: Number(form.baseSalary),
-      ...(form.role === "MECHANIC" && { commissionRate: Number(form.commissionRate) }),
+      ...((form.role === "MECHANIC" || form.role === "MANAGER") && { commissionRate: Number(form.commissionRate) }),
     })
 
     setIsSubmitting(false)
@@ -197,8 +197,8 @@ export default function EmployeesPage() {
     }
     updateData.baseSalary = salary
 
-    // Комісія — тільки для механіків
-    if (editingEmployee.role === "MECHANIC") {
+    // Комісія — для механіків та менеджерів
+    if (editingEmployee.role === "MECHANIC" || editingEmployee.role === "MANAGER") {
       const rate = Number(editCommission)
       if (!rate || rate <= 0 || rate > 100) {
         setEditError("Вкажіть коректний відсоток комісії (1-100%)")
@@ -392,7 +392,7 @@ export default function EmployeesPage() {
                     </div>
                   )}
 
-                  {form.role === "MECHANIC" && (
+                  {(form.role === "MECHANIC" || form.role === "MANAGER") && (
                     <div className="grid gap-2">
                       <Label htmlFor="emp-commission">% від виконаних робіт</Label>
                       <div className="relative">
@@ -410,7 +410,7 @@ export default function EmployeesPage() {
                         <Percent className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        % від вартості послуги, який отримує механік
+                        % від вартості послуги, який отримує {form.role === "MECHANIC" ? "механік" : "менеджер"}
                       </p>
                     </div>
                   )}
@@ -504,7 +504,7 @@ export default function EmployeesPage() {
                             )}
                           </TableCell>
                           <TableCell className="text-center">
-                            {emp.role === "MECHANIC" ? (
+                            {emp.role === "MECHANIC" || emp.role === "MANAGER" ? (
                               <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 border border-blue-200 px-2 py-0.5 text-xs font-medium text-blue-700">
                                 <Percent className="size-3" />
                                 {emp.commissionRate ?? "—"}
@@ -641,7 +641,7 @@ export default function EmployeesPage() {
               </p>
             </div>
 
-            {editingEmployee?.role === "MECHANIC" && (
+            {(editingEmployee?.role === "MECHANIC" || editingEmployee?.role === "MANAGER") && (
               <div className="grid gap-2">
                 <Label htmlFor="edit-commission">% від виконаних робіт</Label>
                 <div className="relative">
@@ -658,7 +658,7 @@ export default function EmployeesPage() {
                   <Percent className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Відсоток від вартості послуги, який отримує механік
+                  Відсоток від вартості послуги, який отримує {editingEmployee?.role === "MECHANIC" ? "механік" : "менеджер"}
                 </p>
               </div>
             )}

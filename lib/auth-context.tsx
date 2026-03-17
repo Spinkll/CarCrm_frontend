@@ -134,7 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateProfile = useCallback(async (profileData: { firstName?: string; lastName?: string; phone?: string }) => {
     try {
-      const { data } = await api.patch("/user/profile", profileData)
+      const { data } = await api.patch(`/users/${user?.id}`, profileData)
       const updatedUser = data.user || { ...user, ...profileData }
       localStorage.setItem("user_data", JSON.stringify(updatedUser))
       setUser(updatedUser)

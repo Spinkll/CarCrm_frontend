@@ -9,9 +9,11 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PhoneInput } from "@/components/ui/phone-input"
 import { Label } from "@/components/ui/label"
 import { User, Mail, Phone, Loader2, CheckCircle2 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
+import { toast } from "@/hooks/use-toast"
 
 interface ProfileEditDialogProps {
     open: boolean
@@ -42,16 +44,52 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
         e.preventDefault()
         setError("")
 
+        const trimmedPhone = phone.trim()
+        
+        if (!trimmedPhone) {
+            const errorMsg = "Телефон не може бути порожнім"
+            setError(errorMsg)
+            toast({
+                title: "Помилка",
+                description: errorMsg,
+                variant: "destructive"
+            })
+            return
+        }
+
+        if (trimmedPhone === user?.phone) {
+            onOpenChange(false)
+            return
+        }
+
         setIsLoading(true)
 
+        // Clean phone number (remove spaces, dashes, parentheses)
+        const cleanPhone = trimmedPhone.replace(/[\s\-\(\)]/g, "")
+
         const result = await updateProfile({
-            phone: phone.trim() || undefined,
+            phone: cleanPhone,
         })
 
         if (result.success) {
             setIsSuccess(true)
+            toast({
+                title: "Успішно оновлено",
+                description: "Ваш номер телефону було змінено",
+                variant: "success"
+            })
+            // Close after a brief delay to show success state
+            setTimeout(() => {
+                onOpenChange(false)
+            }, 1000)
         } else {
-            setError(result.error || "Не вдалося оновити профіль")
+            const errorMsg = result.error || "Не вдалося оновити профіль"
+            setError(errorMsg)
+            toast({
+                title: "Помилка",
+                description: errorMsg,
+                variant: "destructive"
+            })
         }
 
         setIsLoading(false)
@@ -75,14 +113,14 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
                                 Ваші дані успішно збережено.
                             </p>
                         </div>
-                        <Button onClick={() => onOpenChange(false)} className="mt-2">
+                        <Button onClick={() => onOpenChange(false)} className="mt-2 text-primary border-primary hover:bg-primary/10" variant="outline">
                             Закрити
                         </Button>
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="grid gap-4">
                         {error && (
-                            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive font-medium">
                                 {error}
                             </div>
                         )}
@@ -97,29 +135,28 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
                                     <Mail className="size-4" />
                                     {user?.email}
                                 </div>
-                                <p className="mt-2 text-xs text-muted-foreground">
+                                <div className="flex items-center gap-2">
+                                    <Phone className="size-4 text-muted-foreground" />
+                                    {user?.phone || "Телефон не вказано"}
+                                </div>
+                                <p className="mt-2 text-sm text-muted-foreground">
                                     Зміна імені та електронної пошти наразі недоступна. Зверніться до адміністратора для їх зміни.
                                 </p>
                             </div>
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="profile-phone">Контактний телефон</Label>
-                            <div className="relative">
-                                <Phone className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                                <Input
-                                    id="profile-phone"
-                                    type="tel"
-                                    value={phone}
-                                    onChange={(e) => setPhone(e.target.value)}
-                                    placeholder="+380..."
-                                    className="bg-secondary pl-9"
-                                    disabled={isLoading}
-                                />
-                            </div>
+                            <Label htmlFor="profile-phone" className="text-sm font-medium text-muted-foreground">Новий телефон</Label>
+                            <PhoneInput
+                                id="profile-phone"
+                                value={phone}
+                                onValueChange={(val) => setPhone(val)}
+                                disabled={isLoading}
+                                className="bg-secondary border-transparent focus:border-primary/50 transition-all font-mono"
+                            />
                         </div>
 
-                        <Button type="submit" className="gap-2" disabled={isLoading}>
+                        <Button type="submit" className="gap-2 mt-2 w-full shadow-md transition-all active:scale-95" disabled={isLoading}>
                             {isLoading ? (
                                 <>
                                     <Loader2 className="size-4 animate-spin" />
