@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { motion, AnimatePresence } from "framer-motion"
+import { MotionDiv, AnimatePresence } from "@/components/motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ArrowRight, Wrench, ShieldCheck, Clock, CheckCircle2, Star, CalendarDays, Phone, Mail, MapPin, ClipboardList, Search, ThumbsUp, Activity, Car, Disc, Cog, FileSearch, Wind, LifeBuoy, ArrowUp, MessageSquareQuote, ChevronDown, Users, Award, Timer } from "lucide-react"
@@ -128,20 +128,20 @@ export default function LandingPage() {
           </div>
 
           <div className="container relative mx-auto px-4 md:px-6 z-10 w-full mb-8 md:mb-12">
-            <motion.div
+            <MotionDiv
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, ease: "easeOut" }}
               className="flex flex-col items-center gap-4 md:gap-6 text-center max-w-4xl mx-auto w-full"
             >
-              <motion.div
+              <MotionDiv
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
                 className="inline-flex items-center rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs md:text-sm font-medium text-white mb-2 md:mb-4 backdrop-blur-md"
               >
                 <Star className="mr-1.5 md:mr-2 size-3 md:size-4 text-primary fill-primary" /> Сучасний сервіс
-              </motion.div>
+              </MotionDiv>
               <motion.h1
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -158,7 +158,7 @@ export default function LandingPage() {
               >
                 Довірте своє авто професіоналам WagGarage. Швидка діагностика, оригінальні запчастини та гарантія на всі види робіт. Ваш спокій — наш пріоритет.
               </motion.p>
-              <motion.div
+              <MotionDiv
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.5 }}
@@ -174,8 +174,8 @@ export default function LandingPage() {
                     Наші послуги
                   </Button>
                 </a>
-              </motion.div>
-            </motion.div>
+              </MotionDiv>
+            </MotionDiv>
           </div>
         </section>
 
@@ -191,7 +191,7 @@ export default function LandingPage() {
                 { icon: Clock, title: "Виконання в строк", desc: "Цінуємо ваш час. Роботи виконуються чітко у попередньо обумовлені терміни." },
                 { icon: CheckCircle2, title: "Прозорі ціни", desc: "Ви завжди знаєте за що платите. Жодного нав'язування додаткових послуг." }
               ].map((feature, i) => (
-                <motion.div
+                <MotionDiv
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: i * 0.15 }}
@@ -204,7 +204,7 @@ export default function LandingPage() {
                   </div>
                   <h3 className="text-xl font-bold">{feature.title}</h3>
                   <p className="text-muted-foreground">{feature.desc}</p>
-                </motion.div>
+                </MotionDiv>
               ))}
             </div>
           </div>
@@ -213,7 +213,7 @@ export default function LandingPage() {
         {/* SERVICES */}
         <section id="services" className="w-full py-16 md:py-24 bg-secondary/10">
           <div className="container mx-auto px-4 md:px-6 w-full">
-            <motion.div
+            <MotionDiv
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
@@ -224,7 +224,7 @@ export default function LandingPage() {
               <p className="max-w-[700px] text-muted-foreground md:text-lg">
                 Надаємо повний спектр послуг з ремонту та технічного обслуговування автомобілів.
               </p>
-            </motion.div>
+            </MotionDiv>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto w-full">
               {[
@@ -237,7 +237,7 @@ export default function LandingPage() {
                 { title: "Обслуговування кондиціонерів", icon: Wind },
                 { title: "Шиномонтаж та балансування", icon: LifeBuoy }
               ].map((service, i) => (
-                <motion.div
+                <MotionDiv
                   initial={{ opacity: 0, scale: 0.95, y: 15 }}
                   whileInView={{ opacity: 1, scale: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: i * 0.05 }}
@@ -253,7 +253,7 @@ export default function LandingPage() {
                       <h3 className="font-semibold text-foreground leading-tight">{service.title}</h3>
                     </CardContent>
                   </Card>
-                </motion.div>
+                </MotionDiv>
               ))}
             </div>
           </div>
@@ -262,7 +262,7 @@ export default function LandingPage() {
         {/* HOW IT WORKS */}
         <section className="w-full py-16 md:py-24 bg-background">
           <div className="container mx-auto px-4 md:px-6 w-full">
-            <motion.div
+            <MotionDiv
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
@@ -273,7 +273,7 @@ export default function LandingPage() {
               <p className="max-w-[700px] text-muted-foreground md:text-lg">
                 4 простих кроки від проблеми з авто до її вирішення.
               </p>
-            </motion.div>
+            </MotionDiv>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-4 lg:gap-8 max-w-6xl mx-auto w-full relative">
               {/* З'єднувальна лінія для десктопу */}
@@ -281,11 +281,11 @@ export default function LandingPage() {
 
               {[
                 { icon: ClipboardList, step: "01", title: "Запис онлайн", desc: "Залишаєте заявку або записуєтесь через кабінет." },
-                { icon: Search, step: "02", title: "Діагностика", desc: "Проводимо ретельну перевірку вашого автомобіля." },
+                { icon: Search, step: "02", title: "Діагностика", desc: "Проводимо ретельну перевірку в��шого автомобіля." },
                 { icon: Wrench, step: "03", title: "Ремонт", desc: "Професійне виконання робіт та заміна деталей." },
                 { icon: ThumbsUp, step: "04", title: "Результат", desc: "Отримуєте цілком справне авто з гарантією." },
               ].map((step, i) => (
-                <motion.div
+                <MotionDiv
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: i * 0.15 }}
@@ -303,7 +303,7 @@ export default function LandingPage() {
                     <h3 className="text-xl font-bold mb-2">{step.title}</h3>
                     <p className="text-muted-foreground text-sm leading-relaxed">{step.desc}</p>
                   </div>
-                </motion.div>
+                </MotionDiv>
               ))}
             </div>
           </div>
@@ -321,7 +321,7 @@ export default function LandingPage() {
                 { icon: Award, value: "12+", label: "Років досвіду" },
                 { icon: Timer, value: "98%", label: "Вчасне виконання" },
               ].map((stat, i) => (
-                <motion.div
+                <MotionDiv
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: i * 0.1 }}
@@ -334,7 +334,7 @@ export default function LandingPage() {
                   </div>
                   <span className="text-3xl md:text-4xl font-extrabold text-foreground animate-number-glow">{stat.value}</span>
                   <span className="text-sm text-muted-foreground">{stat.label}</span>
-                </motion.div>
+                </MotionDiv>
               ))}
             </div>
           </div>
@@ -343,7 +343,7 @@ export default function LandingPage() {
         {/* TESTIMONIALS */}
         <section className="w-full py-16 md:py-24 bg-background">
           <div className="container mx-auto px-4 md:px-6 w-full">
-            <motion.div
+            <MotionDiv
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
@@ -354,7 +354,7 @@ export default function LandingPage() {
               <p className="max-w-[700px] text-muted-foreground md:text-lg">
                 Реальні відгуки від людей, які довірили нам свої автомобілі.
               </p>
-            </motion.div>
+            </MotionDiv>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto w-full">
               {[
@@ -362,7 +362,7 @@ export default function LandingPage() {
                 { name: "Марина В.", car: "Toyota Camry, 2019", rating: 5, text: "Записалася онлайн, все було готово точно в строк. Дуже зручний CRM-кабінет, де видно всю історію обслуговування мого авто." },
                 { name: "Дмитро Л.", car: "Volkswagen Golf, 2021", rating: 5, text: "Прозорі ціни, ніхто не нав'язує непотрібні послуги. Залишив авто на планове ТО — все ідеально. Буду повертатись!" },
               ].map((review, i) => (
-                <motion.div
+                <MotionDiv
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: i * 0.1 }}
@@ -389,7 +389,7 @@ export default function LandingPage() {
                       <p className="text-muted-foreground text-sm leading-relaxed flex-1">{review.text}</p>
                     </CardContent>
                   </Card>
-                </motion.div>
+                </MotionDiv>
               ))}
             </div>
           </div>
@@ -398,7 +398,7 @@ export default function LandingPage() {
         {/* FAQ */}
         <section className="w-full py-16 md:py-24 bg-secondary/10">
           <div className="container mx-auto px-4 md:px-6 w-full">
-            <motion.div
+            <MotionDiv
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
@@ -409,7 +409,7 @@ export default function LandingPage() {
               <p className="max-w-[700px] text-muted-foreground md:text-lg">
                 Відповіді на популярні запитання наших клієнтів.
               </p>
-            </motion.div>
+            </MotionDiv>
 
             <div className="max-w-3xl mx-auto w-full space-y-3">
               {[
@@ -419,7 +419,7 @@ export default function LandingPage() {
                 { q: "Які марки автомобілів ви обслуговуєте?", a: "Ми обслуговуємо автомобілі всіх популярних марок: BMW, Mercedes, Audi, Volkswagen, Toyota, Honda, Hyundai, Kia та інші. Наші спеціалісти мають досвід роботи з різними брендами." },
                 { q: "Чи можна залишити авто на ніч?", a: "Так, у нас є охоронювана стоянка. Ви можете залишити автомобіль на ніч або на кілька днів, якщо ремонт потребує більше часу." },
               ].map((faq, i) => (
-                <motion.div
+                <MotionDiv
                   initial={{ opacity: 0, y: 10 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, delay: i * 0.05 }}
@@ -444,7 +444,7 @@ export default function LandingPage() {
                       <p className="px-5 pb-5 text-sm text-muted-foreground leading-relaxed">{faq.a}</p>
                     </div>
                   </div>
-                </motion.div>
+                </MotionDiv>
               ))}
             </div>
           </div>
@@ -453,7 +453,7 @@ export default function LandingPage() {
         {/* CTA SECTION */}
         <section className="w-full py-20 bg-primary/5 border-y border-border/50 relative overflow-hidden">
           <div className="container mx-auto px-4 md:px-6 relative z-10 w-full">
-            <motion.div
+            <MotionDiv
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
@@ -488,7 +488,7 @@ export default function LandingPage() {
                   </Link>
                 )}
               </div>
-            </motion.div>
+            </MotionDiv>
           </div>
         </section>
       </main>
@@ -546,7 +546,7 @@ export default function LandingPage() {
       {/* SCROLL TO TOP BUTTON */}
       <AnimatePresence>
         {showScrollTopButton && (
-          <motion.div
+          <MotionDiv
             initial={{ opacity: 0, scale: 0.5, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.5, y: 20 }}
@@ -561,7 +561,7 @@ export default function LandingPage() {
             >
               <ArrowUp className="size-5" />
             </Button>
-          </motion.div>
+          </MotionDiv>
         )}
       </AnimatePresence>
     </div>
