@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import {
   Banknote,
   BarChart3,
+  Building2,
   CalendarDays,
   Car,
   ChevronLeft,
@@ -23,6 +24,8 @@ import {
 
 import { ThemeToggle } from "@/components/theme-toggle"
 import { UserNav } from "@/components/user-nav"
+import { type CompanySettings } from "@/lib/company-settings"
+import { useCompanySettings } from "@/lib/company-settings-context"
 import { useAuth, type UserRole } from "@/lib/auth-context"
 import { useServiceRequests } from "@/lib/service-requests-context"
 import { cn } from "@/lib/utils"
@@ -107,7 +110,30 @@ const navItems: NavItem[] = [
     icon: Banknote,
     roles: ["MECHANIC"],
   },
+  {
+    label: "Компанія",
+    href: "/company",
+    icon: Building2,
+    roles: ["ADMIN", "MANAGER"],
+  },
 ]
+
+const serviceProfileLabels: Record<string, string> = {
+  "full-service": "CRM автосервісу",
+  diagnostics: "Діагностика та електрика",
+  bodywork: "Кузовний ремонт",
+  tires: "Шиномонтаж і сервіс",
+}
+
+function getSidebarSubtitle(settings: CompanySettings) {
+  const baseLabel = serviceProfileLabels[settings.serviceProfile] || "CRM автосервісу"
+
+  if (settings.city) {
+    return `${baseLabel} • ${settings.city}`
+  }
+
+  return baseLabel
+}
 
 export function AppSidebar() {
   const pathname = usePathname()
@@ -115,6 +141,7 @@ export function AppSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const { user } = useAuth()
   const { requests } = useServiceRequests()
+  const { companySettings } = useCompanySettings()
 
   useEffect(() => {
     setMobileOpen(false)
@@ -144,6 +171,8 @@ export function AppSidebar() {
 
   const visibleItems = navItems.filter((item) => item.roles.includes(user.role))
   const pendingRequestsCount = requests?.filter((item) => item.status === "NEW" || item.status === "IN_REVIEW").length || 0
+  const companyBrand = companySettings.shortName || companySettings.companyName || "WagGarage"
+  const companySubtitle = getSidebarSubtitle(companySettings)
 
   const sidebarContent = (
     <>
@@ -152,9 +181,9 @@ export function AppSidebar() {
           <Wrench className="size-4 text-primary-foreground" />
         </div>
         {!collapsed && (
-          <div className="flex flex-1 flex-col">
-            <span className="text-sm font-semibold text-sidebar-foreground">WagGarage</span>
-            <span className="text-xs text-muted-foreground">CRM автосервісу</span>
+          <div className="flex flex-1 flex-col overflow-hidden">
+            <span className="truncate text-sm font-semibold text-sidebar-foreground">{companyBrand}</span>
+            <span className="truncate text-xs text-muted-foreground">{companySubtitle}</span>
           </div>
         )}
         <button

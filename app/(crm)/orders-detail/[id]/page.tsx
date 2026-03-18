@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Badge } from "@/components/ui/badge"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { StatusBadge } from "@/components/status-badge"
-import { ArrowLeft, Plus, Trash2, Wrench, Clock, ShieldCheck, Loader2, Check, ChevronsUpDown, ChevronDown, Banknote, CreditCard, Wallet, FileDown, ClipboardList, Package, AlertTriangle, User, Phone, Mail } from "lucide-react"
+import { ArrowLeft, Plus, Trash2, Wrench, Clock, ShieldCheck, Loader2, Check, ChevronsUpDown, ChevronDown, Banknote, CreditCard, Wallet, FileDown, ClipboardList, Package, AlertTriangle, User, Phone, Mail, MapPin, Landmark } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +30,7 @@ import { useOrders } from "@/lib/orders-context"
 import { useNotifications } from "@/lib/notifications-context"
 import { useCrm } from "@/lib/crm-context"
 import { useInventory } from "@/lib/inventory-context"
+import { useCompanySettings } from "@/lib/company-settings-context"
 
 // Локальні типи
 interface OrderDetails {
@@ -61,6 +62,11 @@ const paymentMethodLabels: Record<string, { label: string; icon: React.ElementTy
 }
 
 // Словник для перекладу дій в історії
+function getDocumentFileName(companyName: string | undefined, documentType: "receipt-order" | "work-order", orderId: number) {
+    const normalizedCompanyName = (companyName || "sto").trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "") || "sto"
+  return `${normalizedCompanyName}-${documentType}-${orderId}.pdf`
+}
+
 const actionTranslations: Record<string, string> = {
   ORDER_CREATED: "Створено замовлення",
   STATUS_CHANGE: "Зміна статусу",
@@ -170,6 +176,7 @@ export default function OrderDetailsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
+  const { companySettings } = useCompanySettings()
 
   const orderId = Number(params.id)
   const { updateStatus: updateOrderStatus, refreshOrders } = useOrders()
@@ -274,7 +281,7 @@ export default function OrderDetailsPage() {
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `receipt_order_${orderId}.pdf`
+      link.download = getDocumentFileName(companySettings.shortName || companySettings.companyName, "receipt-order", orderId)
       document.body.appendChild(link)
       link.click()
       link.remove()
@@ -298,7 +305,7 @@ export default function OrderDetailsPage() {
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `work-order-${orderId}.pdf`
+      link.download = getDocumentFileName(companySettings.shortName || companySettings.companyName, "work-order", orderId)
       document.body.appendChild(link)
       link.click()
       link.remove()
@@ -881,6 +888,71 @@ export default function OrderDetailsPage() {
               </Card>
             )}
 
+
+
+            {(companySettings.companyName || companySettings.phone || companySettings.email || companySettings.addressLine || companySettings.invoiceNote || companySettings.iban) && (
+              <Card className="border-border bg-card">
+                <CardHeader className="pb-3 border-b border-border">
+                  <CardTitle className="text-sm">СТО та реквізити</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4 space-y-4">
+                  <div>
+                    <p className="text-sm font-bold text-foreground">{companySettings.companyName}</p>
+                    {companySettings.shortName && companySettings.shortName !== companySettings.companyName && (
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{companySettings.shortName}</p>
+                    )}
+                  </div>
+
+                  {companySettings.phone && (
+                    <div className="flex items-center gap-3 group">
+                      <div className="flex size-8 items-center justify-center rounded-full bg-secondary transition-colors group-hover:bg-primary/5">
+                        <Phone className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
+                      <p className="text-sm text-foreground font-medium">{companySettings.phone}</p>
+                    </div>
+                  )}
+
+                  {companySettings.email && (
+                    <div className="flex items-center gap-3 group">
+                      <div className="flex size-8 items-center justify-center rounded-full bg-secondary transition-colors group-hover:bg-primary/5">
+                        <Mail className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
+                      <p className="text-sm text-foreground break-all">{companySettings.email}</p>
+                    </div>
+                  )}
+
+                  {companySettings.addressLine && (
+                    <div className="rounded-lg border border-border bg-secondary/20 px-3 py-2">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Адреса</p>
+                      <p className="mt-1 text-sm text-foreground inline-flex items-start gap-2">
+                        <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                        <span>{companySettings.addressLine}{companySettings.city ? `, ${companySettings.city}` : ""}</span>
+                      </p>
+                    </div>
+                  )}
+
+                  {(companySettings.recipientName || companySettings.iban) && (
+                    <div className="rounded-lg border border-border bg-secondary/20 px-3 py-2">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Реквізити</p>
+                      {companySettings.recipientName && (
+                        <p className="mt-1 inline-flex items-start gap-2 text-sm font-medium text-foreground">
+                          <Landmark className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                          <span>{companySettings.recipientName}</span>
+                        </p>
+                      )}
+                      {companySettings.iban && <p className="mt-1 break-all text-xs text-muted-foreground">{companySettings.iban}</p>}
+                    </div>
+                  )}
+
+                  {companySettings.invoiceNote && (
+                    <div className="rounded-lg border border-primary/15 bg-primary/5 px-3 py-2">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Примітка до оплати</p>
+                      <p className="mt-1 text-xs leading-5 text-foreground">{companySettings.invoiceNote}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
             {(() => {
               const customer = order.customer || customers.find(c => c.id === order.car?.userId)
               if (!customer) return null

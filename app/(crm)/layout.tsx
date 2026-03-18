@@ -13,6 +13,7 @@ import { NotificationsProvider } from "@/lib/notifications-context"
 import { AppointmentsProvider } from "@/lib/appointments-context"
 import { ServiceRequestsProvider } from "@/lib/service-requests-context"
 import { InventoryProvider } from "@/lib/inventory-context"
+import { CompanySettingsProvider } from "@/lib/company-settings-context"
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
@@ -44,10 +45,12 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
                 <EmployeesProvider>
                   <OrdersProvider>
                     <InventoryProvider>
-                      <div className="flex h-screen overflow-hidden bg-background">
-                        <AppSidebar />
-                        <main className="flex flex-1 flex-col overflow-hidden min-w-0">{children}</main>
-                      </div>
+                      <CompanySettingsProvider>
+                        <div className="flex h-screen overflow-hidden bg-background">
+                          <AppSidebar />
+                          <main className="min-w-0 flex flex-1 flex-col overflow-hidden">{children}</main>
+                        </div>
+                      </CompanySettingsProvider>
                     </InventoryProvider>
                   </OrdersProvider>
                 </EmployeesProvider>

@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { StatusBadge } from "@/components/status-badge"
 import { ArrowLeft, Car, Calendar, Search, Wrench, Package, Clock, ShieldCheck, ChevronRight, FileText, Filter } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { useCrm } from "@/lib/crm-context"
 import { api } from "@/lib/api"
 import { Loader2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -29,8 +28,6 @@ export default function VehicleHistoryPage() {
     const router = useRouter()
     const vehicleId = Number(params.id)
 
-    // Context in case we need to navigate back / rely on it, but we get carInfo from API now
-    const { filteredVehicles, customers } = useCrm()
 
     const [historyData, setHistoryData] = useState<any>(null)
     const [isLoading, setIsLoading] = useState(true)
