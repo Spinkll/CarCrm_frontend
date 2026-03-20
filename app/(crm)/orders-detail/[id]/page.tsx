@@ -552,24 +552,6 @@ export default function OrderDetailsPage() {
     <div className="flex flex-1 flex-col overflow-hidden">
       <PageHeader title={`Замовлення #${order.id}`} description="Деталі замовлення та історія сервісу">
         <div className="flex items-center gap-2">
-          {/* Mechanic: Request Parts button */}
-          {role === "MECHANIC" && order.status === "IN_PROGRESS" && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleStatusChange("WAITING_PARTS")}
-              disabled={isSubmitting}
-              className="gap-1 sm:gap-2 text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-4 border-amber-500/30 text-amber-600 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
-            >
-              {isSubmitting ? (
-                <Loader2 className="size-3 sm:size-4 animate-spin" />
-              ) : (
-                <Package className="size-3 sm:size-4" />
-              )}
-              <span className="hidden sm:inline">Потрібна запчастина</span>
-              <span className="sm:hidden">Запчастина</span>
-            </Button>
-          )}
           <Button
             type="button"
             variant="outline"
@@ -889,70 +871,6 @@ export default function OrderDetailsPage() {
             )}
 
 
-
-            {(companySettings.companyName || companySettings.phone || companySettings.email || companySettings.addressLine || companySettings.invoiceNote || companySettings.iban) && (
-              <Card className="border-border bg-card">
-                <CardHeader className="pb-3 border-b border-border">
-                  <CardTitle className="text-sm">СТО та реквізити</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-4 space-y-4">
-                  <div>
-                    <p className="text-sm font-bold text-foreground">{companySettings.companyName}</p>
-                    {companySettings.shortName && companySettings.shortName !== companySettings.companyName && (
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{companySettings.shortName}</p>
-                    )}
-                  </div>
-
-                  {companySettings.phone && (
-                    <div className="flex items-center gap-3 group">
-                      <div className="flex size-8 items-center justify-center rounded-full bg-secondary transition-colors group-hover:bg-primary/5">
-                        <Phone className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                      </div>
-                      <p className="text-sm text-foreground font-medium">{companySettings.phone}</p>
-                    </div>
-                  )}
-
-                  {companySettings.email && (
-                    <div className="flex items-center gap-3 group">
-                      <div className="flex size-8 items-center justify-center rounded-full bg-secondary transition-colors group-hover:bg-primary/5">
-                        <Mail className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                      </div>
-                      <p className="text-sm text-foreground break-all">{companySettings.email}</p>
-                    </div>
-                  )}
-
-                  {companySettings.addressLine && (
-                    <div className="rounded-lg border border-border bg-secondary/20 px-3 py-2">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Адреса</p>
-                      <p className="mt-1 text-sm text-foreground inline-flex items-start gap-2">
-                        <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                        <span>{companySettings.addressLine}{companySettings.city ? `, ${companySettings.city}` : ""}</span>
-                      </p>
-                    </div>
-                  )}
-
-                  {(companySettings.recipientName || companySettings.iban) && (
-                    <div className="rounded-lg border border-border bg-secondary/20 px-3 py-2">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Реквізити</p>
-                      {companySettings.recipientName && (
-                        <p className="mt-1 inline-flex items-start gap-2 text-sm font-medium text-foreground">
-                          <Landmark className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                          <span>{companySettings.recipientName}</span>
-                        </p>
-                      )}
-                      {companySettings.iban && <p className="mt-1 break-all text-xs text-muted-foreground">{companySettings.iban}</p>}
-                    </div>
-                  )}
-
-                  {companySettings.invoiceNote && (
-                    <div className="rounded-lg border border-primary/15 bg-primary/5 px-3 py-2">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Примітка до оплати</p>
-                      <p className="mt-1 text-xs leading-5 text-foreground">{companySettings.invoiceNote}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
             {(() => {
               const customer = order.customer || customers.find(c => c.id === order.car?.userId)
               if (!customer) return null

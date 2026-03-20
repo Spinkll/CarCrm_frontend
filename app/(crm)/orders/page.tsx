@@ -145,7 +145,7 @@ export default function OrdersPage() {
   
   const roleFilteredOrders = useMemo(() => {
     if (role === "ADMIN" || role === "MANAGER") return orders
-    if (role === "MECHANIC") return orders.filter(o => o.status !== "COMPLETED" && o.status !== "PAID" && o.status !== "CANCELLED")
+    if (role === "MECHANIC") return orders
     // Client
     return orders.filter(o => o.car?.userId === user?.id || (vehicles.find(v => v.id === o.carId)?.userId === user?.id))
   }, [orders, role, user?.id, vehicles])
@@ -157,7 +157,7 @@ export default function OrdersPage() {
   }, [vehicles, role, user?.id])
 
   const canCreateOrders = role === "CLIENT" || role === "ADMIN" || role === "MANAGER"
-  const canEditOrderStatus = role === "ADMIN" || role === "MECHANIC" || role === "MANAGER"
+  const canEditOrderStatus = role === "ADMIN" || role === "MANAGER" || role === "MECHANIC"
 
   const tabStatusMap: Record<string, string[]> = {
     all: [],

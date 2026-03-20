@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -42,6 +42,7 @@ import { useEffect } from "react"
 
 export default function VehiclesPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user } = useAuth()
   const { vehicles, addVehicle, isLoading: isVehiclesLoading } = useVehicles()
   const { customers } = useCrm()
@@ -76,14 +77,23 @@ export default function VehiclesPage() {
     : [];
 
   const uniqueYears = carYears;
+  const openFromQuery = searchParams.get("new") === "1"
+  const returnTo = searchParams.get("returnTo")
 
-  if (!user) return null
-
-  const role = user.role?.toLowerCase()
+  const role = user?.role?.toLowerCase()
   const canAssignOwner = role === "admin" || role === "manager"
 
   // Дозволяємо створювати авто всім, крім механіків
   const canCreateVehicle = role === "client" || role === "admin" || role === "manager"
+
+  useEffect(() => {
+    if (!canCreateVehicle || !openFromQuery) return
+    if (role === "client" && !user?.isVerified) return
+
+    setOpen(true)
+  }, [canCreateVehicle, openFromQuery, role, user?.isVerified])
+
+  if (!user) return null
 
   const filtered = vehicles.filter(
     (v: any) => {
@@ -158,6 +168,9 @@ export default function VehiclesPage() {
       setForm({ brand: "", model: "", year: "", vin: "", plate: "", color: "", mileage: "", userId: "" })
       setOpen(false)
       toast({ title: "Автомобіль додано", variant: "success" })
+      if (returnTo) {
+        router.push(returnTo)
+      }
     } else {
       toast({ title: typeof result.error === 'string' ? result.error : JSON.stringify(result.error), variant: "destructive" })
     }

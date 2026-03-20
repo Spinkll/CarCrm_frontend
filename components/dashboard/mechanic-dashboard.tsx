@@ -1,16 +1,12 @@
 "use client"
 
-import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/status-badge"
 import { useCrm } from "@/lib/crm-context"
 import { useOrders } from "@/lib/orders-context"
-import { useAppointments } from "@/lib/appointments-context"
-import { useNotifications } from "@/lib/notifications-context"
-import { useEffect, useMemo } from "react"
-import { toast } from "@/hooks/use-toast"
+import { useMemo } from "react"
 import {
   ClipboardList,
   CalendarDays,
@@ -18,20 +14,14 @@ import {
   Wrench,
   CheckCircle2,
   Loader2,
-  Play,
-  CircleCheckBig,
   Eye,
   Car,
 } from "lucide-react"
 
 export function MechanicDashboard() {
   const router = useRouter()
-  const { filteredAppointments, customers, isLoading: isCrmLoading, refreshData: refreshCrm } = useCrm()
-  const { orders, fetchOrders, updateStatus: updateOrderStatus, isLoading: isOrdersLoading } = useOrders()
-  const { appointments, updateStatus: updateAppointmentStatus } = useAppointments()
-  const { fetchNotifications } = useNotifications()
-
-  const [updatingOrderId, setUpdatingOrderId] = useState<number | null>(null)
+  const { filteredAppointments, customers, isLoading: isCrmLoading } = useCrm()
+  const { orders, isLoading: isOrdersLoading } = useOrders()
 
   const isLoading = isCrmLoading || isOrdersLoading
 
@@ -69,77 +59,7 @@ export function MechanicDashboard() {
     { label: "Відкриті замовлення", value: mechanicOrders.length, icon: Wrench },
   ]
 
-  // Quick status change handler
-  const handleQuickStatus = async (orderId: number, newStatus: string) => {
-    setUpdatingOrderId(orderId)
-    try {
-      await updateOrderStatus(orderId, newStatus)
 
-      // Sync appointment status
-      const orderToApptStatus: Record<string, string> = {
-        IN_PROGRESS: "ARRIVED",
-        COMPLETED: "COMPLETED",
-      }
-      const apptStatus = orderToApptStatus[newStatus]
-      if (apptStatus) {
-        const relatedAppt = appointments.find(a => a.orderId === orderId)
-        if (relatedAppt && relatedAppt.status !== apptStatus) {
-          await updateAppointmentStatus(relatedAppt.id, apptStatus)
-        }
-      }
-
-      fetchOrders(true)
-      refreshCrm()
-      fetchNotifications()
-
-      const statusMessages: Record<string, string> = {
-        IN_PROGRESS: "Роботу розпочато",
-        COMPLETED: "Роботу завершено",
-      }
-      toast({ title: statusMessages[newStatus] || "Статус оновлено", variant: "success" })
-    } catch {
-      toast({ title: "Не вдалося оновити статус", variant: "destructive" })
-    } finally {
-      setUpdatingOrderId(null)
-    }
-  }
-
-  // What action button to show for each order
-  const getActionButton = (order: any) => {
-    const status = order.status?.toUpperCase()
-    const isUpdating = updatingOrderId === order.id
-
-    if (status === "PENDING" || status === "CONFIRMED" || status === "RECEIVED") {
-      return (
-        <Button
-          size="sm"
-          className="gap-1.5 text-xs h-7 bg-primary hover:bg-primary/90 shadow-sm"
-          onClick={(e) => { e.stopPropagation(); handleQuickStatus(order.id, "IN_PROGRESS") }}
-          disabled={isUpdating}
-        >
-          {isUpdating ? <Loader2 className="size-3 animate-spin" /> : <Play className="size-3" />}
-          Почати
-        </Button>
-      )
-    }
-
-    if (status === "IN_PROGRESS" || status === "WAITING_PARTS") {
-      return (
-        <Button
-          size="sm"
-          variant="outline"
-          className="gap-1.5 text-xs h-7 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700 shadow-sm dark:text-emerald-400 dark:hover:text-emerald-300"
-          onClick={(e) => { e.stopPropagation(); handleQuickStatus(order.id, "COMPLETED") }}
-          disabled={isUpdating}
-        >
-          {isUpdating ? <Loader2 className="size-3 animate-spin" /> : <CircleCheckBig className="size-3" />}
-          Завершити
-        </Button>
-      )
-    }
-
-    return null
-  }
 
   if (isLoading) {
     return (
@@ -220,18 +140,16 @@ export function MechanicDashboard() {
                       </p>
                     </div>
 
-                    {/* Quick action button */}
+                    {/* View details button */}
                     <div className="shrink-0">
-                      {getActionButton(order) || (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="gap-1 text-xs h-7"
-                          onClick={(e) => { e.stopPropagation(); router.push(`/orders-detail/${order.id}`) }}
-                        >
-                          <Eye className="size-3" />
-                        </Button>
-                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="gap-1 text-xs h-7"
+                        onClick={(e) => { e.stopPropagation(); router.push(`/orders-detail/${order.id}`) }}
+                      >
+                        <Eye className="size-3" />
+                      </Button>
                     </div>
                   </div>
                 )

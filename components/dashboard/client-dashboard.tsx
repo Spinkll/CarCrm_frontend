@@ -1,12 +1,14 @@
 "use client"
 
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/status-badge"
 import { useAuth } from "@/lib/auth-context"
 import { useOrders, type Order } from "@/lib/orders-context"
 import { useVehicles, type Car as VehicleType } from "@/lib/vehicles-context"
 import { useAppointments } from "@/lib/appointments-context"
-import { Car, ClipboardList, CalendarDays, DollarSign, Clock, Loader2, Wrench } from "lucide-react"
+import { Car, ClipboardList, CalendarDays, DollarSign, Clock, Loader2, PlusCircle, Wrench } from "lucide-react"
 import { useMemo } from "react"
 
 export function ClientDashboard() {
@@ -65,6 +67,33 @@ export function ClientDashboard() {
 
   return (
     <div className="space-y-6">
+      <Card className="border-border bg-card shadow-sm">
+        <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-1">
+            <p className="text-base font-semibold text-foreground">Швидке оформлення звернення</p>
+            <p className="text-sm text-muted-foreground">
+              Створіть заявку на ремонт одразу з головної сторінки. {filteredVehicles.length === 0
+                ? "Якщо авто ще не додане, спочатку відкриється форма для автомобіля."
+                : "Можна одразу вибрати одне з ваших авто."}
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button asChild className="gap-2">
+              <Link href="/orders?new=1">
+                <PlusCircle className="size-4" />
+                Створити заявку
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="gap-2">
+              <Link href={filteredVehicles.length === 0 ? "/vehicles?new=1&returnTo=%2Forders%3Fnew%3D1" : "/vehicles"}>
+                <Car className="size-4" />
+                {filteredVehicles.length === 0 ? "Додати авто" : "Мої авто"}
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi) => (
           <Card key={kpi.label} className="border-border bg-card shadow-sm">

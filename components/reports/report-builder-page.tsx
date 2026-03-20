@@ -1092,7 +1092,7 @@ export function ReportBuilderPage() {
         description="4 кроки налаштування, 5 швидких пресетів і жива таблиця, яку можна одразу завантажити."
       />
 
-      <div className="flex-1 overflow-auto bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.12),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent)] p-4 sm:p-6">
+      <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="space-y-6">
           <section className="space-y-3">
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
