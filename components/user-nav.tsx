@@ -10,6 +10,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { ChangePasswordDialog } from "@/components/change-password-dialog"
 import { ProfileEditDialog } from "@/components/profile-edit-dialog"
@@ -17,22 +18,22 @@ import { cn } from "@/lib/utils"
 
 const roleConfig = {
   ADMIN: {
-    label: "Admin",
+    label: "Адмін",
     icon: Shield,
     className: "bg-primary/20 text-primary border-primary/30"
   },
   MANAGER: {
-    label: "Manager",
+    label: "Менеджер",
     icon: Briefcase,
     className: "bg-orange-500/20 text-orange-600 border-orange-500/30"
   },
   MECHANIC: {
-    label: "Mechanic",
+    label: "Механік",
     icon: Settings,
     className: "bg-blue-500/20 text-blue-600 border-blue-500/30"
   },
   CLIENT: {
-    label: "Client",
+    label: "Клієнт",
     icon: User,
     className: "bg-green-500/20 text-green-600 border-green-500/30"
   },
@@ -123,23 +124,21 @@ export function UserNav({ collapsed }: { collapsed: boolean }) {
                       </DropdownMenuItem>
                     )
                   )}
-                  <DropdownMenuItem onClick={() => setProfileEditOpen(true)}>
-                    <UserCog className="mr-2 size-4" />
+                  <DropdownMenuItem onClick={() => setProfileEditOpen(true)} className="cursor-pointer gap-2 py-2.5">
+                    <UserCog className="size-4 text-muted-foreground" />
                     Мій профіль
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setChangePasswordOpen(true)}>
-                    <KeyRound className="mr-2 size-4" />
+                  <DropdownMenuItem onClick={() => setChangePasswordOpen(true)} className="cursor-pointer gap-2 py-2.5">
+                    <KeyRound className="size-4 text-muted-foreground" />
                     Змінити пароль
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout} className="cursor-pointer gap-2 py-2.5 text-destructive focus:bg-destructive/10 focus:text-destructive">
+                    <LogOut className="size-4" />
+                    Вийти
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <button
-                onClick={logout}
-                className="flex size-7 items-center justify-center rounded-md text-sidebar-foreground/50 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                aria-label="Sign out"
-              >
-                <LogOut className="size-4" />
-              </button>
             </div>
           )}
         </div>

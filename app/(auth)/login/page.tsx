@@ -29,7 +29,7 @@ export default function LoginPage() {
     if (result.success) {
       router.replace("/dashboard")
     } else {
-      setError(result.error || "Login failed")
+      setError(result.error || "Помилка входу")
       setIsLoading(false)
     }
   }
@@ -62,7 +62,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@email.com"
+                placeholder="email@example.com"
                 className="bg-secondary"
                 required
                 disabled={isLoading}

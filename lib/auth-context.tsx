@@ -117,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return { success: true }
     } catch (error: any) {
-      const msg = error.response?.data?.message || "Failed to add employee"
+      const msg = error.response?.data?.message || "Не вдалося додати працівника"
       return { success: false, error: Array.isArray(msg) ? msg[0] : msg }
     }
   }, [])
@@ -150,7 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await api.post("/auth/resend-verification-email")
       return { success: true }
     } catch (error: any) {
-      const msg = error.response?.data?.message || "Failed to resend email"
+      const msg = error.response?.data?.message || "Не вдалося надіслати лист"
       return { success: false, error: Array.isArray(msg) ? msg[0] : msg }
     }
   }, [])

@@ -34,19 +34,19 @@ export default function RegisterPage() {
     setIsLoading(true)
 
     if (!form.firstName || !form.lastName || !form.email || !form.password || !form.phone) {
-      setError("Please fill in all fields")
+      setError("Будь ласка, заповніть усі поля")
       setIsLoading(false)
       return
     }
 
     if (form.password.length < 8) {
-      setError("Password must be at least 8 characters")
+      setError("Пароль повинен містити мінімум 8 символів")
       setIsLoading(false)
       return
     }
 
     if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match")
+      setError("Паролі не збігаються")
       setIsLoading(false)
       return
     }
@@ -64,7 +64,7 @@ export default function RegisterPage() {
     if (result.success) {
       setIsSuccess(true)
     } else {
-      setError(result.error || "Registration failed")
+      setError(result.error || "Реєстрація не вдалася")
     }
     setIsLoading(false)
   }
@@ -161,7 +161,7 @@ export default function RegisterPage() {
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                placeholder="you@email.com"
+                placeholder="email@example.com"
                 className="bg-secondary"
                 required
                 disabled={isLoading}
