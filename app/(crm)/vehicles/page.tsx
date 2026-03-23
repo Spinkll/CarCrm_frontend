@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useMemo } from "react"
+import { useSettings } from "@/lib/settings-context"
+import { formatAppDate, cn } from "@/lib/utils"
 import { useRouter, useSearchParams } from "next/navigation"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
@@ -38,7 +40,6 @@ import { useCrm } from "@/lib/crm-context"
 import { useOrders } from "@/lib/orders-context"
 import { toast } from "@/hooks/use-toast"
 import { carBrandsAndModels, carYears } from "@/lib/cars"
-import { useEffect } from "react"
 
 export default function VehiclesPage() {
   const router = useRouter()
@@ -54,6 +55,8 @@ export default function VehiclesPage() {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const { settings } = useSettings()
 
   const [form, setForm] = useState({
     brand: "",
@@ -211,7 +214,7 @@ export default function VehiclesPage() {
           )}
         </div>
 
-        <Card className="border-border bg-card">
+        <Card className={cn("border-border bg-card", settings.showTableBorders && "table-bordered")}>
           <CardContent className="p-0">
 
             {isLoading ? (
@@ -231,7 +234,10 @@ export default function VehiclesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((vehicle: any) => {
+                  {filtered.slice(
+                    (currentPage - 1) * settings.tableRowsPerPage,
+                    currentPage * settings.tableRowsPerPage
+                  ).map((vehicle: any) => {
                     const owner = customers.find(c => c.id === vehicle.userId)
 
                     const vehicleOrders = orders.filter((o: any) => o.carId === vehicle.id)
@@ -305,7 +311,7 @@ export default function VehiclesPage() {
                               </div>
                               {lastOrder && (
                                 <span className="text-xs text-muted-foreground">
-                                  Останній: {new Date(lastOrder.createdAt).toLocaleDateString()}
+                                  Останній: {formatAppDate(lastOrder.createdAt, settings.dateFormat)}
                                 </span>
                               )}
                             </div>
@@ -325,6 +331,24 @@ export default function VehiclesPage() {
                   )}
                 </TableBody>
               </Table>
+            )}
+
+            {/* Пагінація */}
+            {!isLoading && filtered.length > settings.tableRowsPerPage && (
+              <div className="flex items-center justify-between border-t border-border px-6 py-3">
+                <span className="text-xs text-muted-foreground">
+                  {(currentPage - 1) * settings.tableRowsPerPage + 1}–{Math.min(currentPage * settings.tableRowsPerPage, filtered.length)} з {filtered.length}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage <= 1} className="h-7 text-xs">
+                    Назад
+                  </Button>
+                  <span className="text-xs text-muted-foreground">{currentPage} / {Math.max(1, Math.ceil(filtered.length / settings.tableRowsPerPage))}</span>
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(Math.max(1, Math.ceil(filtered.length / settings.tableRowsPerPage)), p + 1))} disabled={currentPage >= Math.ceil(filtered.length / settings.tableRowsPerPage)} className="h-7 text-xs">
+                    Далі
+                  </Button>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>

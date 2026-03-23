@@ -35,7 +35,11 @@ export function ServiceRequestsProvider({ children }: { children: React.ReactNod
   const [isLoading, setIsLoading] = useState(false)
 
   const fetchRequests = useCallback(async () => {
-    if (!user) return
+    if (!user || (user.role !== "ADMIN" && user.role !== "MANAGER")) {
+      setRequests([])
+      setIsLoading(false)
+      return
+    }
     setIsLoading(true)
     try {
       const res = await api.get("/service-requests")

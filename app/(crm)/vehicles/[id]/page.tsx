@@ -12,6 +12,8 @@ import { api } from "@/lib/api"
 import { Loader2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { useSettings } from "@/lib/settings-context"
+import { formatAppDate } from "@/lib/utils"
 
 const statusTranslations: Record<string, string> = {
     PENDING: "Очікує",
@@ -27,6 +29,7 @@ export default function VehicleHistoryPage() {
     const params = useParams()
     const router = useRouter()
     const vehicleId = Number(params.id)
+    const { settings } = useSettings()
 
 
     const [historyData, setHistoryData] = useState<any>(null)
@@ -308,11 +311,11 @@ export default function VehicleHistoryPage() {
                                                         <div className="space-y-1">
                                                             <div className="flex items-center text-sm text-foreground font-medium gap-2">
                                                                 <Calendar className="size-4 text-primary" />
-                                                                {new Date(order.date).toLocaleDateString() || "Невідомо"}
+                                                                {formatAppDate(order.date, settings.dateFormat) || "Невідомо"}
                                                             </div>
                                                             {order.completedAt && (
                                                                 <div className="flex items-center text-xs text-muted-foreground gap-2 pl-6">
-                                                                    <span>Завершено: {new Date(order.completedAt).toLocaleDateString()}</span>
+                                                                    <span>Завершено: {formatAppDate(order.completedAt, settings.dateFormat)}</span>
                                                                 </div>
                                                             )}
                                                             {order.mileageAtOrder && (

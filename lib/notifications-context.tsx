@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useAuth } from "./auth-context"
 import api from "./api"
 import { useToast } from "@/components/ui/use-toast"
+import { useSettings } from "./settings-context"
 
 interface Notification {
   id: number
@@ -31,6 +32,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   const { user } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const { settings } = useSettings()
 
   // 1. Запит для списку сповіщень
   const { data: notifications = [], isLoading: isListLoading, refetch: refetchList } = useQuery({
@@ -46,7 +48,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     enabled: !!user,
   })
 
-  // 2. Запит для рахунку (полінг кожну хвилину)
+  // 2. Запит для рахунку (полінг кожну хвилину, лише якщо сповіщення увімкнені)
   const { data: unreadCount = 0, isLoading: isCountLoading, refetch: refetchCount } = useQuery({
     queryKey: ["notifications_count"],
     queryFn: async () => {
@@ -58,22 +60,40 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       }
     },
     enabled: !!user,
-    refetchInterval: 60000, // Автоматичний запит кожну хвилину (замість setInterval)
+    refetchInterval: settings.notificationsEnabled ? 60000 : false,
   })
 
   const isLoading = isListLoading || isCountLoading
 
-  // Тостинг нового сповіщення (лишаємо локальний відслідковувач)
+  // Тостинг нового сповіщення (лише якщо сповіщення увімкнені)
   const prevUnreadCount = useRef(0)
   useEffect(() => {
+    if (!settings.notificationsEnabled) {
+      prevUnreadCount.current = unreadCount
+      return
+    }
+
     if (unreadCount > prevUnreadCount.current && prevUnreadCount.current !== 0) {
       toast({
         title: "Нове сповіщення",
         description: "У вас є нові непрочитані сповіщення.",
       })
+
+      // Відтворити звук якщо увімкнено
+      if (settings.soundEnabled) {
+        try {
+          const audio = new Audio("/notification.mp3")
+          audio.volume = 0.3
+          audio.play().catch(() => {
+            // Ignore play errors (autoplay policy)
+          })
+        } catch {
+          // Ignore audio errors
+        }
+      }
     }
     prevUnreadCount.current = unreadCount
-  }, [unreadCount, toast])
+  }, [unreadCount, toast, settings.notificationsEnabled, settings.soundEnabled])
 
   // Мутація: прочитати одне
   const markAsReadMutation = useMutation({

@@ -26,7 +26,7 @@ export function CompanySettingsProvider({ children }: { children: React.ReactNod
   const [isLoading, setIsLoading] = useState(true)
 
   const fetchCompanySettings = useCallback(async () => {
-    if (!user) {
+    if (!user || (user.role !== "ADMIN" && user.role !== "MANAGER")) {
       setCompanySettings(defaultCompanySettings)
       setIsLoading(false)
       return

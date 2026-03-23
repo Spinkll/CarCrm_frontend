@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
+import { useSettings } from "@/lib/settings-context"
+import { formatAppDate } from "@/lib/utils"
 import { useRouter } from "next/navigation"
 import { toast } from "@/hooks/use-toast"
 import { PageHeader } from "@/components/page-header"
@@ -71,6 +73,7 @@ const statusTranslations: Record<string, string> = {
 export default function OrdersPage() {
   const { user } = useAuth()
   const router = useRouter()
+  const { settings } = useSettings()
   const { orders, createOrder, updateStatus, isLoading: isOrdersLoading, fetchOrders } = useOrders()
   const { vehicles, isLoading: isVehiclesLoading } = useVehicles()
   const { customers, refreshData: refreshCrm } = useCrm()
@@ -85,6 +88,7 @@ export default function OrdersPage() {
 
 
   const isLoading = isOrdersLoading || isVehiclesLoading
+  const [currentPage, setCurrentPage] = useState(1)
 
   // View mode toggle (table / kanban) with localStorage persistence
   const [viewMode, setViewMode] = useState<"table" | "kanban">(() => {
@@ -142,7 +146,7 @@ export default function OrdersPage() {
 
   // Розрахунок role-based фільтрованих замовлень локально
   const role = user?.role?.toUpperCase() || "CLIENT"
-  
+
   const roleFilteredOrders = useMemo(() => {
     if (role === "ADMIN" || role === "MANAGER") return orders
     if (role === "MECHANIC") return orders
@@ -173,6 +177,16 @@ export default function OrdersPage() {
   const sorted = [...filtered].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   )
+
+  // Пагінація
+  const totalPages = Math.max(1, Math.ceil(sorted.length / settings.tableRowsPerPage))
+  const paginatedOrders = sorted.slice(
+    (currentPage - 1) * settings.tableRowsPerPage,
+    currentPage * settings.tableRowsPerPage
+  )
+
+  // Скидати сторінку при зміні табу
+  useEffect(() => { setCurrentPage(1) }, [tab])
 
   // ПОЛНОСТЬЮ ОБНОВЛЕННАЯ ФУНКЦИЯ SUBMIT
   async function handleSubmit() {
@@ -340,7 +354,7 @@ export default function OrdersPage() {
         ) : (
           <Tabs value={tab} onValueChange={setTab} className="w-full">
             <TabsContent value={tab} className="m-0">
-              <Card className="border-border bg-card">
+              <Card className={cn("border-border bg-card", settings.showTableBorders && "table-bordered")}>
                 <CardContent className="p-0">
                   {isLoading ? (
                     <div className="p-8 text-center text-muted-foreground">Завантаження замовлень...</div>
@@ -351,6 +365,8 @@ export default function OrdersPage() {
                           <TableHead className="pl-6 text-muted-foreground">№ Замовлення</TableHead>
                           <TableHead className="text-muted-foreground">Автомобіль</TableHead>
                           {role !== "CLIENT" && <TableHead className="text-muted-foreground">Клієнт</TableHead>}
+                          {role !== "CLIENT" && <TableHead className="text-muted-foreground">Менеджер</TableHead>}
+                          {role !== "CLIENT" && <TableHead className="text-muted-foreground">Механік</TableHead>}
                           <TableHead className="text-muted-foreground">Опис</TableHead>
                           <TableHead className="text-muted-foreground">Статус</TableHead>
                           <TableHead className="text-muted-foreground">Сума</TableHead>
@@ -358,7 +374,7 @@ export default function OrdersPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {sorted.map((order) => {
+                        {paginatedOrders.map((order) => {
                           const vehicleData = order.car || vehicles.find(v => v.id === order.carId)
                           const customer = customers.find(c => c.id === vehicleData?.userId)
 
@@ -376,6 +392,18 @@ export default function OrdersPage() {
                               {role !== "CLIENT" && (
                                 <TableCell className="text-foreground">
                                   {customer ? `${customer.firstName} ${customer.lastName}` : "Невідомо"}
+                                </TableCell>
+                              )}
+
+                              {role !== "CLIENT" && (
+                                <TableCell className="text-muted-foreground text-xs">
+                                  {order.manager ? `${order.manager.firstName} ${order.manager.lastName}` : "—"}
+                                </TableCell>
+                              )}
+
+                              {role !== "CLIENT" && (
+                                <TableCell className="text-muted-foreground text-xs">
+                                  {order.mechanic ? `${order.mechanic.firstName} ${order.mechanic.lastName}` : "—"}
                                 </TableCell>
                               )}
 
@@ -437,15 +465,32 @@ export default function OrdersPage() {
                             </TableRow>
                           )
                         })}
-                        {sorted.length === 0 && (
+                        {paginatedOrders.length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={role !== "CLIENT" ? 7 : 6} className="py-12 text-center text-muted-foreground">
+                            <TableCell colSpan={role !== "CLIENT" ? 9 : 6} className="py-12 text-center text-muted-foreground">
                               Замовлень не знайдено
                             </TableCell>
                           </TableRow>
                         )}
                       </TableBody>
                     </Table>
+                  )}
+                  {/* Пагінація */}
+                  {!isLoading && sorted.length > settings.tableRowsPerPage && (
+                    <div className="flex items-center justify-between border-t border-border px-6 py-3">
+                      <span className="text-xs text-muted-foreground">
+                        {(currentPage - 1) * settings.tableRowsPerPage + 1}–{Math.min(currentPage * settings.tableRowsPerPage, sorted.length)} з {sorted.length}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage <= 1} className="h-7 text-xs">
+                          Назад
+                        </Button>
+                        <span className="text-xs text-muted-foreground">{currentPage} / {totalPages}</span>
+                        <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages} className="h-7 text-xs">
+                          Далі
+                        </Button>
+                      </div>
+                    </div>
                   )}
                 </CardContent>
               </Card>

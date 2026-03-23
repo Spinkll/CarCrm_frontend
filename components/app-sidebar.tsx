@@ -16,6 +16,7 @@ import {
   Menu,
   MessageSquare,
   Package,
+  Settings2,
   UserCog,
   Users,
   Wrench,
@@ -115,6 +116,12 @@ const navItems: NavItem[] = [
     href: "/company",
     icon: Building2,
     roles: ["ADMIN", "MANAGER"],
+  },
+  {
+    label: "Налаштування",
+    href: "/settings",
+    icon: Settings2,
+    roles: ["ADMIN", "MANAGER", "MECHANIC", "CLIENT"],
   },
 ]
 

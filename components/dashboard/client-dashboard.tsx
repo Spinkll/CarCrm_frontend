@@ -67,6 +67,24 @@ export function ClientDashboard() {
 
   return (
     <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {kpis.map((kpi) => (
+          <Card key={kpi.label} className="border-border bg-card shadow-sm">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10">
+                  <kpi.icon className="size-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{kpi.value}</p>
+                  <p className="text-sm text-muted-foreground">{kpi.label}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
       <Card className="border-border bg-card shadow-sm">
         <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
           <div className="space-y-1">
@@ -93,24 +111,6 @@ export function ClientDashboard() {
           </div>
         </CardContent>
       </Card>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {kpis.map((kpi) => (
-          <Card key={kpi.label} className="border-border bg-card shadow-sm">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10">
-                  <kpi.icon className="size-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{kpi.value}</p>
-                  <p className="text-sm text-muted-foreground">{kpi.label}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Секція автомобілів */}
@@ -225,40 +225,40 @@ export function ClientDashboard() {
           <CardTitle className="text-sm font-medium text-foreground">Історія обслуговування</CardTitle>
         </CardHeader>
         <CardContent>
-            {filteredOrders.length === 0 ? (
-                <div className="flex flex-col items-center py-8 text-muted-foreground opacity-50">
-                  <ClipboardList className="size-8" />
-                  <p className="mt-2 text-sm">Історія обслуговування порожня</p>
-                </div>
-              ) : (
-                [...filteredOrders]
-                  .sort((a, b: Order) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                  .slice(0, 5)
-                  .map((order: Order) => {
-                    const vehicle = filteredVehicles.find((v: VehicleType) => v.id === order.carId)
-                    return (
-                      <div key={order.id} className="flex items-center justify-between gap-4 rounded-lg border border-border bg-secondary/30 p-3">
-                        <div className="flex items-center gap-3 overflow-hidden">
-                          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                            <ClipboardList className="size-5 text-primary" />
-                          </div>
-                          <div className="overflow-hidden">
-                            <p className="truncate text-sm font-medium text-foreground">{order.description || "Обслуговування авто"}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {vehicle ? `${vehicle.brand} ${vehicle.model}` : "Автомобіль"} • {new Date(order.createdAt).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-3">
-                          <StatusBadge status={order.status} />
-                          <span className="text-sm font-bold text-foreground whitespace-nowrap">
-                            {Number(order.totalAmount || 0).toLocaleString()} ₴
-                          </span>
-                        </div>
+          {filteredOrders.length === 0 ? (
+            <div className="flex flex-col items-center py-8 text-muted-foreground opacity-50">
+              <ClipboardList className="size-8" />
+              <p className="mt-2 text-sm">Історія обслуговування порожня</p>
+            </div>
+          ) : (
+            [...filteredOrders]
+              .sort((a, b: Order) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+              .slice(0, 5)
+              .map((order: Order) => {
+                const vehicle = filteredVehicles.find((v: VehicleType) => v.id === order.carId)
+                return (
+                  <div key={order.id} className="flex items-center justify-between gap-4 rounded-lg border border-border bg-secondary/30 p-3">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                        <ClipboardList className="size-5 text-primary" />
                       </div>
-                    )
-                  })
-              )}
+                      <div className="overflow-hidden">
+                        <p className="truncate text-sm font-medium text-foreground">{order.description || "Обслуговування авто"}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {vehicle ? `${vehicle.brand} ${vehicle.model}` : "Автомобіль"} • {new Date(order.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <StatusBadge status={order.status} />
+                      <span className="text-sm font-bold text-foreground whitespace-nowrap">
+                        {Number(order.totalAmount || 0).toLocaleString()} ₴
+                      </span>
+                    </div>
+                  </div>
+                )
+              })
+          )}
         </CardContent>
       </Card>
     </div>

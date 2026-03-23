@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { useSettings } from "@/lib/settings-context"
+import { formatAppDate, cn } from "@/lib/utils"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -43,6 +45,7 @@ export default function ServiceRequestsPage() {
   const { refreshOrders } = useOrders()
   const { fetchAppointments } = useAppointments()
   const { fetchNotifications } = useNotifications()
+  const { settings } = useSettings()
 
   const [approveOpen, setApproveOpen] = useState(false)
   const [rejectOpen, setRejectOpen] = useState(false)
@@ -147,7 +150,7 @@ export default function ServiceRequestsPage() {
       />
 
       <div className="flex-1 overflow-auto p-6">
-        <Card className="border-border bg-card">
+        <Card className={cn("border-border bg-card", settings.showTableBorders && "table-bordered")}>
           <CardContent className="p-0">
             {isLoading ? (
               <div className="flex justify-center p-12">
@@ -202,14 +205,12 @@ export default function ServiceRequestsPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                            {new Date(req.createdAt).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            {formatAppDate(req.createdAt, settings.dateFormat, { includeTime: true })}
                           </TableCell>
                           <TableCell className="text-xs whitespace-nowrap">
                             {req.scheduledAt ? (
                               <Badge variant="outline" className="font-medium text-primary bg-primary/10 border-primary/20 py-1">
-                                {new Date(req.scheduledAt).toLocaleString('uk-UA', {
-                                  day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
-                                })}
+                                {formatAppDate(req.scheduledAt, settings.dateFormat, { includeTime: true })}
                               </Badge>
                             ) : (
                               <span className="text-muted-foreground text-[10px] uppercase tracking-wider opacity-60">Не вказано</span>

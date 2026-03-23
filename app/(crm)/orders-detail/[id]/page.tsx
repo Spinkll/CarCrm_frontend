@@ -22,7 +22,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { cn } from "@/lib/utils"
+import { cn, formatAppDate } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/api"
 import { toast } from "@/hooks/use-toast"
@@ -31,6 +31,7 @@ import { useNotifications } from "@/lib/notifications-context"
 import { useCrm } from "@/lib/crm-context"
 import { useInventory } from "@/lib/inventory-context"
 import { useCompanySettings } from "@/lib/company-settings-context"
+import { useSettings } from "@/lib/settings-context"
 
 // Локальні типи
 interface OrderDetails {
@@ -184,6 +185,7 @@ export default function OrderDetailsPage() {
   const { refreshData: refreshCrmData } = useCrm()
   const { inventory, fetchInventory } = useInventory()
   const { customers, appointments } = useCrm()
+  const { settings } = useSettings()
 
   const [order, setOrder] = useState<OrderDetails | null>(null)
   const [employees, setEmployees] = useState<any[]>([])
@@ -638,7 +640,7 @@ export default function OrderDetailsPage() {
                 {order.scheduledAt && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Clock className="size-4 text-primary" />
-                    <span>Заплановано на: <strong className="text-foreground">{new Date(order.scheduledAt).toLocaleDateString()}</strong></span>
+                    <span>Заплановано на: <strong className="text-foreground">{formatAppDate(order.scheduledAt, settings.dateFormat)}</strong></span>
                   </div>
                 )}
               </CardContent>
@@ -855,7 +857,7 @@ export default function OrderDetailsPage() {
                             <div>
                               <p className="text-sm font-medium text-foreground">{methodInfo.label}</p>
                               <p className="text-[10px] text-muted-foreground">
-                                {new Date(payment.createdAt).toLocaleString()}
+                                {formatAppDate(payment.createdAt, settings.dateFormat, { includeTime: true })}
                               </p>
                             </div>
                           </div>
@@ -973,7 +975,7 @@ export default function OrderDetailsPage() {
                             {actionTranslations[log.action] || log.action}
                           </p>
                           <span className="text-[9px] text-muted-foreground whitespace-nowrap ml-2">
-                            {new Date(log.timestamp).toLocaleDateString()} {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {formatAppDate(log.timestamp, settings.dateFormat, { includeTime: true })}
                           </span>
                         </div>
                         {log.comment && <p className="text-[10px] text-muted-foreground leading-relaxed italic">&quot;{log.comment}&quot;</p>}

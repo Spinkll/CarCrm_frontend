@@ -24,6 +24,8 @@ export interface Order {
     plate: string;
     userId: number
   }
+  manager?: { id: number; firstName: string; lastName: string } | null
+  mechanic?: { id: number; firstName: string; lastName: string } | null
   items?: Array<{ id: number; name: string; quantity: number; price: number; type?: "SERVICE" | "PART" }>
 }
 
@@ -44,10 +46,10 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
   const { appointments, updateStatus: updateAppointmentStatus } = useAppointments()
 
   // 1. Запит для отримання замовлень
-  const { 
-    data: orders = [], 
-    isLoading, 
-    refetch 
+  const {
+    data: orders = [],
+    isLoading,
+    refetch
   } = useQuery({
     queryKey: ["orders"],
     queryFn: async () => {
@@ -126,13 +128,13 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
     }
   }, [refetch])
 
-  const value = useMemo(() => ({ 
-    orders, 
-    isLoading, 
-    createOrder, 
-    updateStatus, 
-    refreshOrders: () => fetchOrders(true), 
-    fetchOrders 
+  const value = useMemo(() => ({
+    orders,
+    isLoading,
+    createOrder,
+    updateStatus,
+    refreshOrders: () => fetchOrders(true),
+    fetchOrders
   }), [orders, isLoading, createOrder, updateStatus, fetchOrders])
 
   return (

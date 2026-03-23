@@ -4,10 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CalendarDays, Clock, Loader2 } from "lucide-react"
 import { StatusBadge } from "@/components/status-badge"
 import { useAppointments } from "@/lib/appointments-context"
+import { useSettings } from "@/lib/settings-context"
+import { formatAppDate } from "@/lib/utils"
 
 export function UpcomingAppointments() {
   // Використовуємо новий хук для записів
   const { appointments, isLoading } = useAppointments()
+  const { settings } = useSettings()
 
   // 1. Фільтруємо та сортуємо записи за новим полем scheduledAt
   const upcoming = [...appointments]
@@ -59,7 +62,7 @@ export function UpcomingAppointments() {
               
               // 3. Форматуємо дату та час з scheduledAt
               const dateObj = new Date(appt.scheduledAt)
-              const formattedDate = dateObj.toLocaleDateString("uk-UA", { day: '2-digit', month: '2-digit', year: 'numeric' })
+              const formattedDate = formatAppDate(appt.scheduledAt, settings.dateFormat)
               const formattedTime = dateObj.toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })
 
               return (

@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { useSettings } from "@/lib/settings-context"
+import { formatAppDate, cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
@@ -61,6 +63,8 @@ export default function CustomersPage() {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const { settings } = useSettings()
 
   const [filterStatus, setFilterStatus] = useState("ACTIVE") // ACTIVE, BLOCKED, ALL
 
@@ -98,6 +102,15 @@ export default function CustomersPage() {
       )
     })
   }, [customers, search, filterStatus])
+
+  // Пагінація
+  const totalPages = Math.max(1, Math.ceil(filtered.length / settings.tableRowsPerPage))
+  const paginatedCustomers = filtered.slice(
+    (currentPage - 1) * settings.tableRowsPerPage,
+    currentPage * settings.tableRowsPerPage
+  )
+
+  useEffect(() => { setCurrentPage(1) }, [search, filterStatus])
 
   async function handleSubmit() {
     if (!form.firstName || !form.lastName || !form.email) return
@@ -248,7 +261,7 @@ export default function CustomersPage() {
           )}
         </div>
 
-        <Card className="border-border bg-card shadow-sm">
+        <Card className={cn("border-border bg-card shadow-sm", settings.showTableBorders && "table-bordered")}>
           <CardContent className="p-0">
             {isDataLoading ? (
               <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
@@ -269,7 +282,7 @@ export default function CustomersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((customer) => {
+                  {paginatedCustomers.map((customer) => {
                     // Рахуємо машини клієнта
                     const customerVehicles = vehicles.filter(v => v.userId === customer.id);
                     const vehicleIds = new Set(customerVehicles.map(v => v.id));
@@ -335,7 +348,7 @@ export default function CustomersPage() {
                         </TableCell>
                         <TableCell className={canCreateCustomers ? "" : "pr-6"}>
                           <span className="text-xs text-muted-foreground">
-                            {new Date(customer.createdAt).toLocaleDateString()}
+                            {formatAppDate(customer.createdAt, settings.dateFormat)}
                           </span>
                         </TableCell>
                         {canCreateCustomers && (
@@ -391,6 +404,24 @@ export default function CustomersPage() {
             {!isDataLoading && filtered.length === 0 && (
               <div className="py-20 text-center">
                 <p className="text-muted-foreground">Клієнтів не знайдено.</p>
+              </div>
+            )}
+
+            {/* Пагінація */}
+            {!isDataLoading && filtered.length > settings.tableRowsPerPage && (
+              <div className="flex items-center justify-between border-t border-border px-6 py-3">
+                <span className="text-xs text-muted-foreground">
+                  {(currentPage - 1) * settings.tableRowsPerPage + 1}–{Math.min(currentPage * settings.tableRowsPerPage, filtered.length)} з {filtered.length}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage <= 1} className="h-7 text-xs">
+                    Назад
+                  </Button>
+                  <span className="text-xs text-muted-foreground">{currentPage} / {totalPages}</span>
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages} className="h-7 text-xs">
+                    Далі
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>

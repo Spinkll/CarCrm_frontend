@@ -14,6 +14,8 @@ import { AppointmentsProvider } from "@/lib/appointments-context"
 import { ServiceRequestsProvider } from "@/lib/service-requests-context"
 import { InventoryProvider } from "@/lib/inventory-context"
 import { CompanySettingsProvider } from "@/lib/company-settings-context"
+import { SettingsProvider } from "@/lib/settings-context"
+import { SettingsApplier } from "@/components/settings-applier"
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
@@ -37,28 +39,31 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <CrmProvider>
-      <ServiceRequestsProvider>
-        <AppointmentsProvider>
-          <NotificationsProvider>
-            <CustomersProvider>
-              <VehiclesProvider>
-                <EmployeesProvider>
-                  <OrdersProvider>
-                    <InventoryProvider>
-                      <CompanySettingsProvider>
-                        <div className="flex h-screen overflow-hidden bg-background">
-                          <AppSidebar />
-                          <main className="min-w-0 flex flex-1 flex-col overflow-hidden">{children}</main>
-                        </div>
-                      </CompanySettingsProvider>
-                    </InventoryProvider>
-                  </OrdersProvider>
-                </EmployeesProvider>
-              </VehiclesProvider>
-            </CustomersProvider>
-          </NotificationsProvider>
-        </AppointmentsProvider>
-      </ServiceRequestsProvider>
+      <SettingsProvider>
+        <ServiceRequestsProvider>
+          <AppointmentsProvider>
+            <NotificationsProvider>
+              <CustomersProvider>
+                <VehiclesProvider>
+                  <EmployeesProvider>
+                    <OrdersProvider>
+                      <InventoryProvider>
+                        <CompanySettingsProvider>
+                          <SettingsApplier />
+                          <div className="flex h-screen overflow-hidden bg-background">
+                            <AppSidebar />
+                            <main className="min-w-0 flex flex-1 flex-col overflow-hidden">{children}</main>
+                          </div>
+                        </CompanySettingsProvider>
+                      </InventoryProvider>
+                    </OrdersProvider>
+                  </EmployeesProvider>
+                </VehiclesProvider>
+              </CustomersProvider>
+            </NotificationsProvider>
+          </AppointmentsProvider>
+        </ServiceRequestsProvider>
+      </SettingsProvider>
     </CrmProvider>
   )
 }

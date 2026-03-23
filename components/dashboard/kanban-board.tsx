@@ -25,6 +25,8 @@ interface Order {
         plate: string
         userId: number
     }
+    manager?: { id: number; firstName: string; lastName: string } | null
+    mechanic?: { id: number; firstName: string; lastName: string } | null
 }
 
 interface Vehicle {
@@ -248,6 +250,23 @@ export function KanbanBoard({ orders, vehicles, customers, updateStatus, canDrag
                                                 <span className="truncate text-xs text-muted-foreground">
                                                     {customer.firstName} {customer.lastName}
                                                 </span>
+                                            </div>
+                                        )}
+
+                                        {(order.manager || order.mechanic) && (
+                                            <div className="mt-2 space-y-1 border-t border-border pt-2">
+                                                {order.manager && (
+                                                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                                        <span className="font-semibold">М:</span>
+                                                        <span className="truncate">{order.manager.firstName} {order.manager.lastName}</span>
+                                                    </div>
+                                                )}
+                                                {order.mechanic && (
+                                                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                                        <span className="font-semibold">Мех:</span>
+                                                        <span className="truncate">{order.mechanic.firstName} {order.mechanic.lastName}</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
 
