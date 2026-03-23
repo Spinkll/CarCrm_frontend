@@ -8,11 +8,16 @@ import { useOrders } from "@/lib/orders-context"
 import { useVehicles } from "@/lib/vehicles-context"
 import { Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useSettings } from "@/lib/settings-context"
+import { translations } from "@/lib/translations"
 
 export function RecentOrders() {
   const { customers, isLoading: isCrmLoading } = useCrm()
   const { vehicles, isLoading: isVehiclesLoading } = useVehicles()
   const { orders, isLoading: isOrdersLoading } = useOrders()
+  const { settings } = useSettings()
+
+  const t = translations[settings.language].dashboard.recentOrders
 
   const isLoading = isCrmLoading || isVehiclesLoading || isOrdersLoading
   const router = useRouter()
@@ -37,7 +42,7 @@ export function RecentOrders() {
     <Card className="border-border bg-card">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-foreground">
-          Останні замовлення
+          {t.title}
         </CardTitle>
       </CardHeader>
       <CardContent className="px-0">
@@ -45,18 +50,18 @@ export function RecentOrders() {
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="pl-6 text-muted-foreground">№</TableHead>
-                <TableHead className="text-muted-foreground">Клієнт</TableHead>
-                <TableHead className="text-muted-foreground">Автомобіль</TableHead>
-                <TableHead className="text-muted-foreground">Статус</TableHead>
-                <TableHead className="pr-6 text-right text-muted-foreground">Сума</TableHead>
+                <TableHead className="pl-6 text-muted-foreground">{t.no}</TableHead>
+                <TableHead className="text-muted-foreground">{t.customer}</TableHead>
+                <TableHead className="text-muted-foreground">{t.vehicle}</TableHead>
+                <TableHead className="text-muted-foreground">{t.status}</TableHead>
+                <TableHead className="pr-6 text-right text-muted-foreground">{t.amount}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {recent.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                    Замовлень не знайдено
+                    {t.notFound}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -76,10 +81,10 @@ export function RecentOrders() {
                         #{order.id}
                       </TableCell>
                       <TableCell className="text-foreground text-sm">
-                        {customer ? `${customer.firstName} ${customer.lastName}` : "Невідомо"}
+                        {customer ? `${customer.firstName} ${customer.lastName}` : t.unknown}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
-                        {vehicle ? `${vehicle.brand} ${vehicle.model}` : "Невідоме авто"}
+                        {vehicle ? `${vehicle.brand} ${vehicle.model}` : t.unknownVehicle}
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={order.status} />
@@ -97,4 +102,4 @@ export function RecentOrders() {
       </CardContent>
     </Card>
   )
-}
+}

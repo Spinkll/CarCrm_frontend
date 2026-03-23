@@ -10,11 +10,16 @@ import { MechanicProductivityChart } from "@/components/dashboard/mechanic-produ
 import { ServiceRequestsChart } from "@/components/dashboard/service-requests-chart"
 import { InventoryStatus } from "@/components/dashboard/inventory-status"
 import { useAuth } from "@/lib/auth-context"
+import { useSettings } from "@/lib/settings-context"
+import { translations } from "@/lib/translations"
 import { MechanicDashboard } from "@/components/dashboard/mechanic-dashboard"
 import { ClientDashboard } from "@/components/dashboard/client-dashboard"
 
 export default function DashboardPage() {
     const { user } = useAuth()
+    const { settings } = useSettings()
+
+    const t = translations[settings.language].dashboard
 
     if (!user) return null
 
@@ -22,8 +27,8 @@ export default function DashboardPage() {
         return (
             <div className="flex flex-1 flex-col overflow-hidden">
                 <PageHeader
-                    title="Панель керування"
-                    description="Огляд призначених вам робіт та завдань"
+                    title={t.title}
+                    description={t.mechanicDescription}
                 />
                 <div className="flex-1 overflow-auto p-6">
                     <MechanicDashboard />
@@ -36,8 +41,8 @@ export default function DashboardPage() {
         return (
             <div className="flex flex-1 flex-col overflow-hidden">
                 <PageHeader
-                    title="Панель керування"
-                    description="Огляд сервісного обслуговування ваших авто"
+                    title={t.title}
+                    description={t.clientDescription}
                 />
                 <div className="flex-1 overflow-auto p-6">
                     <ClientDashboard />
@@ -49,8 +54,8 @@ export default function DashboardPage() {
     return (
         <div className="flex flex-1 flex-col overflow-hidden">
             <PageHeader
-                title="Панель керування"
-                description="Загальний огляд роботи автосервісу"
+                title={t.title}
+                description={t.adminDescription}
             />
             <div className="flex-1 overflow-auto p-6">
                 <div className="space-y-6">

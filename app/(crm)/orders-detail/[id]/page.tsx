@@ -32,6 +32,7 @@ import { useCrm } from "@/lib/crm-context"
 import { useInventory } from "@/lib/inventory-context"
 import { useCompanySettings } from "@/lib/company-settings-context"
 import { useSettings } from "@/lib/settings-context"
+import { useTranslation } from "@/hooks/use-translation"
 
 // Локальні типи
 interface OrderDetails {
@@ -56,42 +57,14 @@ interface Payment {
   createdAt: string
 }
 
-const paymentMethodLabels: Record<string, { label: string; icon: React.ElementType }> = {
-  CASH: { label: "Готівка", icon: Banknote },
-  CARD: { label: "Картка", icon: CreditCard },
-  TRANSFER: { label: "Переказ", icon: Wallet },
-}
-
-// Словник для перекладу дій в історії
-function getDocumentFileName(companyName: string | undefined, documentType: "receipt-order" | "work-order", orderId: number) {
-    const normalizedCompanyName = (companyName || "sto").trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "") || "sto"
-  return `${normalizedCompanyName}-${documentType}-${orderId}.pdf`
-}
-
-const actionTranslations: Record<string, string> = {
-  ORDER_CREATED: "Створено замовлення",
-  STATUS_CHANGE: "Зміна статусу",
-  ASSIGNMENT_CHANGE: "Зміна команди",
-  ITEM_ADDED: "Додано позицію",
-  ITEM_REMOVED: "Видалено позицію",
-}
-
-const statusTranslations: Record<string, string> = {
-  PENDING: "Очікує",
-  CONFIRMED: "Підтверджено",
-  IN_PROGRESS: "В процесі",
-  WAITING_PARTS: "Очікування запчастин",
-  COMPLETED: "Виконано",
-  PAID: "Оплачено",
-  CANCELLED: "Скасовано",
-}
-
 function OrderStepper({ currentStatus }: { currentStatus: string }) {
+  const { t } = useTranslation()
+
   const steps = [
-    { key: "CONFIRMED", label: "Підтверджено", icon: Check },
-    { key: "IN_PROGRESS", label: "В роботі", icon: Wrench },
-    { key: "COMPLETED", label: "Виконано", icon: ClipboardList },
-    { key: "PAID", label: "Оплачено", icon: Banknote },
+    { key: "CONFIRMED", label: t("status_CONFIRMED", "search"), icon: Check },
+    { key: "IN_PROGRESS", label: t("status_IN_PROGRESS", "search"), icon: Wrench },
+    { key: "COMPLETED", label: t("status_COMPLETED", "search"), icon: ClipboardList },
+    { key: "PAID", label: t("status_PAID", "search"), icon: Banknote },
   ]
 
   const getStatusIndex = (status: string) => {
@@ -109,7 +82,7 @@ function OrderStepper({ currentStatus }: { currentStatus: string }) {
     return (
       <div className="mb-8 bg-destructive/5 border border-destructive/20 p-4 rounded-xl flex items-center justify-center gap-3 shadow-sm">
         <AlertTriangle className="size-5 text-destructive" />
-        <p className="font-bold text-destructive uppercase tracking-widest text-sm">Замовлення скасовано</p>
+        <p className="font-bold text-destructive uppercase tracking-widest text-sm">{t("orderCancelled", "orderDetails")}</p>
       </div>
     )
   }
@@ -160,7 +133,7 @@ function OrderStepper({ currentStatus }: { currentStatus: string }) {
                 </p>
                 {isStepWaiting && (
                   <p className="text-[8px] sm:text-[9px] text-amber-600 font-extrabold uppercase mt-1 leading-none animate-pulse">
-                    Очікуємо запчастин
+                    {t("waitingParts", "orderDetails")}
                   </p>
                 )}
               </div>
@@ -172,12 +145,18 @@ function OrderStepper({ currentStatus }: { currentStatus: string }) {
   )
 }
 
+function getDocumentFileName(companyName: string | undefined, documentType: "receipt-order" | "work-order", orderId: number) {
+  const normalizedCompanyName = (companyName || "sto").trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "") || "sto"
+  return `${normalizedCompanyName}-${documentType}-${orderId}.pdf`
+}
+
 export default function OrderDetailsPage() {
   const params = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
   const { companySettings } = useCompanySettings()
+  const { t } = useTranslation()
 
   const orderId = Number(params.id)
   const { updateStatus: updateOrderStatus, refreshOrders } = useOrders()
@@ -215,9 +194,13 @@ export default function OrderDetailsPage() {
   const [isReceiptDownloading, setIsReceiptDownloading] = useState(false)
   const [isWorkOrderDownloading, setIsWorkOrderDownloading] = useState(false)
 
+  const paymentMethodLabels: Record<string, { label: string; icon: React.ElementType }> = {
+    CASH: { label: t("cash", "orderDetails"), icon: Banknote },
+    CARD: { label: t("card", "orderDetails"), icon: CreditCard },
+  }
+
   const role = user?.role?.toUpperCase() || "CLIENT"
 
-  // ЗМІНЕНО ТУТ: Додано MECHANIC до прав управління позиціями + заборона при закритих статусах
   const isOrderClosed = order?.status === "COMPLETED" || order?.status === "PAID" || order?.status === "CANCELLED"
   const canManageItems = (role === "ADMIN" || role === "MANAGER" || role === "MECHANIC") && !isOrderClosed
   const canAssign = role === "ADMIN" || role === "MANAGER"
@@ -265,9 +248,9 @@ export default function OrderDetailsPage() {
       refreshCrmData()
       fetchNotifications()
       setPaymentModalOpen(false)
-      toast({ title: "Оплату зафіксовано", description: `Метод: ${paymentMethodLabels[paymentMethod].label}`, variant: "success" })
+      toast({ title: t("paymentRecorded", "orderDetails"), description: `${t("paymentMethod", "common")}: ${paymentMethodLabels[paymentMethod].label}`, variant: "success" })
     } catch (error: any) {
-      const msg = error.response?.data?.message || "Не вдалося зафіксувати оплату"
+      const msg = error.response?.data?.message || t("error", "common")
       toast({ title: Array.isArray(msg) ? msg[0] : msg, variant: "destructive" })
       setIsPaymentSubmitting(false)
     }
@@ -288,9 +271,9 @@ export default function OrderDetailsPage() {
       link.click()
       link.remove()
       window.URL.revokeObjectURL(url)
-      toast({ title: "Чек завантажено", variant: "success" })
+      toast({ title: t("receiptDownloaded", "orderDetails"), variant: "success" })
     } catch (error: any) {
-      const msg = error.response?.data?.message || "Не вдалося завантажити чек"
+      const msg = error.response?.data?.message || t("error", "common")
       toast({ title: Array.isArray(msg) ? msg[0] : msg, variant: "destructive" })
     } finally {
       setIsReceiptDownloading(false)
@@ -312,9 +295,9 @@ export default function OrderDetailsPage() {
       link.click()
       link.remove()
       window.URL.revokeObjectURL(url)
-      toast({ title: "Заказ-наряд завантажено", variant: "success" })
+      toast({ title: t("workOrderDownloaded", "orderDetails"), variant: "success" })
     } catch (error: any) {
-      const msg = error.response?.data?.message || "Не вдалося завантажити заказ-наряд"
+      const msg = error.response?.data?.message || t("error", "common")
       toast({ title: Array.isArray(msg) ? msg[0] : msg, variant: "destructive" })
     } finally {
       setIsWorkOrderDownloading(false)
@@ -348,7 +331,7 @@ export default function OrderDetailsPage() {
         // Верифікація оплати через Stripe
         api.post(`/stripe/verify/${sessionId}`)
           .then(() => {
-            toast({ title: "Успішно!", description: "Оплата онлайн пройшла успішно.", variant: "success" })
+            toast({ title: t("paymentSuccess", "orderDetails"), description: t("paymentSuccessDesc", "orderDetails"), variant: "success" })
             fetchOrderDetails()
             fetchPayments()
             refreshOrders()
@@ -356,17 +339,17 @@ export default function OrderDetailsPage() {
             fetchNotifications()
           })
           .catch(() => {
-            toast({ title: "Помилка", description: "Не вдалося підтвердити оплату.", variant: "destructive" })
+            toast({ title: t("paymentError", "orderDetails"), description: t("paymentErrorDesc", "orderDetails"), variant: "destructive" })
           })
       } else if (paymentStatus === "cancel") {
-        toast({ title: "Оплату скасовано", description: "Ви скасували оплату. Спробуйте ще раз.", variant: "destructive" })
+        toast({ title: t("paymentCancelled", "orderDetails"), description: t("paymentCancelledDesc", "orderDetails"), variant: "destructive" })
       } else if (paymentStatus === "error") {
-        toast({ title: "Помилка оплати", description: "Оплата була відхилена системою або скасована.", variant: "destructive" })
+        toast({ title: t("paymentFail", "orderDetails"), description: t("paymentFailDesc", "orderDetails"), variant: "destructive" })
       }
       hasToastedRef.current = true;
       router.replace(`/orders-detail/${orderId}`)
     }
-  }, [searchParams, orderId, router])
+  }, [searchParams, orderId, router, t])
 
   useEffect(() => {
     if (!order) setIsLoading(true)
@@ -387,7 +370,7 @@ export default function OrderDetailsPage() {
     if (itemForm.type === "PART") {
       const part = inventory.find(p => p.name === itemForm.name)
       if (part && Number(itemForm.quantity) > part.stockQuantity) {
-        toast({ title: `Недостатньо на складі (залишок: ${part.stockQuantity} шт.)`, variant: "destructive" })
+        toast({ title: `${t("outOfStock", "orderDetails")} (${t("left", "orderDetails")}: ${part.stockQuantity} ${t("pcs", "orderDetails")})`, variant: "destructive" })
         return
       }
     }
@@ -419,7 +402,7 @@ export default function OrderDetailsPage() {
     }
 
     if (itemsToSave.length === 0) {
-      toast({ title: "Заповніть дані позиції або додайте до списку", variant: "destructive" })
+      toast({ title: t("fillRequired", "orders"), variant: "destructive" })
       return
     }
 
@@ -449,10 +432,10 @@ export default function OrderDetailsPage() {
       setSearchQuery("")
 
       const count = itemsToSave.length
-      toast({ title: count > 1 ? `Додано ${count} позицій` : "Позицію додано", variant: "success" })
+      toast({ title: count > 1 ? `${t("itemsAdded", "orderDetails")} (${count})` : t("itemAdded", "orderDetails"), variant: "success" })
       fetchNotifications()
     } catch (error) {
-      toast({ title: "Не вдалося додати деякі позиції", variant: "destructive" })
+      toast({ title: t("error", "common"), variant: "destructive" })
     } finally {
       setIsSubmitting(false)
     }
@@ -472,10 +455,10 @@ export default function OrderDetailsPage() {
       refreshOrders()
       refreshCrmData()
       fetchInventory()
-      toast({ title: "Позицію видалено", variant: "success" })
+      toast({ title: t("itemRemoved", "orderDetails"), variant: "success" })
       fetchNotifications()
     } catch (error) {
-      toast({ title: "Не вдалося видалити позицію", variant: "destructive" })
+      toast({ title: t("error", "common"), variant: "destructive" })
     } finally {
       setIsSubmitting(false)
       setDeleteModalOpen(false)
@@ -494,7 +477,7 @@ export default function OrderDetailsPage() {
     }
 
     if (Object.keys(payload).length === 0) {
-      toast({ title: "Будь ласка, оберіть менеджера або механіка.", variant: "destructive" })
+      toast({ title: t("fillRequired", "orders"), variant: "destructive" })
       return
     }
 
@@ -505,10 +488,10 @@ export default function OrderDetailsPage() {
       setAssignModalOpen(false)
       refreshOrders()
       refreshCrmData()
-      toast({ title: "Команду призначено", variant: "success" })
+      toast({ title: t("teamAssigned", "orderDetails"), variant: "success" })
       fetchNotifications()
     } catch (error) {
-      toast({ title: "Не вдалося призначити команду", variant: "destructive" })
+      toast({ title: t("error", "common"), variant: "destructive" })
     } finally {
       setIsSubmitting(false)
     }
@@ -531,9 +514,9 @@ export default function OrderDetailsPage() {
       refreshOrders()
       refreshCrmData()
       fetchNotifications()
-      toast({ title: "Статус оновлено", variant: "success" })
+      toast({ title: t("statusUpdatedSuccess", "orders"), variant: "success" })
     } catch (error) {
-      toast({ title: "Не вдалося оновити статус", variant: "destructive" })
+      toast({ title: t("error", "common"), variant: "destructive" })
     } finally {
       setIsSubmitting(false)
     }
@@ -544,15 +527,15 @@ export default function OrderDetailsPage() {
   }
 
   if (!order) {
-    return <div className="p-8 text-center text-muted-foreground">Замовлення не знайдено або доступ заборонено.</div>
+    return <div className="p-8 text-center text-muted-foreground">{t("notFound", "orders")}</div>
   }
 
-  const serviceItems = order.items.filter(i => i.type === "SERVICE" || !i.type) // Defaulting to SERVICE if type is missing for old data
+  const serviceItems = order.items.filter(i => i.type === "SERVICE" || !i.type) 
   const partItems = order.items.filter(i => i.type === "PART")
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <PageHeader title={`Замовлення #${order.id}`} description="Деталі замовлення та історія сервісу">
+      <PageHeader title={`${t("orderDetails", "common")} #${order.id}`} description={t("description", "orderDetails")}>
         <div className="flex items-center gap-2">
           <Button
             type="button"
@@ -566,7 +549,7 @@ export default function OrderDetailsPage() {
             ) : (
               <ClipboardList className="size-3 sm:size-4" />
             )}
-            <span className="hidden sm:inline">{isWorkOrderDownloading ? "Завантаження..." : "Заказ-наряд"}</span>
+            <span className="hidden sm:inline">{isWorkOrderDownloading ? t("loading", "common") : t("workOrder", "orderDetails")}</span>
           </Button>
           <Button 
             type="button"
@@ -575,8 +558,8 @@ export default function OrderDetailsPage() {
             className="gap-1 sm:gap-2 text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-4"
           >
             <ArrowLeft className="size-3 sm:size-4" />
-            <span className="hidden sm:inline">До списку замовлень</span>
-            <span className="sm:hidden">Назад</span>
+            <span className="hidden sm:inline">{t("backToList", "orderDetails")}</span>
+            <span className="sm:hidden">{t("prev", "customers")}</span>
           </Button>
         </div>
       </PageHeader>
@@ -592,9 +575,9 @@ export default function OrderDetailsPage() {
               <CardHeader className="pb-3 border-b border-border">
                 <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
                   <div className="min-w-0 flex-1">
-                    <CardTitle className="text-base sm:text-lg">Дані автомобіля</CardTitle>
+                    <CardTitle className="text-base sm:text-lg">{t("carData", "orderDetails")}</CardTitle>
                     <CardDescription className="text-xs sm:text-sm break-words">
-                      {order.car.year} {order.car.brand} {order.car.model} — {order.car.plate || "Немає номерів"}
+                      {order.car.year} {order.car.brand} {order.car.model} — {order.car.plate || t("noNumbers", "orders")}
                     </CardDescription>
                   </div>
                   {canEditStatus ? (
@@ -610,19 +593,19 @@ export default function OrderDetailsPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
                         <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                          Змінити статус
+                          {t("changeStatus", "orders")}
                         </div>
                         {["CONFIRMED", "IN_PROGRESS", "WAITING_PARTS", "COMPLETED", "CANCELLED"]
-                          .filter((s) => s !== order.status)
-                          .map((status) => (
-                            <DropdownMenuItem
-                              key={status}
-                              onSelect={() => handleStatusChange(status)}
-                              className="cursor-pointer"
-                            >
-                              {statusTranslations[status] || status}
-                            </DropdownMenuItem>
-                          ))}
+                           .filter((s) => s !== order.status)
+                           .map((status) => (
+                             <DropdownMenuItem
+                               key={status}
+                               onSelect={() => handleStatusChange(status)}
+                               className="cursor-pointer"
+                             >
+                               {t(`status_${status}`, "search") || status}
+                             </DropdownMenuItem>
+                           ))}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   ) : (
@@ -632,15 +615,15 @@ export default function OrderDetailsPage() {
               </CardHeader>
               <CardContent className="pt-4 space-y-4">
                 <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Скарги клієнта / Опис</h4>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">{t("customerComplaints", "orderDetails")}</h4>
                   <p className="text-sm text-foreground bg-secondary/30 p-3 rounded-md border border-border whitespace-pre-wrap">
-                    {order.description || "Опис відсутній."}
+                    {order.description || t("noDescription", "orderDetails")}
                   </p>
                 </div>
                 {order.scheduledAt && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Clock className="size-4 text-primary" />
-                    <span>Заплановано на: <strong className="text-foreground">{formatAppDate(order.scheduledAt, settings.dateFormat)}</strong></span>
+                    <span>{t("scheduledFor", "orderDetails")} <strong className="text-foreground">{formatAppDate(order.scheduledAt, settings.dateFormat)}</strong></span>
                   </div>
                 )}
               </CardContent>
@@ -649,8 +632,8 @@ export default function OrderDetailsPage() {
             <Card className="border-border bg-card">
               <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-3 border-b border-border gap-2">
                 <div>
-                  <CardTitle className="text-base sm:text-lg">Деталізація замовлення</CardTitle>
-                  <CardDescription className="text-xs sm:text-sm">Перелік робіт та запчастин</CardDescription>
+                  <CardTitle className="text-base sm:text-lg">{t("orderDetail", "orderDetails")}</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">{t("worksAndParts", "orderDetails")}</CardDescription>
                 </div>
                 {canManageItems && (
                   <Button 
@@ -659,23 +642,23 @@ export default function OrderDetailsPage() {
                     onClick={() => setItemModalOpen(true)} 
                     className="gap-1 text-xs sm:text-sm w-full sm:w-auto"
                   >
-                    <Plus className="size-3" /> Додати позицію
+                    <Plus className="size-3" /> {t("addPosition", "orderDetails")}
                   </Button>
                 )}
               </CardHeader>
               <CardContent className="p-0">
                 {/* Таблиця послуг */}
                 <div className="bg-secondary/20 px-3 sm:px-6 py-2 border-b border-border">
-                  <h3 className="text-xs sm:text-sm font-semibold uppercase text-muted-foreground tracking-wider">🛠 Виконані Роботи (Послуги)</h3>
+                  <h3 className="text-xs sm:text-sm font-semibold uppercase text-muted-foreground tracking-wider">🛠 {t("doneWorks", "orderDetails")}</h3>
                 </div>
                 <div className="overflow-x-auto">
                   <Table className="min-w-[480px]">
                     <TableHeader>
                       <TableRow className="border-border hover:bg-transparent">
-                        <TableHead className="pl-3 sm:pl-6 w-1/2 text-xs sm:text-sm">Назва послуги</TableHead>
-                        <TableHead className="text-right text-xs sm:text-sm">К-сть</TableHead>
-                        <TableHead className="text-right text-xs sm:text-sm">Ціна</TableHead>
-                        <TableHead className="text-right text-xs sm:text-sm">Сума</TableHead>
+                        <TableHead className="pl-3 sm:pl-6 w-1/2 text-xs sm:text-sm">{t("serviceName", "orderDetails")}</TableHead>
+                        <TableHead className="text-right text-xs sm:text-sm">{t("quantity", "orderDetails")}</TableHead>
+                        <TableHead className="text-right text-xs sm:text-sm">{t("price", "orderDetails")}</TableHead>
+                        <TableHead className="text-right text-xs sm:text-sm">{t("total", "orderDetails")}</TableHead>
                         {canManageItems && <TableHead className="w-10 sm:w-12 pr-3 sm:pr-6"></TableHead>}
                       </TableRow>
                     </TableHeader>
@@ -706,7 +689,7 @@ export default function OrderDetailsPage() {
                       {serviceItems.length === 0 && (
                         <TableRow>
                           <TableCell colSpan={canManageItems ? 5 : 4} className="py-4 sm:py-6 text-center text-xs sm:text-sm text-muted-foreground">
-                            Послуг ще не додано.
+                            {t("noServices", "orderDetails")}
                           </TableCell>
                         </TableRow>
                       )}
@@ -716,16 +699,16 @@ export default function OrderDetailsPage() {
 
                 {/* Таблиця запчастин */}
                 <div className="bg-secondary/20 px-3 sm:px-6 py-2 border-y border-border mt-4">
-                  <h3 className="text-xs sm:text-sm font-semibold uppercase text-muted-foreground tracking-wider">📦 Використані Запчастини та Матеріали</h3>
+                  <h3 className="text-xs sm:text-sm font-semibold uppercase text-muted-foreground tracking-wider">📦 {t("partsAndMaterials", "orderDetails")}</h3>
                 </div>
                 <div className="overflow-x-auto">
                   <Table className="min-w-[480px]">
                     <TableHeader>
                       <TableRow className="border-border hover:bg-transparent">
-                        <TableHead className="pl-3 sm:pl-6 w-1/2 text-xs sm:text-sm">Назва деталі / артикул</TableHead>
-                        <TableHead className="text-right text-xs sm:text-sm">К-сть</TableHead>
-                        <TableHead className="text-right text-xs sm:text-sm">Ціна</TableHead>
-                        <TableHead className="text-right text-xs sm:text-sm">Сума</TableHead>
+                        <TableHead className="pl-3 sm:pl-6 w-1/2 text-xs sm:text-sm">{t("partName", "orderDetails")}</TableHead>
+                        <TableHead className="text-right text-xs sm:text-sm">{t("quantity", "orderDetails")}</TableHead>
+                        <TableHead className="text-right text-xs sm:text-sm">{t("price", "orderDetails")}</TableHead>
+                        <TableHead className="text-right text-xs sm:text-sm">{t("total", "orderDetails")}</TableHead>
                         {canManageItems && <TableHead className="w-10 sm:w-12 pr-3 sm:pr-6"></TableHead>}
                       </TableRow>
                     </TableHeader>
@@ -756,7 +739,7 @@ export default function OrderDetailsPage() {
                       {partItems.length === 0 && (
                         <TableRow>
                           <TableCell colSpan={canManageItems ? 5 : 4} className="py-4 sm:py-6 text-center text-xs sm:text-sm text-muted-foreground">
-                            Запчастин ще не додано.
+                            {t("noParts", "orderDetails")}
                           </TableCell>
                         </TableRow>
                       )}
@@ -772,7 +755,7 @@ export default function OrderDetailsPage() {
               <CardContent className="p-4 sm:p-6">
                 <div className="flex justify-between items-end">
                   <div className="space-y-1">
-                    <p className="text-xs sm:text-sm font-medium text-muted-foreground">Загальна вартість</p>
+                    <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t("totalCost", "orderDetails")}</p>
                     <p className="text-2xl sm:text-3xl font-bold text-foreground">
                       {Number(order.totalAmount).toLocaleString()} ₴
                     </p>
@@ -783,7 +766,7 @@ export default function OrderDetailsPage() {
                 {(payments.length > 0 || order.status === "COMPLETED" || order.status === "PAID") && (
                   <div className="mt-4 pt-4 border-t border-border space-y-3">
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Оплачено</span>
+                      <span className="text-muted-foreground">{t("paid", "orderDetails")}</span>
                       <span className={cn("font-semibold", order.status === "PAID" ? "text-success" : "text-foreground")}>
                         {payments.reduce((s, p) => s + Number(p.amount), 0).toLocaleString()} ₴
                       </span>
@@ -797,197 +780,108 @@ export default function OrderDetailsPage() {
                     {order.status === "PAID" ? (
                       <>
                         <p className="text-xs text-success font-medium flex items-center gap-1">
-                          <Check className="size-3" /> Замовлення повністю оплачено
+                          <Check className="size-3" /> {t("orderFullyPaid", "orderDetails")}
                         </p>
-                        {role !== "MECHANIC" && (
-                          <Button
-                            variant="outline"
-                            className="w-full mt-2 gap-2"
-                            onClick={handleDownloadReceipt}
-                            disabled={isReceiptDownloading}
-                          >
-                            {isReceiptDownloading ? (
-                              <Loader2 className="size-4 animate-spin" />
-                            ) : (
-                              <FileDown className="size-4" />
-                            )}
-                            {isReceiptDownloading ? "Завантаження..." : "Завантажити чек (PDF)"}
-                          </Button>
-                        )}
+                        <Button 
+                          type="button"
+                          variant="outline" 
+                          className="w-full gap-2 mt-2 border-primary/20 hover:bg-primary/5 text-primary"
+                          onClick={handleDownloadReceipt}
+                          disabled={isReceiptDownloading}
+                        >
+                          {isReceiptDownloading ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <FileDown className="size-4" />
+                          )}
+                          {isReceiptDownloading ? t("loading", "common") : t("receipt", "inventory")}
+                        </Button>
                       </>
-                    ) : order.status === "COMPLETED" && payments.length === 0 ? (
-                      <p className="text-xs text-warning font-medium">Очікує оплати</p>
-                    ) : null}
+                    ) : (
+                      <Button 
+                        type="button"
+                        className="w-full gap-2 mt-2" 
+                        onClick={() => setPaymentModalOpen(true)}
+                        disabled={order.status === "CANCELLED" || (role === "CLIENT" && order.status !== "COMPLETED")}
+                      >
+                        <Banknote className="size-4" /> {t("payOrder", "orderDetails")}
+                      </Button>
+                    )}
                   </div>
                 )}
+              </CardContent>
+            </Card>
 
-                {/* Accept payment button — not for mechanics */}
-                {order.status === "COMPLETED" && payments.length === 0 && role !== "MECHANIC" && (
-                  <Button
-                    className="w-full mt-4 gap-2"
-                    onClick={() => {
-                      setPaymentMethod(role === "CLIENT" ? "CARD" : "CASH")
-                      setPaymentModalOpen(true)
-                    }}
-                  >
-                    <Banknote className="size-4" />
-                    {role === "CLIENT" ? "Сплатити" : "Прийняти оплату"}
+            <Card className="border-border bg-card">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between border-b border-border">
+                <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("team", "orderDetails")}</CardTitle>
+                {canAssign && (
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={openAssignModal}>
+                    <Plus className="size-4" />
                   </Button>
                 )}
+              </CardHeader>
+              <CardContent className="p-4 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="size-9 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                    <User className="size-4.5" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-muted-foreground leading-none mb-1">{t("manager", "orders")}</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {order.manager ? `${order.manager.firstName} ${order.manager.lastName}` : t("notAssigned", "orderDetails")}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="size-9 rounded-full bg-secondary/80 flex items-center justify-center text-foreground border border-border">
+                    <Wrench className="size-4.5" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-muted-foreground leading-none mb-1">{t("mechanic", "orders")}</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {order.mechanic ? `${order.mechanic.firstName} ${order.mechanic.lastName}` : t("notAssigned", "orderDetails")}
+                    </p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
-            {/* Payment history */}
-            {payments.length > 0 && (
-              <Card className="border-border bg-card">
-                <CardHeader className="pb-3 border-b border-border">
-                  <CardTitle className="text-sm">Історія оплат</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-4">
-                  <div className="space-y-3">
-                    {payments.map((payment) => {
-                      const methodInfo = paymentMethodLabels[payment.method] || { label: payment.method, icon: Banknote }
-                      const MethodIcon = methodInfo.icon
-                      return (
-                        <div key={payment.id} className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <div className="flex size-8 items-center justify-center rounded-full bg-success/10">
-                              <MethodIcon className="size-4 text-success" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-foreground">{methodInfo.label}</p>
-                              <p className="text-[10px] text-muted-foreground">
-                                {formatAppDate(payment.createdAt, settings.dateFormat, { includeTime: true })}
-                              </p>
-                            </div>
+            <Card className="border-border bg-card">
+              <CardHeader className="pb-2 border-b border-border">
+                <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <Clock className="size-4" /> {t("history", "orderDetails")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 max-h-[400px] overflow-auto">
+                <div className="space-y-4">
+                  {order.history && order.history.length > 0 ? (
+                    order.history.map((item, idx) => (
+                      <div key={item.id} className="relative pl-6 pb-2 last:pb-0">
+                        {idx !== order.history.length - 1 && (
+                          <div className="absolute left-2 top-2 bottom-0 w-0.5 bg-border" />
+                        )}
+                        <div className="absolute left-0 top-1.5 size-4 rounded-full bg-secondary border-2 border-border" />
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-start gap-2">
+                            <p className="text-xs font-bold text-foreground leading-none pt-0.5">
+                              {t(`status_${item.action}`, "orderDetails") || item.action}
+                            </p>
+                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                              {formatAppDate(item.timestamp, settings.dateFormat)}
+                            </span>
                           </div>
-                          <span className="text-sm font-semibold text-foreground">
-                            {Number(payment.amount).toLocaleString()} ₴
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-
-            {(() => {
-              const customer = order.customer || customers.find(c => c.id === order.car?.userId)
-              if (!customer) return null
-              return (
-                <Card className="border-border bg-card">
-                  <CardHeader className="pb-3 border-b border-border">
-                    <CardTitle className="text-sm">Клієнт</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-4 space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 transition-colors">
-                        <User className="size-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-foreground">{customer.firstName} {customer.lastName}</p>
-                        <p className="text-[10px] text-muted-foreground uppercase font-medium tracking-wider">Замовник</p>
-                      </div>
-                    </div>
-                    {customer.phone && (
-                      <div className="flex items-center gap-3 group">
-                        <div className="flex size-8 items-center justify-center rounded-full bg-secondary transition-colors group-hover:bg-primary/5">
-                          <Phone className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                        </div>
-                        <p className="text-sm text-foreground font-medium">{customer.phone}</p>
-                      </div>
-                    )}
-                    {customer.email && (
-                      <div className="flex items-center gap-3 group">
-                        <div className="flex size-8 items-center justify-center rounded-full bg-secondary transition-colors group-hover:bg-primary/5">
-                          <Mail className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                        </div>
-                        <p className="text-sm text-foreground break-all">{customer.email}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )
-            })()}
-
-            <Card className="border-border bg-card">
-              <CardHeader className="pb-3 border-b border-border">
-                <div className="flex justify-between items-center">
-                  <CardTitle className="text-sm">Призначена команда</CardTitle>
-                  {canAssign && (
-                    <Button 
-                      type="button"
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={openAssignModal} 
-                      className="h-8 text-xs"
-                    >
-                      Змінити
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="pt-4 space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-8 items-center justify-center rounded-full bg-primary/10">
-                    <ShieldCheck className="size-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Менеджер</p>
-                    <p className="text-sm font-medium text-foreground">
-                      {order.manager ? `${order.manager.firstName} ${order.manager.lastName}` : "Не призначено"}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex size-8 items-center justify-center rounded-full bg-secondary">
-                    <Wrench className="size-4 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Механік</p>
-                    <p className="text-sm font-medium text-foreground">
-                      {order.mechanic ? `${order.mechanic.firstName} ${order.mechanic.lastName}` : "Не призначено"}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border bg-card">
-              <CardHeader className="pb-3 border-b border-border">
-                <CardTitle className="text-sm">Історія замовлення</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-4">
-                <div className="space-y-4 relative before:absolute before:inset-0 before:ml-2 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
-                  {order.history.map((log, idx) => (
-                    <div key={log.id} className="relative flex items-start gap-4 mb-3">
-                      <div className="flex flex-col items-center">
-                        <div className={cn(
-                          "size-4 rounded-full border-2 bg-card z-10",
-                          idx === 0 ? "border-primary" : "border-muted-foreground/30"
-                        )} />
-                      </div>
-                      <div className="flex flex-col gap-1 w-full -mt-0.5">
-                        <div className="flex justify-between items-start">
-                          <p className="text-[11px] font-bold text-foreground leading-tight">
-                            {actionTranslations[log.action] || log.action}
+                          {item.comment && (
+                            <p className="text-xs text-muted-foreground italic break-words">{item.comment}</p>
+                          )}
+                          <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <User className="size-2.5" /> {item.changedBy.firstName} {item.changedBy.lastName}
                           </p>
-                          <span className="text-[9px] text-muted-foreground whitespace-nowrap ml-2">
-                            {formatAppDate(log.timestamp, settings.dateFormat, { includeTime: true })}
-                          </span>
-                        </div>
-                        {log.comment && <p className="text-[10px] text-muted-foreground leading-relaxed italic">&quot;{log.comment}&quot;</p>}
-                        <div className="flex items-center gap-1 mt-0.5">
-                           <ShieldCheck className="size-2.5 text-muted-foreground" />
-                           <p className="text-[9px] text-muted-foreground font-medium">{log.changedBy.firstName} {log.changedBy.lastName}</p>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                  {order.history.length === 0 && (
-                    <p className="text-xs text-muted-foreground text-center">Історія порожня.</p>
+                    ))
+                  ) : (
+                    <p className="text-xs text-muted-foreground text-center py-4">{t("noHistory", "orderDetails")}</p>
                   )}
                 </div>
               </CardContent>
@@ -996,367 +890,302 @@ export default function OrderDetailsPage() {
         </div>
       </div>
 
-      {canManageItems && (
-        <Dialog
-          open={itemModalOpen}
-          onOpenChange={(open) => {
-            setItemModalOpen(open)
-            if (!open) {
-              setDraftItems([])
-              setItemForm({ name: "", price: "", quantity: "1", type: "SERVICE" })
-              setSearchQuery("")
-            }
-          }}
-        >
-          <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Додати послугу або запчастину</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2 mb-2">
-                <Label>Тип позиції</Label>
-                <RadioGroup
-                  value={itemForm.type}
-                  onValueChange={(val: "SERVICE" | "PART") => {
-                    setItemForm({ name: "", price: "", quantity: itemForm.quantity || "1", type: val })
+      {/* Add Item Modal */}
+      <Dialog open={itemModalOpen} onOpenChange={setItemModalOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="size-5 text-primary" /> {t("addPositionTitle", "orderDetails")}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-6 py-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{t("positionType", "orderDetails")}</Label>
+                <RadioGroup 
+                  value={itemForm.type} 
+                  onValueChange={(v: "SERVICE" | "PART") => {
+                    setItemForm({ ...itemForm, type: v, name: "", price: "", id: undefined })
                     setSearchQuery("")
                   }}
-                  className="flex space-x-4"
+                  className="flex gap-4"
                 >
-                  <div className="flex items-center space-x-2 bg-secondary/30 p-2 rounded-md border border-border flex-1">
-                    <RadioGroupItem value="SERVICE" id="r-service" />
-                    <Label htmlFor="r-service" className="cursor-pointer flex-1">🛠 Робота (Послуга)</Label>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="SERVICE" id="t-service" />
+                    <Label htmlFor="t-service" className="cursor-pointer font-normal">{t("service", "orderDetails")}</Label>
                   </div>
-                  <div className="flex items-center space-x-2 bg-secondary/30 p-2 rounded-md border border-border flex-1">
-                    <RadioGroupItem value="PART" id="r-part" />
-                    <Label htmlFor="r-part" className="cursor-pointer flex-1">📦 Запчастина</Label>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="PART" id="t-part" />
+                    <Label htmlFor="t-part" className="cursor-pointer font-normal">{t("part", "orderDetails")}</Label>
                   </div>
                 </RadioGroup>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="i-name">{itemForm.type === "SERVICE" ? "Назва послуги" : "Назва запчастини (артикул)"}</Label>
+            </div>
+
+            <div className="grid gap-4">
+              <div className="space-y-2">
+                <Label>{t("name", "orderDetails")}</Label>
                 <Popover open={serviceComboboxOpen} onOpenChange={setServiceComboboxOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       role="combobox"
                       aria-expanded={serviceComboboxOpen}
-                      className="w-full justify-between font-normal text-left px-3 shadow-none h-auto min-h-10 py-2"
+                      className="w-full justify-between font-normal"
                     >
-                      <span className="whitespace-normal break-words flex-1 pr-2">{itemForm.name || (itemForm.type === "SERVICE" ? "Оберіть або введіть послугу..." : "Введіть назву запчастини...")}</span>
-                      <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
+                      {itemForm.name || (itemForm.type === "SERVICE" ? t("selectFromCatalog", "orderDetails") : t("selectFromInventory", "orderDetails"))}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start" style={{ width: "var(--radix-popover-trigger-width)" }}>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
                     <Command>
-                      <CommandInput
-                        placeholder="Пошук..."
+                      <CommandInput 
+                        placeholder={t("searchPlaceholder", "search")} 
                         value={searchQuery}
                         onValueChange={setSearchQuery}
                       />
                       <CommandList>
-                        <CommandEmpty className="py-4 px-2 text-center text-sm text-muted-foreground">
-                          Не знайдено серед існуючих.<br />
-                          {itemForm.type === "SERVICE" && role !== "MECHANIC" ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="mt-2 text-primary w-full"
-                              onClick={() => {
-                                setItemForm({ ...itemForm, name: searchQuery })
-                                setServiceComboboxOpen(false)
-                                setSearchQuery("")
-                              }}
-                            >
-                              <Plus className="mr-1 size-4" /> Додати &quot;{searchQuery}&quot;
-                            </Button>
-                          ) : (
-                            <span className="text-xs text-destructive mt-2 block">Запчастину потрібно спочатку додати на склад!</span>
-                          )}
-                        </CommandEmpty>
+                        <CommandEmpty>{t("nothingFound", "search")}</CommandEmpty>
                         <CommandGroup>
-                          {searchQuery && itemForm.type === "SERVICE" && role !== "MECHANIC" && !catalogServices.some(s => s.name.toLowerCase() === searchQuery.toLowerCase()) && (
+                        {itemForm.type === "SERVICE" ? (
+                          catalogServices.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase())).map((service) => (
                             <CommandItem
-                              value={searchQuery}
+                              key={service.id}
+                              value={service.name}
                               onSelect={() => {
-                                setItemForm({ ...itemForm, name: searchQuery })
+                                setItemForm({ ...itemForm, id: service.id, name: service.name, price: String(service.price) })
                                 setServiceComboboxOpen(false)
-                                setSearchQuery("")
                               }}
                             >
-                              <Plus className="mr-2 size-4" />
-                              Створити &quot;{searchQuery}&quot;
-                            </CommandItem>
-                          )}
-
-                          {/* Мапінг послуг */}
-                          {itemForm.type === "SERVICE" && catalogServices.map((catalogItem) => (
-                            <CommandItem
-                              key={`service-${catalogItem.id}`}
-                              value={catalogItem.name}
-                              onSelect={() => {
-                                setItemForm({ ...itemForm, id: catalogItem.id, name: catalogItem.name, price: String(catalogItem.price || 0) })
-                                setServiceComboboxOpen(false)
-                                setSearchQuery("")
-                              }}
-                              className="items-start py-2"
-                            >
-                              <Check className={cn("mr-2 size-4 shrink-0 mt-0.5", itemForm.name === catalogItem.name ? "opacity-100" : "opacity-0")} />
-                              <span className="flex-1 whitespace-normal break-words text-left leading-tight pr-2">{catalogItem.name}</span>
-                              <span className="shrink-0 font-medium whitespace-nowrap">{catalogItem.price} ₴</span>
-                            </CommandItem>
-                          ))}
-
-                          {/* Мапінг запчастин зі складу */}
-                          {itemForm.type === "PART" && inventory.map((invItem) => (
-                            <CommandItem
-                              key={`inv-${invItem.id}`}
-                              value={`${invItem.sku || ''} ${invItem.name}`}
-                              onSelect={() => {
-                                setItemForm({ ...itemForm, id: invItem.id, name: invItem.name, price: String(invItem.retailPrice || 0) })
-                                setServiceComboboxOpen(false)
-                                setSearchQuery("")
-                              }}
-                              disabled={invItem.stockQuantity <= 0}
-                              className="items-start py-2"
-                            >
-                              <Check className={cn("mr-2 size-4 shrink-0 mt-0.5", itemForm.name === invItem.name ? "opacity-100" : "opacity-0")} />
-                              <div className="flex flex-col flex-1 pl-1 overflow-hidden pr-2">
-                                <span className={cn("whitespace-normal break-words text-left leading-tight text-sm", invItem.stockQuantity <= 0 && "text-muted-foreground line-through")}>
-                                  {invItem.sku && <span className="text-muted-foreground mr-1 text-xs font-normal">[{invItem.sku}]</span>}
-                                  {invItem.name}
-                                </span>
+                              <div className="flex flex-col">
+                                <span>{service.name}</span>
+                                <span className="text-xs text-muted-foreground">{service.price.toLocaleString()} ₴</span>
                               </div>
-                              <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1 sm:gap-2 shrink-0 mt-0.5">
-                                <span className="font-medium whitespace-nowrap">{invItem.retailPrice} ₴</span>
-                                <Badge variant={invItem.stockQuantity > 0 ? "secondary" : "destructive"} className="text-[10px] w-14 justify-center px-1">
-                                  {invItem.stockQuantity} шт
+                            </CommandItem>
+                          ))
+                        ) : (
+                          inventory.filter(p => (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase())))).map((part) => (
+                            <CommandItem
+                              key={part.id}
+                              value={part.name}
+                              onSelect={() => {
+                                setItemForm({ ...itemForm, id: part.id, name: part.name, price: String(part.salePrice) })
+                                setServiceComboboxOpen(false)
+                              }}
+                              disabled={part.stockQuantity <= 0}
+                            >
+                              <div className="flex justify-between items-center w-full">
+                                <div className="flex flex-col">
+                                  <span>{part.name} {part.sku && <span className="text-[10px] text-muted-foreground ml-1">({part.sku})</span>}</span>
+                                  <span className="text-xs text-muted-foreground">{part.salePrice.toLocaleString()} ₴</span>
+                                </div>
+                                <Badge variant={part.stockQuantity > 0 ? "secondary" : "destructive"} className="text-[10px]">
+                                  {part.stockQuantity} {t("pcs", "orderDetails")}
                                 </Badge>
                               </div>
                             </CommandItem>
-                          ))}
+                          ))
+                        )}
+                          <CommandItem
+                            onSelect={() => {
+                              setItemForm({ ...itemForm, name: searchQuery, id: undefined })
+                              setServiceComboboxOpen(false)
+                            }}
+                            className="bg-primary/5 text-primary border-t border-border mt-1 font-medium"
+                          >
+                            <Plus className="mr-2 h-4 w-4" /> {t("add", "common")}: {searchQuery || t("new", "inventory")}
+                          </CommandItem>
                         </CommandGroup>
                       </CommandList>
                     </Command>
                   </PopoverContent>
                 </Popover>
               </div>
-              <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="i-price">Ціна продажу (₴)</Label>
-                  <Input id="i-price" type="number" value={itemForm.price} onChange={(e) => setItemForm({ ...itemForm, price: e.target.value })} disabled={(itemForm.type === "PART" && !!itemForm.name) || (itemForm.type === "SERVICE" && role === "MECHANIC")} placeholder="0.00" />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>{t("price", "orderDetails")} (₴)</Label>
+                  <Input 
+                    type="number" 
+                    value={itemForm.price} 
+                    onChange={(e) => setItemForm({ ...itemForm, price: e.target.value })}
+                  />
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="i-qty">Кількість</Label>
-                  <Input id="i-qty" type="number" min="1" value={itemForm.quantity} onChange={(e) => setItemForm({ ...itemForm, quantity: e.target.value })} />
+                <div className="space-y-2">
+                  <Label>{t("quantity", "orderDetails")}</Label>
+                  <Input 
+                    type="number" 
+                    value={itemForm.quantity} 
+                    onChange={(e) => setItemForm({ ...itemForm, quantity: e.target.value })}
+                    min="1"
+                  />
                 </div>
               </div>
+            </div>
 
-              <div className="flex justify-end mt-1">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={handleAddToDraft}
-                  disabled={!itemForm.name || !itemForm.price || !itemForm.quantity}
-                  className="gap-2 h-8 text-xs"
-                >
-                  <Plus className="size-3" /> Додати до списку
-                </Button>
-              </div>
+            <Button type="button" variant="secondary" onClick={handleAddToDraft} className="w-full gap-2">
+              <Plus className="size-4" /> {t("addToDraft", "orderDetails")}
+            </Button>
 
-              {draftItems.length > 0 && (
-                <div className="mt-2 border-t pt-4 space-y-3">
-                  <Label className="text-muted-foreground text-xs uppercase tracking-wider">Список для збереження ({draftItems.length})</Label>
-                  <div className="max-h-[220px] overflow-y-auto space-y-2 pr-1">
-                    {draftItems.map((item) => (
-                      <div key={item.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm border p-2.5 rounded-md bg-secondary/10 gap-3">
-                        <div className="flex flex-col gap-0.5 flex-1 w-full m-0 min-w-0">
-                          <span className="font-semibold leading-tight whitespace-normal break-words">{item.name}</span>
-                          <span className="text-[10px] text-muted-foreground font-medium uppercase mt-1">
-                            {item.type === "SERVICE" ? "🛠 Послуга" : "📦 Запчастина"}
-                          </span>
-                        </div>
-                        <div className="flex justify-between sm:justify-end w-full sm:w-auto items-center gap-3 shrink-0">
-                          <span className="text-muted-foreground text-xs tabular-nums whitespace-nowrap">{item.quantity} шт x {item.price} ₴</span>
-                          <span className="font-bold text-sm w-[70px] text-right tabular-nums whitespace-nowrap">{(Number(item.quantity) * Number(item.price)).toLocaleString()} ₴</span>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0" onClick={() => handleRemoveFromDraft(item.id)}>
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        </div>
+            {draftItems.length > 0 && (
+              <div className="border border-border rounded-lg bg-secondary/20 overflow-hidden">
+                <div className="bg-secondary/40 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b border-border">
+                  {t("common", "dashboard")}
+                </div>
+                <div className="max-h-[160px] overflow-auto">
+                  {draftItems.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between px-4 py-2 border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
+                      <div className="min-w-0 mr-4">
+                        <p className="text-sm font-medium truncate">{item.name}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {item.quantity} x {Number(item.price).toLocaleString()} ₴ = {(Number(item.price) * Number(item.quantity)).toLocaleString()} ₴
+                        </p>
                       </div>
-                    ))}
-                  </div>
+                      <Button variant="ghost" size="icon" className="size-8 text-destructive hover:bg-destructive/10" onClick={() => handleRemoveFromDraft(item.id)}>
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setItemModalOpen(false)} disabled={isSubmitting}>Скасувати</Button>
-              <Button onClick={handleSaveAllItems} disabled={isSubmitting}>
-                {isSubmitting ? "Додавання..." : (draftItems.length > 0 || itemForm.name ? `Зберегти всі позиції` : "Додати позицію")}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {canAssign && (
-        <Dialog open={assignModalOpen} onOpenChange={setAssignModalOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Призначити команду</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-
-              <div className="grid gap-2">
-                <Label>Менеджер</Label>
-                <Select value={assignForm.managerId} onValueChange={(v) => setAssignForm({ ...assignForm, managerId: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Оберіть менеджера" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none" className="italic text-muted-foreground">Нікого (Зняти призначення)</SelectItem>
-                    {managers.map((m) => (
-                      <SelectItem key={m.id} value={String(m.id)}>
-                        {m.firstName} {m.lastName}
-                      </SelectItem>
-                    ))}
-                    {managers.length === 0 && <div className="p-2 text-xs text-muted-foreground">Менеджерів не знайдено.</div>}
-                  </SelectContent>
-                </Select>
               </div>
-
-              <div className="grid gap-2">
-                <Label>Механік</Label>
-                <Select value={assignForm.mechanicId} onValueChange={(v) => setAssignForm({ ...assignForm, mechanicId: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Оберіть механіка" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none" className="italic text-muted-foreground">Нікого (Зняти призначення)</SelectItem>
-                    {mechanics.map((m) => (
-                      <SelectItem key={m.id} value={String(m.id)}>
-                        {m.firstName} {m.lastName}
-                      </SelectItem>
-                    ))}
-                    {mechanics.length === 0 && <div className="p-2 text-xs text-muted-foreground">Механіків не знайдено.</div>}
-                  </SelectContent>
-                </Select>
-              </div>
-
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setAssignModalOpen(false)} disabled={isSubmitting}>Скасувати</Button>
-              <Button onClick={handleAssign} disabled={isSubmitting}>{isSubmitting ? "Збереження..." : "Зберегти призначення"}</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Видалення позиції</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-sm text-muted-foreground">
-              Ви впевнені, що хочете видалити цю позицію із замовлення? Цю дію не можна буде скасувати.
-            </p>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteModalOpen(false)} disabled={isSubmitting}>Скасувати</Button>
-            <Button variant="destructive" onClick={handleRemoveItem} disabled={isSubmitting}>
-              {isSubmitting ? "Видалення..." : "Видалити"}
+            <Button variant="outline" onClick={() => {
+              setItemModalOpen(false)
+              setDraftItems([])
+              setItemForm({ name: "", price: "", quantity: "1", type: "SERVICE" })
+            }}>
+              {t("cancel", "common")}
+            </Button>
+            <Button onClick={handleSaveAllItems} disabled={isSubmitting || (draftItems.length === 0 && !itemForm.name)}>
+              {isSubmitting ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
+              {t("savePositions", "orderDetails")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Payment Dialog */}
-      <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>
-        <DialogContent className="sm:max-w-md border-0 p-0 overflow-hidden shadow-2xl bg-card">
-          <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-primary via-blue-500 to-primary"></div>
-          <DialogHeader className="px-6 pt-6 pb-2">
-            <DialogTitle className="text-xl font-bold flex items-center gap-2">
-              <Wallet className="size-5 text-primary" />
-              {role === "CLIENT" ? "Оплата замовлення" : "Прийняти оплату"}
+      {/* Delete Item Confirmation Modal */}
+      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-2">
+               <AlertTriangle className="size-5" /> {t("deletePositionTitle", "orderDetails")}
             </DialogTitle>
           </DialogHeader>
-          <div className="px-6 py-4 space-y-6">
-            <div className="flex flex-col items-center justify-center p-6 bg-secondary/30 rounded-2xl border border-primary/10 shadow-inner">
-              <p className="text-sm text-muted-foreground font-medium mb-1">До сплати</p>
-              <div className="flex items-baseline gap-1">
-                <p className="text-4xl font-extrabold text-foreground tracking-tight">
-                  {Number(order?.totalAmount || 0).toLocaleString()}
-                </p>
-                <span className="text-xl font-bold text-muted-foreground">₴</span>
-              </div>
+          <div className="py-4 text-sm text-foreground">
+            {t("deletePositionConfirm", "orderDetails")}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteModalOpen(false)}>
+              {t("cancel", "common")}
+            </Button>
+            <Button variant="destructive" onClick={handleRemoveItem} disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
+              {t("delete", "common")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Team Modal */}
+      <Dialog open={assignModalOpen} onOpenChange={setAssignModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="size-5 text-primary" /> {t("assignModalTitle", "orderDetails")}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-6 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="s-manager">{t("manager", "orders")}</Label>
+              <Select value={assignForm.managerId} onValueChange={(v) => setAssignForm({...assignForm, managerId: v})}>
+                <SelectTrigger id="s-manager">
+                  <SelectValue placeholder={t("selectManager", "orderDetails")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{t("none", "orderDetails")}</SelectItem>
+                  {managers.map((m) => (
+                    <SelectItem key={m.id} value={String(m.id)}>{m.firstName} {m.lastName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-
-            <div className="grid gap-3">
-              <Label className="text-sm font-semibold">Оберіть спосіб оплати</Label>
-              <RadioGroup
-                value={paymentMethod}
-                onValueChange={(val: "CASH" | "CARD") => setPaymentMethod(val)}
-                className="grid gap-3 grid-cols-1"
-              >
-                {(["CASH", "CARD"] as const)
-                  .filter((method) => role === "CLIENT" ? method !== "CASH" : method === "CASH")
-                  .map((method) => {
-                    const info = paymentMethodLabels[method]
-                    const Icon = info.icon
-                    const isStripe = role === "CLIENT" && method === "CARD"
-                    const isSelected = paymentMethod === method
-
-                    return (
-                      <Label
-                        key={method}
-                        htmlFor={`pay-${method}`}
-                        className={cn(
-                          "relative flex flex-col items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all duration-300 overflow-hidden",
-                          isSelected
-                            ? "border-primary bg-primary/5 shadow-md scale-[1.02]"
-                            : "border-border hover:border-primary/40 hover:bg-muted/50"
-                        )}
-                      >
-                        <RadioGroupItem value={method} id={`pay-${method}`} className="sr-only" />
-
-                        {isSelected && (
-                          <div className="absolute top-2 right-2 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
-                            <Check className="size-3" />
-                          </div>
-                        )}
-
-                        <div className={cn("flex size-12 items-center justify-center rounded-full transition-colors",
-                          isSelected ? "bg-primary/20" : "bg-secondary"
-                        )}>
-                          <Icon className={cn("size-6 transition-colors", isSelected ? "text-primary" : "text-muted-foreground")} />
-                        </div>
-
-                        <div className="flex flex-col items-center gap-0.5">
-                          <span className={cn("text-sm font-bold", isSelected ? "text-primary" : "text-foreground")}>
-                            {isStripe ? "Онлайн карткою" : info.label}
-                          </span>
-                          {isStripe && (
-                            <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
-                              через <span className="font-bold text-foreground">Stripe</span>
-                            </span>
-                          )}
-                        </div>
-                      </Label>
-                    )
-                  })}
-              </RadioGroup>
+            <div className="space-y-2">
+              <Label htmlFor="s-mechanic">{t("mechanic", "orders")}</Label>
+              <Select value={assignForm.mechanicId} onValueChange={(v) => setAssignForm({...assignForm, mechanicId: v})}>
+                <SelectTrigger id="s-mechanic">
+                  <SelectValue placeholder={t("selectMechanic", "orderDetails")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{t("none", "orderDetails")}</SelectItem>
+                  {mechanics.map((m) => (
+                    <SelectItem key={m.id} value={String(m.id)}>{m.firstName} {m.lastName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <DialogFooter className="px-6 py-4 bg-muted/30 border-t border-border mt-2">
-            <Button variant="outline" onClick={() => setPaymentModalOpen(false)} disabled={isPaymentSubmitting} className="rounded-xl font-medium">Скасувати</Button>
-            <Button onClick={handlePayment} disabled={isPaymentSubmitting} className="gap-2 rounded-xl font-bold shadow-md hover:shadow-lg transition-all">
-              {isPaymentSubmitting ? (
-                <><Loader2 className="size-4 animate-spin" /> Обробка...</>
-              ) : (
-                role === "CLIENT" && paymentMethod === "CARD" ? "Перейти до оплати" : "Підтвердити оплату"
-              )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignModalOpen(false)}>
+              {t("cancel", "common")}
+            </Button>
+            <Button onClick={handleAssign} disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
+              {t("save", "common")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Modal */}
+      <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+               <Banknote className="size-5 text-primary" /> {t("payOrder", "orderDetails")}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-6 space-y-6">
+            <div className="space-y-3">
+              <Label>{t("selectPaymentMethod", "orderDetails")}</Label>
+              <RadioGroup value={paymentMethod} onValueChange={(v: "CASH" | "CARD") => setPaymentMethod(v)} className="grid grid-cols-2 gap-4">
+                <div className={cn(
+                  "flex items-center space-x-2 border rounded-lg p-4 cursor-pointer transition-all",
+                  paymentMethod === "CASH" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:bg-muted"
+                )} onClick={() => setPaymentMethod("CASH")}>
+                  <RadioGroupItem value="CASH" id="p-cash" />
+                  <Label htmlFor="p-cash" className="flex items-center gap-2 cursor-pointer">
+                    <Banknote className="size-4" /> {t("cash", "orderDetails")}
+                  </Label>
+                </div>
+                <div className={cn(
+                  "flex items-center space-x-2 border rounded-lg p-4 cursor-pointer transition-all",
+                  paymentMethod === "CARD" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:bg-muted"
+                )} onClick={() => setPaymentMethod("CARD")}>
+                  <RadioGroupItem value="CARD" id="p-card" />
+                  <Label htmlFor="p-card" className="flex items-center gap-2 cursor-pointer">
+                    <CreditCard className="size-4" /> {t("card", "orderDetails")}
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+            
+            <div className="bg-secondary/30 p-4 rounded-lg border border-border">
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-xs text-muted-foreground uppercase font-bold">{t("total", "orderDetails")}</span>
+                <span className="text-lg font-bold text-foreground">{Number(order?.totalAmount).toLocaleString()} ₴</span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPaymentModalOpen(false)}>
+              {t("cancel", "common")}
+            </Button>
+            <Button onClick={handlePayment} disabled={isPaymentSubmitting} className="gap-2">
+              {isPaymentSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}
+              {paymentMethod === "CARD" && role === "CLIENT" ? t("continue", "common") : t("confirmPayment", "orderDetails")}
             </Button>
           </DialogFooter>
         </DialogContent>

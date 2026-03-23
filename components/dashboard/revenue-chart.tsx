@@ -15,8 +15,14 @@ import { useOrders } from "@/lib/orders-context"
 import { Loader2 } from "lucide-react"
 import { useEffect, useMemo } from "react"
 
+import { useSettings } from "@/lib/settings-context"
+import { translations } from "@/lib/translations"
+
 export function RevenueChart() {
   const { orders, fetchOrders, isLoading: isOrdersLoading } = useOrders()
+  const { settings } = useSettings()
+
+  const t = translations[settings.language].dashboard.charts
 
   useEffect(() => {
     fetchOrders()
@@ -26,10 +32,12 @@ export function RevenueChart() {
     const dataMap = new Map<string, { month: string; revenue: number }>()
     const now = new Date()
 
+    const locale = settings.language === "uk" ? "uk-UA" : "en-US"
+
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
       const key = `${d.getFullYear()}-${d.getMonth()}` 
-      const monthName = d.toLocaleString('uk-UA', { month: 'short' }) 
+      const monthName = d.toLocaleString(locale, { month: 'short' }) 
       
       const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
       
@@ -52,13 +60,13 @@ export function RevenueChart() {
     }
 
     return Array.from(dataMap.values())
-  }, [orders])
+  }, [orders, settings.language])
 
   if (isOrdersLoading) {
     return (
       <Card className="border-border bg-card">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base font-medium">Дохід за останні 7 днів</CardTitle>
+          <CardTitle className="text-base font-medium">{t.revenueSevenDays}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex h-[300px] items-center justify-center">
@@ -73,7 +81,7 @@ export function RevenueChart() {
     <Card className="border-border bg-card">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-foreground">
-          Дохід за останні 6 місяців
+          {t.revenueSixMonths}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -104,7 +112,7 @@ export function RevenueChart() {
                   color: "oklch(0.95 0 0)",
                   fontSize: 13,
                 }}
-                formatter={(value: number) => [`${value.toLocaleString()} ₴`, "Дохід"]}
+                formatter={(value: number) => [`${value.toLocaleString()} ₴`, t.revenue]}
               />
               <Bar dataKey="revenue" fill="oklch(0.65 0.18 220)" radius={[4, 4, 0, 0]} />
             </BarChart>

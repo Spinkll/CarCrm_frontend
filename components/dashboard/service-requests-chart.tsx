@@ -5,9 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts"
 import { useServiceRequests } from "@/lib/service-requests-context"
 import { Loader2 } from "lucide-react"
+import { useSettings } from "@/lib/settings-context"
+import { translations } from "@/lib/translations"
 
 export function ServiceRequestsChart() {
   const { requests, isLoading } = useServiceRequests()
+  const { settings } = useSettings()
+
+  const t = translations[settings.language].dashboard.charts
 
   const chartData = useMemo(() => {
     let newReq = 0
@@ -23,12 +28,12 @@ export function ServiceRequestsChart() {
     })
 
     return [
-      { name: "Нові", value: newReq, color: "oklch(0.65 0.18 220)" },           // Blue
-      { name: "На розгляді", value: inReview, color: "oklch(0.80 0.15 90)" },  // Yellow/Orange 
-      { name: "Опрацьовані", value: processed, color: "oklch(0.60 0.15 150)" }, // Green
-      { name: "Відхилені", value: rejected, color: "oklch(0.60 0.15 20)" },     // Red
+      { name: t.statusNew, value: newReq, color: "oklch(0.65 0.18 220)" },           // Blue
+      { name: t.statusInReview, value: inReview, color: "oklch(0.80 0.15 90)" },  // Yellow/Orange 
+      { name: t.statusProcessed, value: processed, color: "oklch(0.60 0.15 150)" }, // Green
+      { name: t.statusRejected, value: rejected, color: "oklch(0.60 0.15 20)" },     // Red
     ].filter(d => d.value > 0)
-  }, [requests])
+  }, [requests, t])
 
   const totalRequests = useMemo(() => {
     return chartData.reduce((acc, curr) => acc + curr.value, 0)
@@ -38,7 +43,7 @@ export function ServiceRequestsChart() {
     return (
       <Card className="border-border bg-card">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base font-medium">Статус заявок</CardTitle>
+          <CardTitle className="text-base font-medium">{t.statusTitle}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex h-[300px] items-center justify-center">
@@ -73,17 +78,17 @@ export function ServiceRequestsChart() {
     <Card className="border-border bg-card flex flex-col">
       <CardHeader className="pb-0">
         <CardTitle className="text-sm font-medium text-foreground">
-          Вхідні заявки
+          {t.incomingRequests}
         </CardTitle>
         <CardDescription className="text-xs">
-          Всього заявок: {totalRequests}
+          {t.totalRequests} {totalRequests}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-1 pb-4 pt-4">
         <div className="h-[220px] w-full">
           {chartData.length === 0 ? (
             <div className="flex w-full h-full items-center justify-center text-muted-foreground text-sm">
-              Немає вхідних заявок
+              {t.noRequests}
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">

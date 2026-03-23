@@ -7,10 +7,14 @@ import { useAppointments } from "@/lib/appointments-context"
 import { useSettings } from "@/lib/settings-context"
 import { formatAppDate } from "@/lib/utils"
 
+import { translations } from "@/lib/translations"
+
 export function UpcomingAppointments() {
   // Використовуємо новий хук для записів
   const { appointments, isLoading } = useAppointments()
   const { settings } = useSettings()
+
+  const t = translations[settings.language].dashboard.upcomingAppointments
 
   // 1. Фільтруємо та сортуємо записи за новим полем scheduledAt
   const upcoming = [...appointments]
@@ -30,7 +34,7 @@ export function UpcomingAppointments() {
       <Card className="border-border bg-card">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-foreground">
-            Майбутні візити
+            {t.title}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex h-48 items-center justify-center">
@@ -44,13 +48,13 @@ export function UpcomingAppointments() {
     <Card className="border-border bg-card">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-foreground">
-          Майбутні візити
+          {t.title}
         </CardTitle>
       </CardHeader>
       <CardContent>
         {upcoming.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
-            Немає запланованих зустрічей на найближчий час.
+            {t.empty}
           </div>
         ) : (
           <div className="space-y-3">
@@ -58,12 +62,13 @@ export function UpcomingAppointments() {
               // 2. Дістаємо авто та власника через вкладений об'єкт order
               const vehicle = appt.order?.car
               const customer = vehicle?.user
-              const description = appt.order?.description || "Сервісне обслуговування"
+              const description = appt.order?.description || t.service
               
               // 3. Форматуємо дату та час з scheduledAt
               const dateObj = new Date(appt.scheduledAt)
               const formattedDate = formatAppDate(appt.scheduledAt, settings.dateFormat)
-              const formattedTime = dateObj.toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })
+              const locale = settings.language === "uk" ? "uk-UA" : "en-US"
+              const formattedTime = dateObj.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })
 
               return (
                 <div
@@ -76,12 +81,12 @@ export function UpcomingAppointments() {
                   <div className="flex-1 overflow-hidden">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-medium text-foreground truncate">
-                        {customer ? `${customer.firstName} ${customer.lastName}` : "Клієнт невідомий"}
+                        {customer ? `${customer.firstName} ${customer.lastName}` : t.unknownClient}
                       </p>
                       <StatusBadge status={appt.status} />
                     </div>
                     <p className="text-xs text-muted-foreground truncate" title={description}>
-                      {vehicle ? `${vehicle.brand} ${vehicle.model}` : "Авто не вказано"} • {description}
+                      {vehicle ? `${vehicle.brand} ${vehicle.model}` : t.noVehicle} • {description}
                     </p>
                     <div className="mt-1 flex items-center gap-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                       <span className="flex items-center gap-1">
@@ -94,7 +99,7 @@ export function UpcomingAppointments() {
                       </span>
                       {appt.estimatedMin && (
                         <span className="flex items-center gap-1">
-                          ~{appt.estimatedMin} хв
+                          ~{appt.estimatedMin} {t.min}
                         </span>
                       )}
                     </div>

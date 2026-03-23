@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/api"
+import { useTranslation } from "@/hooks/use-translation"
 
 interface ServiceItem {
     id: number
@@ -40,6 +41,7 @@ const emptyForm = {
 
 export default function ServicesPage() {
     const { user } = useAuth()
+    const { t } = useTranslation()
 
     // Data states
     const [services, setServices] = useState<ServiceItem[]>([])
@@ -69,7 +71,7 @@ export default function ServicesPage() {
             setServices(Array.isArray(data) ? data : [])
         } catch (error) {
             console.error("Failed to fetch services", error)
-            toast({ title: "Помилка завантаження послуг", variant: "destructive" })
+            toast({ title: t("fetchError", "services"), variant: "destructive" })
         } finally {
             setIsLoading(false)
         }
@@ -103,7 +105,7 @@ export default function ServicesPage() {
 
     const handleSubmit = async () => {
         if (!form.name || !form.price) {
-            toast({ title: "Заповніть обов'язкові поля", variant: "destructive" })
+            toast({ title: t("fillRequiredError", "services"), variant: "destructive" })
             return
         }
 
@@ -116,17 +118,17 @@ export default function ServicesPage() {
 
             if (isEditMode && selectedId) {
                 await api.patch(`/services/${selectedId}`, payload)
-                toast({ title: "Послугу оновлено", variant: "success" })
+                toast({ title: t("updateSuccess", "services"), variant: "success" })
             } else {
                 await api.post('/services', payload)
-                toast({ title: "Послугу створено", variant: "success" })
+                toast({ title: t("createSuccess", "services"), variant: "success" })
             }
 
             setModalOpen(false)
             fetchServices()
         } catch (error: any) {
             console.error("Failed to save service", error)
-            const msg = error.response?.data?.message || "Не вдалося зберегти послугу"
+            const msg = error.response?.data?.message || t("saveError", "services")
             toast({ title: Array.isArray(msg) ? msg[0] : msg, variant: "destructive" })
         } finally {
             setIsSubmitting(false)
@@ -139,12 +141,12 @@ export default function ServicesPage() {
         setIsSubmitting(true)
         try {
             await api.delete(`/services/${itemToDelete}`)
-            toast({ title: "Послугу видалено", variant: "success" })
+            toast({ title: t("deleteSuccess", "services"), variant: "success" })
             setDeleteModalOpen(false)
             fetchServices()
         } catch (error: any) {
             console.error("Failed to delete service", error)
-            const msg = error.response?.data?.message || "Не вдалося видалити послугу"
+            const msg = error.response?.data?.message || t("deleteError", "services")
             toast({ title: Array.isArray(msg) ? msg[0] : msg, variant: "destructive" })
         } finally {
             setIsSubmitting(false)
@@ -161,14 +163,14 @@ export default function ServicesPage() {
     return (
         <div className="flex flex-1 flex-col overflow-hidden">
             <PageHeader
-                title="Довідник послуг"
-                description="Управління переліком послуг та їх вартістю"
+                title={t("title", "services")}
+                description={t("description", "services")}
             />
 
             <div className="flex-1 overflow-auto p-6">
                 <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <Input
-                        placeholder="Пошук за назвою..."
+                        placeholder={t("searchPlaceholder", "services")}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="max-w-md bg-card"
@@ -176,7 +178,7 @@ export default function ServicesPage() {
                     {canManageServices && (
                         <Button onClick={openCreateModal}>
                             <Plus className="mr-2 size-4" />
-                            Додати послугу
+                            {t("addService", "services")}
                         </Button>
                     )}
                 </div>
@@ -191,9 +193,9 @@ export default function ServicesPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow className="border-border hover:bg-transparent">
-                                        <TableHead className="pl-6 text-muted-foreground">Назва послуги</TableHead>
-                                        <TableHead className="text-muted-foreground w-48 text-right pr-6">Вартість</TableHead>
-                                        {canManageServices && <TableHead className="w-24 text-right pr-6 text-muted-foreground">Дії</TableHead>}
+                                        <TableHead className="pl-6 text-muted-foreground">{t("tableHeader_name", "services")}</TableHead>
+                                        <TableHead className="text-muted-foreground w-48 text-right pr-6">{t("tableHeader_price", "services")}</TableHead>
+                                        {canManageServices && <TableHead className="w-24 text-right pr-6 text-muted-foreground">{t("tableHeader_actions", "services")}</TableHead>}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -202,7 +204,7 @@ export default function ServicesPage() {
                                             <TableCell colSpan={3} className="py-12 text-center text-muted-foreground">
                                                 <div className="flex flex-col items-center justify-center">
                                                     <Wrench className="mb-2 size-8 opacity-20" />
-                                                    <p>Послуги не знайдено</p>
+                                                    <p>{t("nothingFound", "services")}</p>
                                                 </div>
                                             </TableCell>
                                         </TableRow>
@@ -225,6 +227,7 @@ export default function ServicesPage() {
                                                                 onClick={() => openEditModal(item)}
                                                             >
                                                                 <Pencil className="size-4" />
+                                                                <span className="sr-only">{t("edit", "common")}</span>
                                                             </Button>
                                                             <Button
                                                                 size="icon"
@@ -233,6 +236,7 @@ export default function ServicesPage() {
                                                                 onClick={() => confirmDelete(item.id)}
                                                             >
                                                                 <Trash2 className="size-4" />
+                                                                <span className="sr-only">{t("delete", "common")}</span>
                                                             </Button>
                                                         </div>
                                                     </TableCell>
@@ -250,22 +254,22 @@ export default function ServicesPage() {
             <Dialog open={modalOpen} onOpenChange={setModalOpen}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>{isEditMode ? "Редагувати послугу" : "Додати нову послугу"}</DialogTitle>
+                        <DialogTitle>{isEditMode ? t("editService", "services") : t("newService", "services")}</DialogTitle>
                     </DialogHeader>
 
                     <div className="grid gap-4 py-4">
                         <div className="grid gap-2">
-                            <Label htmlFor="name">Назва послуги *</Label>
+                            <Label htmlFor="name">{t("serviceName", "services")} *</Label>
                             <Input
                                 id="name"
                                 value={form.name}
                                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                                placeholder="напр. Заміна мастила"
+                                placeholder={t("serviceNamePlaceholder", "services")}
                             />
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="price">Вартість (₴) *</Label>
+                            <Label htmlFor="price">{t("price", "services")} *</Label>
                             <Input
                                 id="price"
                                 type="number"
@@ -278,11 +282,11 @@ export default function ServicesPage() {
 
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setModalOpen(false)} disabled={isSubmitting}>
-                            Скасувати
+                            {t("cancel", "common")}
                         </Button>
                         <Button onClick={handleSubmit} disabled={isSubmitting || !form.name || !form.price}>
                             {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
-                            Зберегти
+                            {t("save", "common")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -291,20 +295,20 @@ export default function ServicesPage() {
             <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>Видалення послуги</DialogTitle>
+                        <DialogTitle>{t("deleteTitle", "services")}</DialogTitle>
                     </DialogHeader>
                     <div className="py-4">
                         <p className="text-sm text-muted-foreground">
-                            Ви впевнені, що хочете видалити цю послугу? Цю дію неможливо скасувати.
+                            {t("deleteConfirm", "services")}
                         </p>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setDeleteModalOpen(false)} disabled={isSubmitting}>
-                            Скасувати
+                            {t("cancel", "common")}
                         </Button>
                         <Button variant="destructive" onClick={handleDelete} disabled={isSubmitting}>
                             {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
-                            Видалити
+                            {t("delete", "common")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

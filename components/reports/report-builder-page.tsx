@@ -13,7 +13,7 @@ import {
   startOfWeek,
   startOfYear,
 } from "date-fns"
-import { uk } from "date-fns/locale"
+import { uk, enUS } from "date-fns/locale"
 import {
   BarChart3,
   CalendarRange,
@@ -58,6 +58,7 @@ import { useInventory } from "@/lib/inventory-context"
 import { useOrders } from "@/lib/orders-context"
 import { cn } from "@/lib/utils"
 import { useVehicles } from "@/lib/vehicles-context"
+import { useTranslation } from "@/hooks/use-translation"
 
 type ReportEntity = "orders" | "finance" | "inventory" | "employees" | "customers"
 type PeriodPreset = "today" | "week" | "month" | "custom"
@@ -150,140 +151,6 @@ type NormalizedOrder = {
   profit: number
 }
 
-const currencyFormatter = new Intl.NumberFormat("uk-UA", {
-  style: "currency",
-  currency: "UAH",
-  maximumFractionDigits: 0,
-})
-
-const numberFormatter = new Intl.NumberFormat("uk-UA")
-
-const ENTITY_OPTIONS: Array<{
-  id: ReportEntity
-  label: string
-  description: string
-  icon: typeof ClipboardList
-}> = [
-    {
-      id: "orders",
-      label: "Замовлення",
-      description: "Операційні звіти по роботах, статусах і авто.",
-      icon: ClipboardList,
-    },
-    {
-      id: "finance",
-      label: "Фінанси",
-      description: "Оплати, борги, виручка та рентабельність.",
-      icon: Wallet,
-    },
-    {
-      id: "inventory",
-      label: "Склад",
-      description: "Залишки, мінімальні пороги та закупівлі.",
-      icon: Package,
-    },
-    {
-      id: "employees",
-      label: "Механіки",
-      description: "Зарплати, комісія та продуктивність майстрів.",
-      icon: Wrench,
-    },
-    {
-      id: "customers",
-      label: "Клієнти",
-      description: "LTV, частота візитів і ABC-аналіз.",
-      icon: Users,
-    },
-  ]
-
-const PERIOD_OPTIONS: Array<{ id: PeriodPreset; label: string }> = [
-  { id: "today", label: "За сьогодні" },
-  { id: "week", label: "Цей тиждень" },
-  { id: "month", label: "Цей місяць" },
-  { id: "custom", label: "Довільний діапазон" },
-]
-
-const ORDER_STATUS_OPTIONS = [
-  { value: "ALL", label: "Усі статуси" },
-  { value: "PAID", label: "Тільки PAID" },
-  { value: "COMPLETED", label: "Тільки COMPLETED" },
-  { value: "COMPLETED_OR_PAID", label: "COMPLETED або PAID" },
-  { value: "IN_PROGRESS", label: "У роботі" },
-]
-
-const FINANCE_MODE_OPTIONS = [
-  { value: "ALL", label: "Усі фінансові записи" },
-  { value: "DEBT_ONLY", label: "Лише боржники" },
-  { value: "PAID_ONLY", label: "Лише повністю оплачені" },
-  { value: "COMPLETED_OR_PAID", label: "COMPLETED або PAID" },
-]
-
-const EMPLOYEE_ROLE_OPTIONS = [
-  { value: "MECHANIC", label: "Тільки механіки" },
-  { value: "ALL", label: "Усі ролі" },
-]
-
-const COLUMN_DEFINITIONS: Record<ReportEntity, ReportColumn[]> = {
-  orders: [
-    { id: "date", label: "Дата", type: "date" },
-    { id: "orderNumber", label: "Замовлення" },
-    { id: "customer", label: "Клієнт" },
-    { id: "phone", label: "Телефон" },
-    { id: "car", label: "Авто" },
-    { id: "brand", label: "Марка" },
-    { id: "plate", label: "Номер авто" },
-    { id: "status", label: "Статус" },
-    { id: "amount", label: "Сума", type: "currency", align: "right" },
-    { id: "cost", label: "Собівартість", type: "currency", align: "right" },
-    { id: "profit", label: "Чистий прибуток", type: "currency", align: "right" },
-    { id: "mechanic", label: "Механік" },
-  ],
-  finance: [
-    { id: "date", label: "Дата", type: "date" },
-    { id: "orderNumber", label: "Замовлення" },
-    { id: "customer", label: "Клієнт" },
-    { id: "phone", label: "Телефон" },
-    { id: "car", label: "Авто" },
-    { id: "totalAmount", label: "Сума", type: "currency", align: "right" },
-    { id: "paidAmount", label: "Оплачено", type: "currency", align: "right" },
-    { id: "debt", label: "Борг", type: "currency", align: "right" },
-    { id: "serviceRevenue", label: "Послуги", type: "currency", align: "right" },
-    { id: "partsRevenue", label: "Запчастини", type: "currency", align: "right" },
-    { id: "partsCost", label: "Закупка", type: "currency", align: "right" },
-    { id: "profit", label: "Чистий прибуток", type: "currency", align: "right" },
-    { id: "paymentsCount", label: "Платежів", type: "number", align: "right" },
-  ],
-  inventory: [
-    { id: "name", label: "Назва" },
-    { id: "sku", label: "SKU" },
-    { id: "category", label: "Категорія" },
-    { id: "stockQuantity", label: "Залишок", type: "number", align: "right" },
-    { id: "minStockLevel", label: "Мінімум", type: "number", align: "right" },
-    { id: "needToBuy", label: "Докупити", type: "number", align: "right" },
-    { id: "purchasePrice", label: "Закупка", type: "currency", align: "right" },
-    { id: "retailPrice", label: "Продаж", type: "currency", align: "right" },
-  ],
-  employees: [
-    { id: "mechanic", label: "Механік" },
-    { id: "role", label: "Роль" },
-    { id: "phone", label: "Телефон" },
-    { id: "commissionRate", label: "Його %", type: "percent", align: "right" },
-    { id: "baseSalary", label: "Ставка", type: "currency", align: "right" },
-    { id: "completedOrders", label: "Кількість робіт", type: "number", align: "right" },
-    { id: "totalWorksAmount", label: "Сума робіт", type: "currency", align: "right" },
-    { id: "payout", label: "До виплати", type: "currency", align: "right" },
-  ],
-  customers: [
-    { id: "customer", label: "Клієнт" },
-    { id: "phone", label: "Телефон" },
-    { id: "visits", label: "Візитів", type: "number", align: "right" },
-    { id: "carsCount", label: "Авто", type: "number", align: "right" },
-    { id: "totalSpent", label: "Сума чеків", type: "currency", align: "right" },
-    { id: "avgCheck", label: "Середній чек", type: "currency", align: "right" },
-    { id: "segment", label: "ABC сегмент" },
-  ],
-}
-
 const DEFAULT_COLUMNS: SelectedColumnsState = {
   orders: ["date", "customer", "car", "status", "amount", "cost", "profit"],
   finance: ["date", "customer", "car", "totalAmount", "paidAmount", "debt", "profit"],
@@ -292,119 +159,256 @@ const DEFAULT_COLUMNS: SelectedColumnsState = {
   customers: ["customer", "visits", "totalSpent", "avgCheck", "segment"],
 }
 
-const PRESET_META: Array<{
-  id: PresetId
-  title: string
-  description: string
-  icon: typeof Coins
-}> = [
-    {
-      id: "payroll",
-      title: "Зарплата механіків",
-      description: "COMPLETED / PAID за місяць з payout по комісії.",
-      icon: Coins,
-    },
-    {
-      id: "unpaid",
-      title: "Боржники",
-      description: "Завершені замовлення, де оплат менше за підсумок.",
-      icon: TriangleAlert,
-    },
-    {
-      id: "low-stock",
-      title: "Дефіцит на складі",
-      description: "stockQuantity <= minStockLevel з підказкою по закупівлі.",
-      icon: Package,
-    },
-    {
-      id: "abc",
-      title: "ABC клієнтів",
-      description: "Топ-клієнти за виручкою за поточний рік.",
-      icon: Users,
-    },
-    {
-      id: "profit",
-      title: "Рентабельність",
-      description: "Послуги + маржа по запчастинах за місяць.",
-      icon: TrendingUp,
-    },
-  ]
-
-function formatCurrency(value: number) {
-  return currencyFormatter.format(value || 0)
-}
-
-function formatNumber(value: number) {
-  return numberFormatter.format(value || 0)
-}
-
-function formatCellValue(column: ReportColumn, value: ReportRow[string]) {
-  if (value === null || value === undefined || value === "") {
-    return "—"
-  }
-
-  if (column.type === "currency") {
-    return formatCurrency(Number(value))
-  }
-
-  if (column.type === "number") {
-    return formatNumber(Number(value))
-  }
-
-  if (column.type === "percent") {
-    return `${Number(value)}%`
-  }
-
-  if (column.type === "date") {
-    return format(new Date(String(value)), "dd.MM.yyyy", { locale: uk })
-  }
-
-  return String(value)
-}
-
-function inferInventoryCategory(itemName: string, sku: string | null) {
-  if (sku?.includes("-")) {
-    return sku.split("-")[0].toUpperCase()
-  }
-
-  const lowerName = itemName.toLowerCase()
-  if (lowerName.includes("oil") || lowerName.includes("маст")) return "FLUID"
-  if (lowerName.includes("filter") || lowerName.includes("фільтр")) return "FILTER"
-  if (lowerName.includes("brake") || lowerName.includes("гальм")) return "BRAKE"
-  if (lowerName.includes("spark") || lowerName.includes("свіч")) return "IGNITION"
-
-  return "PARTS"
-}
-
-function matchesStatusFilter(status: string, filterValue: string) {
-  if (filterValue === "ALL") return true
-  if (filterValue === "COMPLETED_OR_PAID") return status === "COMPLETED" || status === "PAID"
-  return status === filterValue
-}
-
-function csvEscape(value: string) {
-  if (value.includes(";") || value.includes('"') || value.includes("\n")) {
-    return `"${value.replaceAll('"', '""')}"`
-  }
-  return value
-}
-
-function xmlEscape(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;")
-}
-
 export function ReportBuilderPage() {
   const { user } = useAuth()
+  const { t, lang } = useTranslation()
   const { orders, isLoading: ordersLoading } = useOrders()
   const { inventory, isLoading: inventoryLoading } = useInventory()
   const { customers, isLoading: customersLoading } = useCustomers()
   const { employees, isLoading: employeesLoading } = useEmployees()
   const { vehicles, isLoading: vehiclesLoading } = useVehicles()
+
+  const currentLocale = lang === "uk" ? uk : enUS
+
+  const currencyFormatter = useMemo(() => new Intl.NumberFormat(lang === "uk" ? "uk-UA" : "en-US", {
+    style: "currency",
+    currency: "UAH",
+    maximumFractionDigits: 0,
+  }), [lang])
+
+  const numberFormatter = useMemo(() => new Intl.NumberFormat(lang === "uk" ? "uk-UA" : "en-US"), [lang])
+
+  const ENTITY_OPTIONS: Array<{
+    id: ReportEntity
+    label: string
+    description: string
+    icon: typeof ClipboardList
+  }> = useMemo(() => [
+    {
+      id: "orders",
+      label: t("entities.orders", "reports"),
+      description: t("entities.ordersDesc", "reports"),
+      icon: ClipboardList,
+    },
+    {
+      id: "finance",
+      label: t("entities.finance", "reports"),
+      description: t("entities.financeDesc", "reports"),
+      icon: Wallet,
+    },
+    {
+      id: "inventory",
+      label: t("entities.inventory", "reports"),
+      description: t("entities.inventoryDesc", "reports"),
+      icon: Package,
+    },
+    {
+      id: "employees",
+      label: t("entities.employees", "reports"),
+      description: t("entities.employeesDesc", "reports"),
+      icon: Wrench,
+    },
+    {
+      id: "customers",
+      label: t("entities.customers", "reports"),
+      description: t("entities.customersDesc", "reports"),
+      icon: Users,
+    },
+  ], [t])
+
+  const PERIOD_OPTIONS: Array<{ id: PeriodPreset; label: string }> = useMemo(() => [
+    { id: "today", label: t("periods.today", "reports") },
+    { id: "week", label: t("periods.week", "reports") },
+    { id: "month", label: t("periods.month", "reports") },
+    { id: "custom", label: t("periods.custom", "reports") },
+  ], [t])
+
+  const ORDER_STATUS_OPTIONS = useMemo(() => [
+    { value: "ALL", label: t("statusOptions.ALL", "reports") },
+    { value: "PAID", label: t("statusOptions.PAID", "reports") },
+    { value: "COMPLETED", label: t("statusOptions.COMPLETED", "reports") },
+    { value: "COMPLETED_OR_PAID", label: t("statusOptions.COMPLETED_OR_PAID", "reports") },
+    { value: "IN_PROGRESS", label: t("statusOptions.IN_PROGRESS", "reports") },
+  ], [t])
+
+  const FINANCE_MODE_OPTIONS = useMemo(() => [
+    { value: "ALL", label: t("financeOptions.ALL", "reports") },
+    { value: "DEBT_ONLY", label: t("financeOptions.DEBT_ONLY", "reports") },
+    { value: "PAID_ONLY", label: t("financeOptions.PAID_ONLY", "reports") },
+    { value: "COMPLETED_OR_PAID", label: t("financeOptions.COMPLETED_OR_PAID", "reports") },
+  ], [t])
+
+  const EMPLOYEE_ROLE_OPTIONS = useMemo(() => [
+    { value: "MECHANIC", label: t("roleOptions.MECHANIC", "reports") },
+    { value: "ALL", label: t("roleOptions.ALL", "reports") },
+  ], [t])
+
+  const COLUMN_DEFINITIONS: Record<ReportEntity, ReportColumn[]> = useMemo(() => ({
+    orders: [
+      { id: "date", label: t("columns.date", "reports"), type: "date" },
+      { id: "orderNumber", label: t("columns.orderNumber", "reports") },
+      { id: "customer", label: t("columns.customer", "reports") },
+      { id: "phone", label: t("columns.phone", "reports") },
+      { id: "car", label: t("columns.car", "reports") },
+      { id: "brand", label: t("columns.brand", "reports") },
+      { id: "plate", label: t("columns.plate", "reports") },
+      { id: "status", label: t("columns.status", "reports") },
+      { id: "amount", label: t("columns.amount", "reports"), type: "currency", align: "right" },
+      { id: "cost", label: t("columns.cost", "reports"), type: "currency", align: "right" },
+      { id: "profit", label: t("columns.profit", "reports"), type: "currency", align: "right" },
+      { id: "mechanic", label: t("columns.mechanic", "reports") },
+    ],
+    finance: [
+      { id: "date", label: t("columns.date", "reports"), type: "date" },
+      { id: "orderNumber", label: t("columns.orderNumber", "reports") },
+      { id: "customer", label: t("columns.customer", "reports") },
+      { id: "phone", label: t("columns.phone", "reports") },
+      { id: "car", label: t("columns.car", "reports") },
+      { id: "totalAmount", label: t("columns.totalAmount", "reports"), type: "currency", align: "right" },
+      { id: "paidAmount", label: t("columns.paidAmount", "reports"), type: "currency", align: "right" },
+      { id: "debt", label: t("columns.debt", "reports"), type: "currency", align: "right" },
+      { id: "serviceRevenue", label: t("columns.serviceRevenue", "reports"), type: "currency", align: "right" },
+      { id: "partsRevenue", label: t("columns.partsRevenue", "reports"), type: "currency", align: "right" },
+      { id: "partsCost", label: t("columns.partsCost", "reports"), type: "currency", align: "right" },
+      { id: "profit", label: t("columns.profit", "reports"), type: "currency", align: "right" },
+      { id: "paymentsCount", label: t("columns.paymentsCount", "reports"), type: "number", align: "right" },
+    ],
+    inventory: [
+      { id: "name", label: t("columns.name", "reports") },
+      { id: "sku", label: t("columns.sku", "reports") },
+      { id: "category", label: t("columns.category", "reports") },
+      { id: "stockQuantity", label: t("columns.stockQuantity", "reports"), type: "number", align: "right" },
+      { id: "minStockLevel", label: t("columns.minStockLevel", "reports"), type: "number", align: "right" },
+      { id: "needToBuy", label: t("columns.needToBuy", "reports"), type: "number", align: "right" },
+      { id: "purchasePrice", label: t("columns.purchasePrice", "reports"), type: "currency", align: "right" },
+      { id: "retailPrice", label: t("columns.retailPrice", "reports"), type: "currency", align: "right" },
+    ],
+    employees: [
+      { id: "mechanic", label: t("columns.mechanic", "reports") },
+      { id: "role", label: t("columns.role", "reports") },
+      { id: "phone", label: t("columns.phone", "reports") },
+      { id: "commissionRate", label: t("columns.commissionRate", "reports"), type: "percent", align: "right" },
+      { id: "baseSalary", label: t("columns.baseSalary", "reports"), type: "currency", align: "right" },
+      { id: "completedOrders", label: t("columns.completedOrders", "reports"), type: "number", align: "right" },
+      { id: "totalWorksAmount", label: t("columns.totalWorksAmount", "reports"), type: "currency", align: "right" },
+      { id: "payout", label: t("columns.payout", "reports"), type: "currency", align: "right" },
+    ],
+    customers: [
+      { id: "customer", label: t("columns.customer", "reports") },
+      { id: "phone", label: t("columns.phone", "reports") },
+      { id: "visits", label: t("columns.visits", "reports"), type: "number", align: "right" },
+      { id: "carsCount", label: t("columns.carsCount", "reports"), type: "number", align: "right" },
+      { id: "totalSpent", label: t("columns.totalSpent", "reports"), type: "currency", align: "right" },
+      { id: "avgCheck", label: t("columns.avgCheck", "reports"), type: "currency", align: "right" },
+      { id: "segment", label: t("columns.segment", "reports") },
+    ],
+  }), [t])
+
+  const PRESET_META: Array<{
+    id: PresetId
+    title: string
+    description: string
+    icon: typeof Coins
+  }> = useMemo(() => [
+    {
+      id: "payroll",
+      title: t("presets.payroll.title", "reports"),
+      description: t("presets.payroll.desc", "reports"),
+      icon: Coins,
+    },
+    {
+      id: "unpaid",
+      title: t("presets.unpaid.title", "reports"),
+      description: t("presets.unpaid.desc", "reports"),
+      icon: TriangleAlert,
+    },
+    {
+      id: "low-stock",
+      title: t("presets.lowStock.title", "reports"),
+      description: t("presets.lowStock.desc", "reports"),
+      icon: Package,
+    },
+    {
+      id: "abc",
+      title: t("presets.abc.title", "reports"),
+      description: t("presets.abc.desc", "reports"),
+      icon: Users,
+    },
+    {
+      id: "profit",
+      title: t("presets.profit.title", "reports"),
+      description: t("presets.profit.desc", "reports"),
+      icon: TrendingUp,
+    },
+  ], [t])
+
+  function formatCurrency(value: number) {
+    return currencyFormatter.format(value || 0)
+  }
+
+  function formatNumber(value: number) {
+    return numberFormatter.format(value || 0)
+  }
+
+  function formatCellValue(column: ReportColumn, value: ReportRow[string]) {
+    if (value === null || value === undefined || value === "") {
+      return "—"
+    }
+
+    if (column.type === "currency") {
+      return formatCurrency(Number(value))
+    }
+
+    if (column.type === "number") {
+      return formatNumber(Number(value))
+    }
+
+    if (column.type === "percent") {
+      return `${Number(value)}%`
+    }
+
+    if (column.type === "date") {
+      return format(new Date(String(value)), "dd.MM.yyyy", { locale: currentLocale })
+    }
+
+    return String(value)
+  }
+
+  function inferInventoryCategory(itemName: string, sku: string | null) {
+    if (sku?.includes("-")) {
+      return sku.split("-")[0].toUpperCase()
+    }
+
+    const lowerName = itemName.toLowerCase()
+    if (lowerName.includes("oil") || lowerName.includes("маст")) return "FLUID"
+    if (lowerName.includes("filter") || lowerName.includes("фільтр")) return "FILTER"
+    if (lowerName.includes("brake") || lowerName.includes("гальм")) return "BRAKE"
+    if (lowerName.includes("spark") || lowerName.includes("свіч")) return "IGNITION"
+
+    return "PARTS"
+  }
+
+  function matchesStatusFilter(status: string, filterValue: string) {
+    if (filterValue === "ALL") return true
+    if (filterValue === "COMPLETED_OR_PAID") return status === "COMPLETED" || status === "PAID"
+    return status === filterValue
+  }
+
+  function csvEscape(value: string) {
+    if (value.includes(";") || value.includes('"') || value.includes("\n")) {
+      return `"${value.replaceAll('"', '""')}"`
+    }
+    return value
+  }
+
+  function xmlEscape(value: string) {
+    return value
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&apos;")
+  }
 
   const [entity, setEntity] = useState<ReportEntity>("orders")
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("month")
@@ -523,12 +527,12 @@ export function ReportBuilderPage() {
           ? `${detailCustomer.firstName} ${detailCustomer.lastName}`
           : matchedCustomer
             ? `${matchedCustomer.firstName} ${matchedCustomer.lastName}`
-            : "Невідомий клієнт",
+            : t("placeholders.unknownClient", "reports"),
         customerPhone: detailCustomer?.phone || matchedCustomer?.phone || "—",
         brand: vehicle?.brand || "—",
         model: vehicle?.model || "",
         plate: vehicle?.plate || "—",
-        carLabel: vehicle ? `${vehicle.brand} ${vehicle.model} (${vehicle.plate || "—"})` : `Авто #${order.carId || order.vehicleId}`,
+        carLabel: vehicle ? `${vehicle.brand} ${vehicle.model} (${vehicle.plate || "—"})` : `${t("placeholders.unknownAuto", "reports")}${order.carId || order.vehicleId}`,
         totalAmount: Number(detail?.totalAmount ?? order.totalAmount ?? 0),
         paidAmount,
         debt: Math.max(Number(detail?.totalAmount ?? order.totalAmount ?? 0) - paidAmount, 0),
@@ -541,7 +545,7 @@ export function ReportBuilderPage() {
         profit: serviceRevenue + partsRevenue - partsCost,
       }
     })
-  }, [customers, inventoryByName, orderDetailsById, orders, paymentsByOrderId, vehicles])
+  }, [customers, inventoryByName, orderDetailsById, orders, paymentsByOrderId, vehicles, t])
 
   const periodRange = useMemo(() => {
     const now = new Date()
@@ -550,7 +554,7 @@ export function ReportBuilderPage() {
       return {
         from: startOfDay(now),
         to: endOfDay(now),
-        label: "За сьогодні",
+        label: t("periods.today", "reports"),
       }
     }
 
@@ -558,7 +562,7 @@ export function ReportBuilderPage() {
       return {
         from: startOfWeek(now, { weekStartsOn: 1 }),
         to: endOfWeek(now, { weekStartsOn: 1 }),
-        label: "Цей тиждень",
+        label: t("periods.week", "reports"),
       }
     }
 
@@ -566,7 +570,7 @@ export function ReportBuilderPage() {
       return {
         from: startOfMonth(now),
         to: endOfMonth(now),
-        label: "Цей місяць",
+        label: t("periods.month", "reports"),
       }
     }
 
@@ -576,14 +580,14 @@ export function ReportBuilderPage() {
     return {
       from,
       to,
-      label: `${format(from, "dd MMM", { locale: uk })} - ${format(to, "dd MMM yyyy", { locale: uk })}`,
+      label: `${format(from, "dd MMM", { locale: currentLocale })} - ${format(to, "dd MMM yyyy", { locale: currentLocale })}`,
     }
-  }, [customRange, periodPreset])
+  }, [customRange, periodPreset, t, currentLocale])
 
   const availableBrands = useMemo(() => {
     const uniqueBrands = Array.from(new Set(normalizedOrders.map((order) => order.brand).filter((brand) => brand && brand !== "—")))
-    return uniqueBrands.sort((left, right) => left.localeCompare(right, "uk"))
-  }, [normalizedOrders])
+    return uniqueBrands.sort((left, right) => left.localeCompare(right, lang))
+  }, [normalizedOrders, lang])
 
   const inventoryRows = useMemo<ReportRow[]>(() => {
     const inventoryLimit = Number(filters.inventoryMaxStock || 0)
@@ -614,8 +618,8 @@ export function ReportBuilderPage() {
 
   const inventoryCategories = useMemo(() => {
     const categories = Array.from(new Set(inventory.map((item) => inferInventoryCategory(item.name, item.sku))))
-    return categories.sort((left, right) => left.localeCompare(right, "uk"))
-  }, [inventory])
+    return categories.sort((left, right) => left.localeCompare(right, lang))
+  }, [inventory, lang])
 
   const timeFilteredOrders = useMemo(() => {
     return normalizedOrders.filter((order) => {
@@ -785,16 +789,16 @@ export function ReportBuilderPage() {
   const activeColumns = useMemo(() => {
     const selectedIds = selectedColumns[entity]
     return COLUMN_DEFINITIONS[entity].filter((column) => selectedIds.includes(column.id))
-  }, [entity, selectedColumns])
+  }, [entity, selectedColumns, COLUMN_DEFINITIONS])
 
   const summaryCards = useMemo<SummaryCard[]>(() => {
     if (entity === "orders") {
       const totalAmount = orderRows.reduce((sum, row) => sum + Number(row.amount || 0), 0)
       const totalProfit = orderRows.reduce((sum, row) => sum + Number(row.profit || 0), 0)
       return [
-        { label: "Замовлень", value: formatNumber(orderRows.length), caption: periodRange.label },
-        { label: "Оборот", value: formatCurrency(totalAmount), caption: "Сума по вибірці" },
-        { label: "Чистий прибуток", value: formatCurrency(totalProfit), caption: "Послуги + маржа запчастин" },
+        { label: t("summary.orders", "reports"), value: formatNumber(orderRows.length), caption: periodRange.label },
+        { label: t("summary.revenue", "reports"), value: formatCurrency(totalAmount), caption: t("summary.labels.bySelection", "reports") },
+        { label: t("summary.netProfit", "reports"), value: formatCurrency(totalProfit), caption: t("summary.labels.profitHint", "reports") },
       ]
     }
 
@@ -803,9 +807,9 @@ export function ReportBuilderPage() {
       const totalPaid = financeRows.reduce((sum, row) => sum + Number(row.paidAmount || 0), 0)
       const totalDebt = financeRows.reduce((sum, row) => sum + Number(row.debt || 0), 0)
       return [
-        { label: "Виставлено", value: formatCurrency(totalRevenue), caption: periodRange.label },
-        { label: "Оплачено", value: formatCurrency(totalPaid), caption: "Сума підтверджених оплат" },
-        { label: "Борг", value: formatCurrency(totalDebt), caption: "Несплачені залишки" },
+        { label: t("summary.revenue", "reports"), value: formatCurrency(totalRevenue), caption: periodRange.label },
+        { label: t("orderDetails.paid", "orderDetails"), value: formatCurrency(totalPaid), caption: t("summary.labels.totalPayments", "reports") },
+        { label: t("summary.debt", "reports"), value: formatCurrency(totalDebt), caption: t("summary.labels.debtHint", "reports") },
       ]
     }
 
@@ -813,9 +817,9 @@ export function ReportBuilderPage() {
       const positionsToBuy = inventoryRows.filter((row) => Number(row.needToBuy) > 0).length
       const shortageUnits = inventoryRows.reduce((sum, row) => sum + Number(row.needToBuy || 0), 0)
       return [
-        { label: "Позицій у звіті", value: formatNumber(inventoryRows.length), caption: "З поточним лімітом залишку" },
-        { label: "Критичних SKU", value: formatNumber(positionsToBuy), caption: "Потрібна закупівля" },
-        { label: "Одиниць докупити", value: formatNumber(shortageUnits), caption: "До мінімального рівня" },
+        { label: t("summary.items", "reports"), value: formatNumber(inventoryRows.length), caption: t("summary.labels.allTime", "reports") },
+        { label: t("summary.stockValue", "reports"), value: formatNumber(shortageUnits), caption: t("summary.labels.minCheck", "reports") },
+        { label: t("summary.toBuy", "reports"), value: formatNumber(positionsToBuy), caption: t("inventory.lowStock", "inventory") },
       ]
     }
 
@@ -823,9 +827,9 @@ export function ReportBuilderPage() {
       const payrollFund = employeeRows.reduce((sum, row) => sum + Number(row.payout || 0), 0)
       const totalWorks = employeeRows.reduce((sum, row) => sum + Number(row.completedOrders || 0), 0)
       return [
-        { label: "Механіків", value: formatNumber(employeeRows.length), caption: periodRange.label },
-        { label: "Робіт", value: formatNumber(totalWorks), caption: "Завершені / оплачені замовлення" },
-        { label: "Фонд виплат", value: formatCurrency(payrollFund), caption: "Ставка + комісія" },
+        { label: t("employees.mechanics", "employees"), value: formatNumber(employeeRows.length), caption: periodRange.label },
+        { label: t("columns.completedOrders", "reports"), value: formatNumber(totalWorks), caption: t("summary.labels.worksPerDay", "reports") },
+        { label: t("summary.salaryFund", "reports"), value: formatCurrency(payrollFund), caption: t("summary.labels.totalPayments", "reports") },
       ]
     }
 
@@ -833,22 +837,22 @@ export function ReportBuilderPage() {
     const totalVisits = customerRows.reduce((sum, row) => sum + Number(row.visits || 0), 0)
     const aClients = customerRows.filter((row) => row.segment === "A").length
     return [
-      { label: "Клієнтів", value: formatNumber(customerRows.length), caption: periodRange.label },
-      { label: "Візитів", value: formatNumber(totalVisits), caption: "У завершених / оплачених замовленнях" },
-      { label: "A-сегмент", value: formatNumber(aClients), caption: `${formatCurrency(totalSpent)} загалом` },
+      { label: t("customers.customer", "customers"), value: formatNumber(customerRows.length), caption: periodRange.label },
+      { label: t("columns.visits", "reports"), value: formatNumber(totalVisits), caption: t("summary.labels.visitedTwice", "reports") },
+      { label: t("summary.ltv", "reports"), value: formatCurrency(totalSpent), caption: t("summary.labels.allTime", "reports") },
     ]
-  }, [customerRows, employeeRows, entity, financeRows, inventoryRows, orderRows, periodRange.label])
+  }, [customerRows, employeeRows, entity, financeRows, inventoryRows, orderRows, periodRange.label, t])
 
   const reportSubtitle = useMemo(() => {
-    if (selectedPreset === "payroll") return "Payroll по механіках за вибраний місяць."
-    if (selectedPreset === "unpaid") return "Замовлення зі статусом COMPLETED, де борг ще лишився."
-    if (selectedPreset === "low-stock") return "Позиції, які вже впали нижче контрольного запасу."
-    if (selectedPreset === "abc") return "ABC-аналіз клієнтів за сумою чеків за поточний рік."
-    if (selectedPreset === "profit") return "Рентабельність з маржею по запчастинах та послугах."
+    if (selectedPreset === "payroll") return t("presets.payroll.desc", "reports")
+    if (selectedPreset === "unpaid") return t("presets.unpaid.desc", "reports")
+    if (selectedPreset === "low-stock") return t("presets.lowStock.desc", "reports")
+    if (selectedPreset === "abc") return t("presets.abc.desc", "reports")
+    if (selectedPreset === "profit") return t("presets.profit.desc", "reports")
 
     const currentEntity = ENTITY_OPTIONS.find((item) => item.id === entity)
-    return currentEntity?.description || "Гнучкий конструктор звітів для СТО."
-  }, [entity, selectedPreset])
+    return currentEntity?.description || t("description", "reports")
+  }, [entity, selectedPreset, ENTITY_OPTIONS, t])
 
   const handleEntityChange = (value: ReportEntity) => {
     setSelectedPreset(null)
@@ -1009,7 +1013,7 @@ export function ReportBuilderPage() {
 
             if (column.type === "date") {
               return `<Cell><Data ss:Type="String">${xmlEscape(
-                format(new Date(String(rawValue)), "dd.MM.yyyy", { locale: uk }),
+                format(new Date(String(rawValue)), "dd.MM.yyyy", { locale: currentLocale }),
               )}</Data></Cell>`
             }
 
@@ -1065,17 +1069,17 @@ export function ReportBuilderPage() {
     return (
       <div className="flex flex-1 flex-col overflow-hidden">
         <PageHeader
-          title="Конструктор звітів"
-          description="Доступний тільки для адміністратора або менеджера."
+          title={t("title", "reports")}
+          description={t("description", "reports")}
         />
         <div className="flex-1 overflow-auto p-6">
           <Card className="border-border bg-card">
             <CardContent className="flex min-h-[240px] flex-col items-center justify-center gap-3 text-center">
               <BarChart3 className="size-10 text-muted-foreground" />
               <div>
-                <p className="text-lg font-semibold text-foreground">Недостатньо прав доступу</p>
+                <p className="text-lg font-semibold text-foreground">{t("error", "common")}</p>
                 <p className="text-sm text-muted-foreground">
-                  Для роботи з конструктором звітів потрібна роль ADMIN або MANAGER.
+                    {t("description", "reports")}
                 </p>
               </div>
             </CardContent>
@@ -1088,8 +1092,8 @@ export function ReportBuilderPage() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <PageHeader
-        title="Конструктор звітів"
-        description="4 кроки налаштування, 5 швидких пресетів і жива таблиця, яку можна одразу завантажити."
+        title={t("title", "reports")}
+        description={t("description", "reports")}
       />
 
       <div className="flex-1 overflow-auto p-4 sm:p-6">
@@ -1099,9 +1103,9 @@ export function ReportBuilderPage() {
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="gap-1 border-primary/30 bg-primary/5 text-primary">
                   <Sparkles className="size-3" />
-                  Швидкі пресети
+                  {t("filters.apply", "reports")}
                 </Badge>
-                <p className="text-sm text-muted-foreground">Один клік для найпопулярніших звітів директорів СТО.</p>
+                <p className="text-sm text-muted-foreground">{t("presets.abc.desc", "reports")}</p>
               </div>
             </div>
 
@@ -1142,8 +1146,8 @@ export function ReportBuilderPage() {
                     <Filter className="size-4" />
                   </div>
                   <div>
-                    <CardTitle>Налаштування</CardTitle>
-                    <CardDescription>Зліва конфігурація, справа готова таблиця результатів.</CardDescription>
+                    <CardTitle>{t("filters.title", "reports")}</CardTitle>
+                    <CardDescription>{t("filters.columns", "reports")}</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -1155,8 +1159,8 @@ export function ReportBuilderPage() {
                       1
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">Що аналізуємо?</p>
-                      <p className="text-xs text-muted-foreground">Сутність для звіту та таблиці.</p>
+                      <p className="font-semibold text-foreground">{t("entities.orders", "reports")}?</p>
+                      <p className="text-xs text-muted-foreground">{t("entities.ordersDesc", "reports")}</p>
                     </div>
                   </div>
 
@@ -1199,8 +1203,8 @@ export function ReportBuilderPage() {
                       2
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">Період</p>
-                      <p className="text-xs text-muted-foreground">Швидкий вибір або довільний діапазон.</p>
+                      <p className="font-semibold text-foreground">{t("filters.dateRange", "reports")}</p>
+                      <p className="text-xs text-muted-foreground">{t("filters.dateRange", "reports")}</p>
                     </div>
                   </div>
 
@@ -1236,6 +1240,7 @@ export function ReportBuilderPage() {
                             setCustomRange(range || { from: undefined, to: undefined })
                           }}
                           initialFocus
+                          locale={currentLocale}
                         />
                       </PopoverContent>
                     </Popover>
@@ -1248,15 +1253,15 @@ export function ReportBuilderPage() {
                       3
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">Фільтри</p>
-                      <p className="text-xs text-muted-foreground">Змінюються залежно від вибраної сутності.</p>
+                      <p className="font-semibold text-foreground">{t("filters.title", "reports")}</p>
+                      <p className="text-xs text-muted-foreground">{t("filters.title", "reports")}</p>
                     </div>
                   </div>
 
                   {entity === "orders" && (
                     <div className="grid gap-3">
                       <div className="grid gap-2">
-                        <Label>Статус</Label>
+                        <Label>{t("filters.status", "reports")}</Label>
                         <Select value={filters.orderStatus} onValueChange={(value) => updateFilters({ orderStatus: value })}>
                           <SelectTrigger>
                             <SelectValue />
@@ -1272,13 +1277,13 @@ export function ReportBuilderPage() {
                       </div>
 
                       <div className="grid gap-2">
-                        <Label>Марка авто</Label>
+                        <Label>{t("filters.brand", "reports")}</Label>
                         <Select value={filters.orderBrand} onValueChange={(value) => updateFilters({ orderBrand: value })}>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="ALL">Усі марки</SelectItem>
+                            <SelectItem value="ALL">{t("filters.allBrands", "reports")}</SelectItem>
                             {availableBrands.map((brand) => (
                               <SelectItem key={brand} value={brand}>
                                 {brand}
@@ -1292,7 +1297,7 @@ export function ReportBuilderPage() {
 
                   {entity === "finance" && (
                     <div className="grid gap-2">
-                      <Label>Режим вибірки</Label>
+                      <Label>{t("filters.financeMode", "reports")}</Label>
                       <Select value={filters.financeMode} onValueChange={(value) => updateFilters({ financeMode: value })}>
                         <SelectTrigger>
                           <SelectValue />
@@ -1311,7 +1316,7 @@ export function ReportBuilderPage() {
                   {entity === "inventory" && (
                     <div className="grid gap-3">
                       <div className="grid gap-2">
-                        <Label>Категорія</Label>
+                        <Label>{t("filters.category", "reports")}</Label>
                         <Select
                           value={filters.inventoryCategory}
                           onValueChange={(value) => updateFilters({ inventoryCategory: value })}
@@ -1320,7 +1325,7 @@ export function ReportBuilderPage() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="ALL">Усі категорії</SelectItem>
+                            <SelectItem value="ALL">{t("filters.allCategories", "reports")}</SelectItem>
                             {inventoryCategories.map((category) => (
                               <SelectItem key={category} value={category}>
                                 {category}
@@ -1331,7 +1336,7 @@ export function ReportBuilderPage() {
                       </div>
 
                       <div className="grid gap-2">
-                        <Label>Кількість менше або дорівнює</Label>
+                        <Label>{t("filters.maxStock", "reports")}</Label>
                         <Input
                           type="number"
                           min="0"
@@ -1344,7 +1349,7 @@ export function ReportBuilderPage() {
 
                   {entity === "employees" && (
                     <div className="grid gap-2">
-                      <Label>Роль</Label>
+                      <Label>{t("filters.role", "reports")}</Label>
                       <Select value={filters.employeeRole} onValueChange={(value) => updateFilters({ employeeRole: value })}>
                         <SelectTrigger>
                           <SelectValue />
@@ -1362,7 +1367,7 @@ export function ReportBuilderPage() {
 
                   {entity === "customers" && (
                     <div className="grid gap-2">
-                      <Label>Мінімум візитів</Label>
+                      <Label>{t("filters.minVisits", "reports")}</Label>
                       <Input
                         type="number"
                         min="1"
@@ -1379,8 +1384,8 @@ export function ReportBuilderPage() {
                       4
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">Колонки</p>
-                      <p className="text-xs text-muted-foreground">Користувач сам обирає, що бачити в таблиці.</p>
+                      <p className="font-semibold text-foreground">{t("filters.columns", "reports")}</p>
+                      <p className="text-xs text-muted-foreground">{t("filters.columns", "reports")}</p>
                     </div>
                   </div>
 
@@ -1427,7 +1432,7 @@ export function ReportBuilderPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="outline" className="gap-1">
                         <TableProperties className="size-3" />
-                        Результат
+                        {t("filters.reset", "reports")}
                       </Badge>
                       <Badge variant="secondary">{periodRange.label}</Badge>
                       {selectedPreset && (
@@ -1437,7 +1442,7 @@ export function ReportBuilderPage() {
                       )}
                     </div>
                     <div>
-                      <CardTitle>Таблиця звіту</CardTitle>
+                      <CardTitle>{t("filters.title", "reports")}</CardTitle>
                       <CardDescription>{reportSubtitle}</CardDescription>
                     </div>
                   </div>
@@ -1446,7 +1451,7 @@ export function ReportBuilderPage() {
                     {(isLoading || isEnrichingOrders) && (
                       <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
                         <Loader2 className="size-3.5 animate-spin" />
-                        Синхронізація даних
+                        {t("common.loading", "common")}
                       </div>
                     )}
                     <Button onClick={handleDownloadCsv} disabled={activeRows.length === 0} variant="outline" className="gap-2">
@@ -1455,16 +1460,16 @@ export function ReportBuilderPage() {
                     </Button>
                     <Button onClick={handleDownloadExcel} disabled={activeRows.length === 0} className="gap-2">
                       <Download className="size-4" />
-                      Завантажити Excel
+                      {t("export.xml", "reports")}
                     </Button>
                   </div>
                 </CardHeader>
 
                 <CardContent className="space-y-4">
                   <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <span className="rounded-full bg-secondary px-2.5 py-1">Рядків: {formatNumber(activeRows.length)}</span>
-                    <span className="rounded-full bg-secondary px-2.5 py-1">Сутність: {ENTITY_OPTIONS.find((item) => item.id === entity)?.label}</span>
-                    <span className="rounded-full bg-secondary px-2.5 py-1">Колонок: {activeColumns.length}</span>
+                    <span className="rounded-full bg-secondary px-2.5 py-1">{t("inventory.stockQty", "inventory")}: {formatNumber(activeRows.length)}</span>
+                    <span className="rounded-full bg-secondary px-2.5 py-1">{t("entities.orders", "reports")}: {ENTITY_OPTIONS.find((item) => item.id === entity)?.label}</span>
+                    <span className="rounded-full bg-secondary px-2.5 py-1">{t("filters.columns", "reports")}: {activeColumns.length}</span>
                   </div>
 
                   <div className="overflow-hidden rounded-2xl border border-border">
@@ -1486,7 +1491,7 @@ export function ReportBuilderPage() {
                           {activeRows.length === 0 ? (
                             <TableRow>
                               <TableCell colSpan={Math.max(activeColumns.length, 1)} className="py-12 text-center text-muted-foreground">
-                                Дані за поточною конфігурацією не знайдені. Змініть період, фільтри або застосуйте інший пресет.
+                                {t("placeholders.nothingFound", "reports")}
                               </TableCell>
                             </TableRow>
                           ) : (

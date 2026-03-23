@@ -1,13 +1,16 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useCrm } from "@/lib/crm-context"
 import { useOrders } from "@/lib/orders-context"
 import { Loader2 } from "lucide-react"
 import { useEffect, useMemo } from "react"
-
+import { useSettings } from "@/lib/settings-context"
+import { translations } from "@/lib/translations"
 export function ServiceBreakdown() {
   const { orders, fetchOrders, isLoading: isOrdersLoading } = useOrders()
+  const { settings } = useSettings()
+
+  const t = translations[settings.language].dashboard.charts
 
   useEffect(() => {
     fetchOrders()
@@ -36,7 +39,7 @@ export function ServiceBreakdown() {
           // Якщо це рядок, вважаємо це послугою
           if (!isString && item.type === "PART") return
 
-          const rawName = isString ? item : (item.name || "Невідома послуга")
+          const rawName = isString ? item : (item.name || t.unknownService)
           const name = rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase().trim()
 
           if (!serviceMap.has(name)) {
@@ -57,14 +60,22 @@ export function ServiceBreakdown() {
     return Array.from(serviceMap.values())
       .sort((a, b) => b.count - a.count)
       .slice(0, 5)
-  }, [orders])
+  }, [orders, t.unknownService])
 
   const maxCount = breakdownData.length > 0 ? Math.max(...breakdownData.map((s) => s.count)) : 1
+
+  const getPluralTimes = (count: number) => {
+    if (settings.language === "en") return count === 1 ? t.times1 : t.times24
+    // Simple logic for Top-5
+    if (count % 10 === 1 && count % 100 !== 11) return t.times1
+    if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) return t.times24
+    return t.times5plus
+  }
 
   return (
     <Card className="border-border bg-card">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-medium">Популярні послуги (Топ-5)</CardTitle>
+        <CardTitle className="text-base font-medium">{t.popularServices}</CardTitle>
       </CardHeader>
       <CardContent>
         {isOrdersLoading ? (
@@ -73,7 +84,7 @@ export function ServiceBreakdown() {
           </div>
         ) : breakdownData.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
-            Дані про послуги наразі відсутні.
+            {t.noServiceData}
           </div>
         ) : (
           <div className="space-y-4">
@@ -83,7 +94,7 @@ export function ServiceBreakdown() {
                   <span className="font-medium text-foreground truncate pr-4">{service.name}</span>
                   <div className="flex shrink-0 items-center gap-3 text-muted-foreground">
                     <span className="text-xs">
-                      {service.count} {service.count === 1 ? 'раз' : service.count >= 2 && service.count <= 4 ? 'рази' : 'разів'}
+                      {service.count} {getPluralTimes(service.count)}
                     </span>
                     <span className="font-bold text-foreground">
                       {service.revenue.toLocaleString()} ₴

@@ -6,8 +6,14 @@ import { useInventory } from "@/lib/inventory-context"
 import { Loader2, AlertTriangle, PackageSearch } from "lucide-react"
 import { cn } from "@/lib/utils"
 
+import { useSettings } from "@/lib/settings-context"
+import { translations } from "@/lib/translations"
+
 export function InventoryStatus() {
   const { inventory, isLoading } = useInventory()
+  const { settings } = useSettings()
+
+  const t = translations[settings.language].dashboard.inventory
 
   const criticalItems = useMemo(() => {
     return inventory
@@ -29,7 +35,7 @@ export function InventoryStatus() {
     return (
       <Card className="border-border bg-card">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base font-medium">Стан складу</CardTitle>
+          <CardTitle className="text-base font-medium">{t.title}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex h-[300px] items-center justify-center">
@@ -44,9 +50,9 @@ export function InventoryStatus() {
     <Card className="border-border bg-card h-full flex flex-col">
       <CardHeader className="pb-3 border-b border-border">
         <CardTitle className="text-sm font-medium text-foreground flex items-center justify-between">
-          <span>Критичні залишки</span>
+          <span>{t.criticalTitle}</span>
           <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-secondary px-2 py-0.5 rounded">
-            Потребують уваги
+            {t.attention}
           </span>
         </CardTitle>
       </CardHeader>
@@ -55,8 +61,8 @@ export function InventoryStatus() {
           {criticalItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-6 text-center">
               <PackageSearch className="size-10 mb-3 opacity-20 text-primary" />
-              <p className="text-sm font-medium">Запаси в нормі</p>
-              <p className="text-xs mt-1 text-muted-foreground/60">Критично малих залишків не виявлено.</p>
+              <p className="text-sm font-medium">{t.inStock}</p>
+              <p className="text-xs mt-1 text-muted-foreground/60">{t.noCritical}</p>
             </div>
           ) : (
             <div className="divide-y divide-border/50">
@@ -68,11 +74,11 @@ export function InventoryStatus() {
                       <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">{item.name}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded tabular-nums">
-                          {item.sku || "Без SKU"}
+                          {item.sku || t.noSku}
                         </span>
                         {isOutOfStock && (
                           <span className="text-[10px] font-bold text-destructive uppercase tracking-tighter animate-pulse">
-                            Відсутня
+                            {t.outOfStock}
                           </span>
                         )}
                       </div>
@@ -82,10 +88,10 @@ export function InventoryStatus() {
                         "text-sm font-bold flex items-center gap-1.5 justify-end tabular-nums",
                         isOutOfStock ? "text-destructive" : "text-amber-500"
                       )}>
-                        {item.stockQuantity} шт
+                        {item.stockQuantity} {t.pcs}
                       </div>
                       <p className="text-[10px] text-muted-foreground mt-1">
-                         Мін: {item.minStockLevel ?? 5}
+                         {t.min} {item.minStockLevel ?? 5}
                       </p>
                     </div>
                   </div>

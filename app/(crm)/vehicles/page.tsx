@@ -40,6 +40,7 @@ import { useCrm } from "@/lib/crm-context"
 import { useOrders } from "@/lib/orders-context"
 import { toast } from "@/hooks/use-toast"
 import { carBrandsAndModels, carYears } from "@/lib/cars"
+import { useTranslation } from "@/hooks/use-translation"
 
 export default function VehiclesPage() {
   const router = useRouter()
@@ -48,6 +49,7 @@ export default function VehiclesPage() {
   const { vehicles, addVehicle, isLoading: isVehiclesLoading } = useVehicles()
   const { customers } = useCrm()
   const { orders, fetchOrders, isLoading: isOrdersLoading } = useOrders()
+  const { t } = useTranslation()
 
 
   const isLoading = isVehiclesLoading || isOrdersLoading
@@ -118,12 +120,16 @@ export default function VehiclesPage() {
 
   async function handleSubmit() {
     if (!form.brand || !form.model || !form.plate || !form.vin) {
-      toast({ title: "Будь ласка, заповніть усі обов'язкові поля", description: "Марка, Модель, Номер, VIN", variant: "destructive" });
+      toast({ 
+        title: t("fillRequired", "vehicles"), 
+        description: t("fillRequiredDesc", "vehicles"), 
+        variant: "destructive" 
+      });
       return;
     }
 
     if (canAssignOwner && !form.userId) {
-      toast({ title: "Будь ласка, оберіть власника для цього автомобіля", variant: "destructive" });
+      toast({ title: t("selectOwnerError", "vehicles"), variant: "destructive" });
       return;
     }
 
@@ -131,7 +137,11 @@ export default function VehiclesPage() {
       (b) => b.toLowerCase() === form.brand.toLowerCase()
     );
     if (!isValidBrand) {
-      toast({ title: "Дані некоректні", description: "Будь ласка, оберіть марку автомобіля зі списку.", variant: "destructive" });
+      toast({ 
+        title: t("invalidBrand", "vehicles"), 
+        description: t("invalidBrandDesc", "vehicles"), 
+        variant: "destructive" 
+      });
       return;
     }
 
@@ -139,12 +149,20 @@ export default function VehiclesPage() {
       (m) => m.toLowerCase() === form.model.toLowerCase()
     );
     if (!isValidModel) {
-      toast({ title: "Дані некоректні", description: "Будь ласка, оберіть модель автомобіля зі списку.", variant: "destructive" });
+      toast({ 
+        title: t("invalidBrand", "vehicles"), 
+        description: t("invalidModelDesc", "vehicles"), 
+        variant: "destructive" 
+      });
       return;
     }
 
     if (form.year && !carYears.includes(String(form.year))) {
-      toast({ title: "Дані некоректні", description: "Будь ласка, оберіть дійсний рік випуску зі списку.", variant: "destructive" });
+      toast({ 
+        title: t("invalidBrand", "vehicles"), 
+        description: t("invalidYearDesc", "vehicles"), 
+        variant: "destructive" 
+      });
       return;
     }
 
@@ -170,7 +188,7 @@ export default function VehiclesPage() {
     if (result.success) {
       setForm({ brand: "", model: "", year: "", vin: "", plate: "", color: "", mileage: "", userId: "" })
       setOpen(false)
-      toast({ title: "Автомобіль додано", variant: "success" })
+      toast({ title: t("addSuccess", "vehicles"), variant: "success" })
       if (returnTo) {
         router.push(returnTo)
       }
@@ -180,16 +198,18 @@ export default function VehiclesPage() {
   }
 
   // Динамічні заголовки (для зручності)
-  const pageTitle = role === "client" ? "Мій гараж" : (role === "mechanic" ? "Автомобілі в ремонті" : "Автомобілі")
+  const pageTitle = role === "client" 
+    ? t("myGarage", "vehicles") 
+    : (role === "mechanic" ? t("mechanicTitle", "vehicles") : t("title", "vehicles"))
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <PageHeader title={pageTitle} description="Управління транспортними засобами" />
+      <PageHeader title={pageTitle} description={t("description", "vehicles")} />
 
       <div className="flex-1 overflow-auto p-6">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <Input
-            placeholder="Пошук за маркою, моделлю, номером, VIN або власником..."
+            placeholder={t("searchPlaceholder", "vehicles")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-md bg-card"
@@ -199,8 +219,8 @@ export default function VehiclesPage() {
               onClick={() => {
                 if (role === "client" && !user?.isVerified) {
                   toast({
-                    title: "Необхідна верифікація",
-                    description: "Будь ласка, підтвердіть вашу електронну пошту, щоб додати автомобіль.",
+                    title: t("verificationRequired", "vehicles"),
+                    description: t("verificationRequiredDesc", "vehicles"),
                     variant: "destructive"
                   });
                   return;
@@ -209,7 +229,7 @@ export default function VehiclesPage() {
               }}
             >
               <Plus className="mr-2 size-4" />
-              Додати авто
+              {t("addVehicle", "vehicles")}
             </Button>
           )}
         </div>
@@ -225,12 +245,12 @@ export default function VehiclesPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-border hover:bg-transparent">
-                    <TableHead className="pl-6 text-muted-foreground">Автомобіль</TableHead>
-                    <TableHead className="text-muted-foreground">Номерний знак</TableHead>
-                    {role !== "client" && <TableHead className="text-muted-foreground">Власник</TableHead>}
-                    <TableHead className="text-muted-foreground">Колір</TableHead>
-                    <TableHead className="text-muted-foreground">Пробіг</TableHead>
-                    <TableHead className="pr-6 text-muted-foreground">Історія сервісу</TableHead>
+                    <TableHead className="pl-6 text-muted-foreground">{t("car", "requests")}</TableHead>
+                    <TableHead className="text-muted-foreground">{t("plate", "vehicles")}</TableHead>
+                    {role !== "client" && <TableHead className="text-muted-foreground">{t("owner", "vehicles")}</TableHead>}
+                    <TableHead className="text-muted-foreground">{t("color", "vehicles")}</TableHead>
+                    <TableHead className="text-muted-foreground">{t("mileage", "vehicles")}</TableHead>
+                    <TableHead className="pr-6 text-muted-foreground">{t("serviceHistory", "vehicles")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -280,7 +300,7 @@ export default function VehiclesPage() {
                                 </span>
                               </div>
                             ) : (
-                              <span className="text-xs text-muted-foreground italic">Без власника</span>
+                              <span className="text-xs text-muted-foreground italic">{t("noOwner", "vehicles")}</span>
                             )}
                           </TableCell>
                         )}
@@ -292,12 +312,12 @@ export default function VehiclesPage() {
                               style={{ backgroundColor: vehicle.color || '#ccc' }}
                               title={vehicle.color}
                             />
-                            <span className="text-sm text-foreground capitalize">{vehicle.color || 'Невідомо'}</span>
+                            <span className="text-sm text-foreground capitalize">{vehicle.color || t("unknownColor", "vehicles")}</span>
                           </div>
                         </TableCell>
 
                         <TableCell className="text-foreground">
-                          {vehicle.mileage?.toLocaleString()} км
+                          {vehicle.mileage?.toLocaleString()} {t("km", "customers")}
                         </TableCell>
 
                         <TableCell className="pr-6">
@@ -306,17 +326,17 @@ export default function VehiclesPage() {
                               <div className="flex items-center gap-1.5">
                                 <Wrench className="size-3 text-primary" />
                                 <span className="text-sm font-medium text-foreground">
-                                  {vehicleOrders.length} {vehicleOrders.length === 1 ? 'візит' : 'візитів'}
+                                  {vehicleOrders.length} {vehicleOrders.length === 1 ? t("visit", "vehicles") : t("visits", "vehicles")}
                                 </span>
                               </div>
                               {lastOrder && (
                                 <span className="text-xs text-muted-foreground">
-                                  Останній: {formatAppDate(lastOrder.createdAt, settings.dateFormat)}
+                                  {t("lastVisit", "vehicles")}: {formatAppDate(lastOrder.createdAt, settings.dateFormat)}
                                 </span>
                               )}
                             </div>
                           ) : (
-                            <span className="text-xs text-muted-foreground italic">Немає історії</span>
+                            <span className="text-xs text-muted-foreground italic">{t("noHistory", "vehicles")}</span>
                           )}
                         </TableCell>
                       </TableRow>
@@ -325,7 +345,7 @@ export default function VehiclesPage() {
                   {filtered.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={role !== "client" ? 6 : 5} className="py-12 text-center text-muted-foreground">
-                        Автомобілів за вашим запитом не знайдено
+                        {t("notFound", "vehicles")}
                       </TableCell>
                     </TableRow>
                   )}
@@ -337,15 +357,15 @@ export default function VehiclesPage() {
             {!isLoading && filtered.length > settings.tableRowsPerPage && (
               <div className="flex items-center justify-between border-t border-border px-6 py-3">
                 <span className="text-xs text-muted-foreground">
-                  {(currentPage - 1) * settings.tableRowsPerPage + 1}–{Math.min(currentPage * settings.tableRowsPerPage, filtered.length)} з {filtered.length}
+                  {(currentPage - 1) * settings.tableRowsPerPage + 1}–{Math.min(currentPage * settings.tableRowsPerPage, filtered.length)} {t("of", "customers")} {filtered.length}
                 </span>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage <= 1} className="h-7 text-xs">
-                    Назад
+                    {t("prev", "customers")}
                   </Button>
                   <span className="text-xs text-muted-foreground">{currentPage} / {Math.max(1, Math.ceil(filtered.length / settings.tableRowsPerPage))}</span>
                   <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(Math.max(1, Math.ceil(filtered.length / settings.tableRowsPerPage)), p + 1))} disabled={currentPage >= Math.ceil(filtered.length / settings.tableRowsPerPage)} className="h-7 text-xs">
-                    Далі
+                    {t("next", "customers")}
                   </Button>
                 </div>
               </div>
@@ -357,19 +377,19 @@ export default function VehiclesPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Додати новий автомобіль</DialogTitle>
+            <DialogTitle>{t("newVehicle", "vehicles")}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
 
             {canAssignOwner && (
               <div className="grid gap-2">
-                <Label>Призначити клієнту</Label>
+                <Label>{t("assignOwner", "vehicles")}</Label>
                 <Select
                   value={form.userId}
                   onValueChange={(v) => setForm({ ...form, userId: v })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Оберіть клієнта..." />
+                    <SelectValue placeholder={t("selectOwner", "vehicles")} />
                   </SelectTrigger>
                   <SelectContent>
                     {customers.map((c) => (
@@ -384,7 +404,7 @@ export default function VehiclesPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="v-brand">Марка</Label>
+                <Label htmlFor="v-brand">{t("brand", "vehicles")}</Label>
                 <Input
                   id="v-brand"
                   list="brands-list"
@@ -395,7 +415,7 @@ export default function VehiclesPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="v-model">Модель</Label>
+                <Label htmlFor="v-model">{t("model", "vehicles")}</Label>
                 <Input
                   id="v-model"
                   list="models-list"
@@ -409,7 +429,7 @@ export default function VehiclesPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="v-year">Рік</Label>
+                <Label htmlFor="v-year">{t("year", "vehicles")}</Label>
                 <Input
                   id="v-year"
                   type="number"
@@ -421,19 +441,19 @@ export default function VehiclesPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="v-color">Колір</Label>
+                <Label htmlFor="v-color">{t("color", "vehicles")}</Label>
                 <Input
                   id="v-color"
                   value={form.color}
                   onChange={(e) => setForm({ ...form, color: e.target.value })}
-                  placeholder="Чорний"
+                  placeholder={t("color", "vehicles")}
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="v-plate">Номерний знак</Label>
+                <Label htmlFor="v-plate">{t("plate", "vehicles")}</Label>
                 <LicensePlateInput
                   id="v-plate"
                   value={form.plate}
@@ -441,7 +461,7 @@ export default function VehiclesPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="v-vin">VIN-код</Label>
+                <Label htmlFor="v-vin">{t("vin", "vehicles")}</Label>
                 <VinInput
                   id="v-vin"
                   value={form.vin}
@@ -451,7 +471,7 @@ export default function VehiclesPage() {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="v-mileage">Пробіг (км)</Label>
+              <Label htmlFor="v-mileage">{t("mileage", "vehicles")}</Label>
               <Input
                 id="v-mileage"
                 type="number"
@@ -479,10 +499,10 @@ export default function VehiclesPage() {
 
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>Скасувати</Button>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>{t("cancel")}</Button>
             <Button onClick={handleSubmit} disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
-              {isSubmitting ? "Додавання..." : "Додати авто"}
+              {isSubmitting ? t("adding", "vehicles") : t("addVehicle", "vehicles")}
             </Button>
           </DialogFooter>
         </DialogContent>

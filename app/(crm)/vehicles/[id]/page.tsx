@@ -14,23 +14,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { useSettings } from "@/lib/settings-context"
 import { formatAppDate } from "@/lib/utils"
-
-const statusTranslations: Record<string, string> = {
-    PENDING: "Очікує",
-    CONFIRMED: "Підтверджено",
-    IN_PROGRESS: "В процесі",
-    WAITING_PARTS: "Очікування запчастин",
-    COMPLETED: "Виконано",
-    PAID: "Оплачено",
-    CANCELLED: "Скасовано",
-}
+import { useTranslation } from "@/hooks/use-translation"
 
 export default function VehicleHistoryPage() {
     const params = useParams()
     const router = useRouter()
     const vehicleId = Number(params.id)
     const { settings } = useSettings()
-
+    const { t } = useTranslation()
+    const td = (key: string) => t(key, "vehicles")
 
     const [historyData, setHistoryData] = useState<any>(null)
     const [isLoading, setIsLoading] = useState(true)
@@ -45,6 +37,10 @@ export default function VehicleHistoryPage() {
     const [searchQuery, setSearchQuery] = useState("")
     const [statusFilter, setStatusFilter] = useState("ALL")
     const [typeFilter, setTypeFilter] = useState("ALL") // ALL, SERVICE, PART
+
+    const statusOptions = [
+        "PENDING", "CONFIRMED", "IN_PROGRESS", "WAITING_PARTS", "COMPLETED", "PAID", "CANCELLED"
+    ]
 
     useEffect(() => {
         const fetchHistory = async () => {
@@ -61,7 +57,7 @@ export default function VehicleHistoryPage() {
                 const { data } = await api.get(`/cars/${vehicleId}/history?${params.toString()}`)
                 setHistoryData(data)
             } catch (error) {
-                console.error("Помилка завантаження історії автомобіля:", error)
+                console.error("Failed to load vehicle history:", error)
             } finally {
                 setIsLoading(false)
             }
@@ -98,7 +94,6 @@ export default function VehicleHistoryPage() {
                 if (!order.items || order.items.length === 0) return false
 
                 const hasMatchingType = order.items.some((item: any) => {
-                    // Якщо type немає, припускаємо що це SERVICE
                     const itemType = item.type || "SERVICE"
                     return itemType === typeFilter
                 })
@@ -116,9 +111,9 @@ export default function VehicleHistoryPage() {
         return (
             <div className="flex h-full flex-col items-center justify-center p-8 text-center text-muted-foreground">
                 <Car className="mb-4 size-12 opacity-20" />
-                <p className="text-lg font-medium">Автомобіль не знайдено</p>
-                <p className="text-sm mt-1">Можливо, він був видалений або у вас немає доступу.</p>
-                <Button variant="outline" className="mt-4" onClick={() => router.push('/vehicles')}>Повернутися</Button>
+                <p className="text-lg font-medium">{td("details.notFoundTitle")}</p>
+                <p className="text-sm mt-1">{td("details.notFoundDesc")}</p>
+                <Button variant="outline" className="mt-4" onClick={() => router.push('/vehicles')}>{td("details.back")}</Button>
             </div>
         )
     }
@@ -126,12 +121,12 @@ export default function VehicleHistoryPage() {
     return (
         <div className="flex flex-1 flex-col overflow-hidden">
             <PageHeader
-                title={carInfo ? `${carInfo.fullName} (${carInfo.year})` : "Завантаження..."}
-                description="Історія обслуговування та таймлайн всіх робіт"
+                title={carInfo ? `${carInfo.fullName} (${carInfo.year})` : t("loading")}
+                description={td("details.historyTitle")}
             >
                 <Button variant="outline" onClick={() => router.push('/vehicles')} className="gap-2 h-9">
                     <ArrowLeft className="size-4" />
-                    Всі автомобілі
+                    {td("details.allVehicles")}
                 </Button>
             </PageHeader>
 
@@ -143,34 +138,34 @@ export default function VehicleHistoryPage() {
                         <Card className="md:col-span-1 border-border bg-card">
                             <CardHeader className="pb-3 border-b border-border">
                                 <CardTitle className="text-base flex items-center gap-2">
-                                    <Car className="size-5 text-primary" /> Інформація
+                                    <Car className="size-5 text-primary" /> {td("details.info")}
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="pt-4 space-y-3 text-sm">
                                 <div>
-                                    <span className="text-muted-foreground mr-2">Номер:</span>
+                                    <span className="text-muted-foreground mr-2">{td("details.plateLabel")}</span>
                                     <Badge variant="outline" className="font-mono uppercase tracking-widest bg-secondary/30">{carInfo?.plate || "—"}</Badge>
                                 </div>
                                 <div>
-                                    <span className="text-muted-foreground mr-2">VIN:</span>
+                                    <span className="text-muted-foreground mr-2">{td("details.vinLabel")}</span>
                                     <span className="font-mono text-xs uppercase">{carInfo?.vin || "—"}</span>
                                 </div>
                                 {carInfo?.owner && (
                                     <div>
-                                        <span className="text-muted-foreground mr-2">Власник:</span>
+                                        <span className="text-muted-foreground mr-2">{td("details.ownerLabel")}</span>
                                         <span className="font-medium text-foreground">{carInfo.owner}</span>
                                     </div>
                                 )}
                                 <div>
-                                    <span className="text-muted-foreground mr-2">Пробіг:</span>
-                                    <span className="font-medium text-foreground">{carInfo?.currentMileage?.toLocaleString() || 0} км</span>
+                                    <span className="text-muted-foreground mr-2">{td("details.mileageLabel")}</span>
+                                    <span className="font-medium text-foreground">{carInfo?.currentMileage?.toLocaleString() || 0} {t("km", "customers")}</span>
                                 </div>
                                 <div className="pt-2 border-t border-border mt-2 flex justify-between">
-                                    <span className="text-muted-foreground">Всього візитів:</span>
+                                    <span className="text-muted-foreground">{td("details.totalVisits")}</span>
                                     <span className="font-medium text-foreground">{historyData?.totalOrders || 0}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Витрачено:</span>
+                                    <span className="text-muted-foreground">{td("details.totalSpent")}</span>
                                     <span className="font-medium text-primary">{Number(historyData?.totalSpent || 0).toLocaleString()} ₴</span>
                                 </div>
                             </CardContent>
@@ -179,13 +174,13 @@ export default function VehicleHistoryPage() {
                         <Card className="md:col-span-2 border-border bg-card">
                             <CardHeader className="pb-3 border-b border-border text-base">
                                 <CardTitle className="text-base flex items-center gap-2">
-                                    <Filter className="size-5 text-primary" /> Фільтри історії
+                                    <Filter className="size-5 text-primary" /> {td("details.filtersTitle")}
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="pt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                {/* API-фільтри (глобальні для історії) */}
+                                {/* API-фільтри */}
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-muted-foreground">Від (дата)</label>
+                                    <label className="text-xs font-medium text-muted-foreground">{td("details.dateFrom")}</label>
                                     <Input
                                         type="date"
                                         value={startDate}
@@ -195,7 +190,7 @@ export default function VehicleHistoryPage() {
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-muted-foreground">До (дата)</label>
+                                    <label className="text-xs font-medium text-muted-foreground">{td("details.dateTo")}</label>
                                     <Input
                                         type="date"
                                         value={endDate}
@@ -205,7 +200,7 @@ export default function VehicleHistoryPage() {
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-muted-foreground">Мін. сума (₴)</label>
+                                    <label className="text-xs font-medium text-muted-foreground">{td("details.minAmount")}</label>
                                     <Input
                                         type="number"
                                         placeholder="0"
@@ -215,7 +210,7 @@ export default function VehicleHistoryPage() {
                                     />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-muted-foreground">Макс. сума (₴)</label>
+                                    <label className="text-xs font-medium text-muted-foreground">{td("details.maxAmount")}</label>
                                     <Input
                                         type="number"
                                         placeholder="10000"
@@ -225,13 +220,13 @@ export default function VehicleHistoryPage() {
                                     />
                                 </div>
 
-                                {/* Локальні фільтри (миттєві) */}
+                                {/* Локальні фільтри */}
                                 <div className="space-y-1.5 lg:col-span-2">
-                                    <label className="text-xs font-medium text-muted-foreground">Швидкий пошук (роботи, деталі...)</label>
+                                    <label className="text-xs font-medium text-muted-foreground">{td("details.quickSearchLabel")}</label>
                                     <div className="relative">
                                         <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
                                         <Input
-                                            placeholder="Назва послуги або запчастини..."
+                                            placeholder={td("details.quickSearchPlaceholder")}
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
                                             className="pl-9 h-9"
@@ -240,30 +235,30 @@ export default function VehicleHistoryPage() {
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-muted-foreground">Статус візиту</label>
+                                    <label className="text-xs font-medium text-muted-foreground">{td("details.visitStatus")}</label>
                                     <Select value={statusFilter} onValueChange={setStatusFilter}>
                                         <SelectTrigger className="h-9">
-                                            <SelectValue placeholder="Всі статуси" />
+                                            <SelectValue placeholder={td("details.allStatuses")} />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="ALL">Всі статуси</SelectItem>
-                                            {Object.keys(statusTranslations).map(status => (
-                                                <SelectItem key={status} value={status}>{statusTranslations[status]}</SelectItem>
+                                            <SelectItem value="ALL">{td("details.allStatuses")}</SelectItem>
+                                            {statusOptions.map(status => (
+                                                <SelectItem key={status} value={status}>{t("status_" + status, "search")}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-muted-foreground">Тип робіт</label>
+                                    <label className="text-xs font-medium text-muted-foreground">{td("details.workType")}</label>
                                     <Select value={typeFilter} onValueChange={setTypeFilter}>
                                         <SelectTrigger className="h-9">
-                                            <SelectValue placeholder="Всі роботи" />
+                                            <SelectValue placeholder={td("details.allTypes")} />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="ALL">Всі типи</SelectItem>
-                                            <SelectItem value="SERVICE">Тільки послуги</SelectItem>
-                                            <SelectItem value="PART">Тільки запчастини</SelectItem>
+                                            <SelectItem value="ALL">{td("details.allTypes")}</SelectItem>
+                                            <SelectItem value="SERVICE">{td("details.onlyServices")}</SelectItem>
+                                            <SelectItem value="PART">{td("details.onlyParts")}</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -274,7 +269,7 @@ export default function VehicleHistoryPage() {
                     {/* Таймлайн */}
                     <div className="pt-4">
                         <h3 className="text-lg font-semibold text-foreground mb-6 flex items-center gap-2">
-                            <Clock className="size-5 text-muted-foreground" /> Таймлайн подій
+                            <Clock className="size-5 text-muted-foreground" /> {td("details.timelineTitle")}
                         </h3>
 
                         {isLoading ? (
@@ -286,24 +281,22 @@ export default function VehicleHistoryPage() {
                                 {filteredTimeline.map((order: any, index: number) => {
                                     const items = order.items || []
 
-                                    // Застосовуємо typeFilter до самих позицій, щоб не показувати послуги, коли фільтр на запчастинах
                                     const displayItems = typeFilter === "ALL"
                                         ? items
                                         : items.filter((i: any) => (i.type || "SERVICE") === typeFilter)
 
                                     return (
                                         <div key={order.orderId} className="relative pl-6 md:pl-8 group">
-                                            {/* Стрілка таймлайну (точка) */}
                                             <div className="absolute -left-[9px] top-1 h-4 w-4 rounded-full bg-background border-2 border-primary group-hover:bg-primary transition-colors duration-300 shadow-sm" />
 
                                             <Card className="border-border bg-card hover:border-border/80 hover:shadow-md transition-all">
                                                 <div className="flex flex-col md:flex-row md:items-start p-4 md:p-5 gap-4">
 
-                                                    {/* Ліва частина - Інфо про замовлення */}
+                                                    {/* Ліва частина */}
                                                     <div className="md:w-1/3 flex flex-col gap-3 border-b md:border-b-0 md:border-r border-border pb-4 md:pb-0 md:pr-4">
                                                         <div className="flex items-center justify-between">
                                                             <Badge variant="outline" className="font-mono text-xs text-muted-foreground">
-                                                                Код: #{order.orderId}
+                                                                {td("details.code")} #{order.orderId}
                                                             </Badge>
                                                             <StatusBadge status={order.status.toLowerCase()} />
                                                         </div>
@@ -311,22 +304,22 @@ export default function VehicleHistoryPage() {
                                                         <div className="space-y-1">
                                                             <div className="flex items-center text-sm text-foreground font-medium gap-2">
                                                                 <Calendar className="size-4 text-primary" />
-                                                                {formatAppDate(order.date, settings.dateFormat) || "Невідомо"}
+                                                                {formatAppDate(order.date, settings.dateFormat) || t("noData")}
                                                             </div>
                                                             {order.completedAt && (
                                                                 <div className="flex items-center text-xs text-muted-foreground gap-2 pl-6">
-                                                                    <span>Завершено: {formatAppDate(order.completedAt, settings.dateFormat)}</span>
+                                                                    <span>{td("details.completedAt")} {formatAppDate(order.completedAt, settings.dateFormat)}</span>
                                                                 </div>
                                                             )}
                                                             {order.mileageAtOrder && (
                                                                 <div className="flex items-center text-xs text-muted-foreground gap-2 pl-6">
-                                                                    <span>Пробіг: {order.mileageAtOrder} км</span>
+                                                                    <span>{t("mileage", "orders")}: {order.mileageAtOrder} {t("km", "customers")}</span>
                                                                 </div>
                                                             )}
                                                         </div>
 
                                                         <div className="mt-auto pt-2">
-                                                            <p className="text-xs text-muted-foreground mb-1">Скарги/Опис:</p>
+                                                            <p className="text-xs text-muted-foreground mb-1">{td("details.complaintsLabel")}</p>
                                                             <p className="text-sm italic text-foreground/80 line-clamp-3">
                                                                 {order.description || "—"}
                                                             </p>
@@ -338,15 +331,15 @@ export default function VehicleHistoryPage() {
                                                             className="mt-2 w-full justify-between text-xs"
                                                             onClick={() => router.push(`/orders-detail/${order.orderId}`)}
                                                         >
-                                                            Деталі замовлення <ChevronRight className="size-3" />
+                                                            {td("details.viewOrderDetails")} <ChevronRight className="size-3" />
                                                         </Button>
                                                     </div>
 
-                                                    {/* Права частина - Роботи та матеріали */}
+                                                    {/* Права частина */}
                                                     <div className="md:w-2/3 flex flex-col">
                                                         <h4 className="text-sm font-semibold mb-3 flex items-center gap-2 text-foreground">
                                                             <FileText className="size-4 text-muted-foreground" />
-                                                            Виконані роботи та запчастини
+                                                            {td("details.worksAndPartsTitle")}
                                                         </h4>
 
                                                         {displayItems.length > 0 ? (
@@ -361,7 +354,7 @@ export default function VehicleHistoryPage() {
                                                                                 </div>
                                                                                 <div>
                                                                                     <p className="font-medium text-foreground leading-tight">{item.name}</p>
-                                                                                    <p className="text-xs text-muted-foreground mt-0.5">К-сть: {item.quantity}</p>
+                                                                                    <p className="text-xs text-muted-foreground mt-0.5">{td("details.qty")} {item.quantity}</p>
                                                                                 </div>
                                                                             </div>
                                                                             <div className="text-right whitespace-nowrap pl-2 font-medium text-foreground text-sm">
@@ -373,12 +366,12 @@ export default function VehicleHistoryPage() {
                                                             </div>
                                                         ) : (
                                                             <div className="flex flex-col items-center justify-center p-6 bg-secondary/20 rounded-lg text-muted-foreground border border-dashed border-border/60">
-                                                                <p className="text-sm">Список робіт порожній або прихований фільтрами</p>
+                                                                <p className="text-sm">{td("details.listEmpty")}</p>
                                                             </div>
                                                         )}
 
                                                         <div className="mt-4 pt-4 border-t border-border flex justify-between items-center text-sm">
-                                                            <span className="text-muted-foreground font-medium">Загальна сума візиту:</span>
+                                                            <span className="text-muted-foreground font-medium">{td("details.totalVisitAmount")}</span>
                                                             <span className="text-base font-bold text-foreground">
                                                                 {Number(order.totalAmount || 0).toLocaleString()} ₴
                                                             </span>
@@ -394,9 +387,9 @@ export default function VehicleHistoryPage() {
                         ) : (
                             <div className="flex flex-col items-center justify-center py-16 px-4 text-center border-2 border-dashed border-border rounded-xl bg-card">
                                 <Calendar className="mb-4 size-10 text-muted-foreground/50" />
-                                <h3 className="text-lg font-medium text-foreground mb-1">Немає записів</h3>
+                                <h3 className="text-lg font-medium text-foreground mb-1">{td("details.noRecordsTitle")}</h3>
                                 <p className="text-muted-foreground text-sm max-w-sm">
-                                    Історія обслуговування цього автомобіля порожня, або жоден запис не відповідає вашим фільтрам.
+                                    {td("details.noRecordsDesc")}
                                 </p>
                                 {(startDate || endDate || minAmount || maxAmount || searchQuery || statusFilter !== "ALL" || typeFilter !== "ALL") && (
                                     <Button
@@ -412,7 +405,7 @@ export default function VehicleHistoryPage() {
                                             setTypeFilter("ALL")
                                         }}
                                     >
-                                        Скинути фільтри
+                                        {td("details.resetFilters")}
                                     </Button>
                                 )}
                             </div>
@@ -422,7 +415,7 @@ export default function VehicleHistoryPage() {
                 </div>
             </div>
 
-            {/* Кастомний стиль скролбару для списку позицій */}
+            {/* Кастомний стиль скролбару */}
             <style dangerouslySetInnerHTML={{
                 __html: `
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }

@@ -8,10 +8,17 @@ import { useVehicles } from "@/lib/vehicles-context"
 import { useEffect, useMemo } from "react"
 import { format, subDays, isWithinInterval, startOfMonth, endOfMonth } from "date-fns"
 
+import { useSettings } from "@/lib/settings-context"
+import { translations } from "@/lib/translations"
+
 export function KpiCards() {
   const { customers, isLoading: isCrmLoading, refreshData } = useCrm()
   const { vehicles, isLoading: isVehiclesLoading } = useVehicles()
   const { orders, fetchOrders, isLoading: isOrdersLoading } = useOrders()
+  const { settings } = useSettings()
+
+  const t = translations[settings.language].dashboard.kpi
+  const tCommon = translations[settings.language].common
 
   useEffect(() => {
     fetchOrders()
@@ -114,28 +121,28 @@ export function KpiCards() {
 
   const kpis = [
     {
-      label: "Всього клієнтів",
+      label: t.totalCustomers,
       value: customers.length.toString(),
       change: stats.customersTrend.value,
       trend: stats.customersTrend.direction,
       icon: Users,
     },
     {
-      label: "Зареєстровано авто",
+      label: t.registeredVehicles,
       value: vehicles.length.toString(),
       change: stats.vehiclesTrend.value,
       trend: stats.vehiclesTrend.direction,
       icon: Car,
     },
     {
-      label: "Активні замовлення",
+      label: t.activeOrders,
       value: stats.active.toString(),
       change: stats.ordersTrend.value,
       trend: stats.ordersTrend.direction,
       icon: ClipboardList,
     },
     {
-      label: "Дохід за цей місяць",
+      label: t.monthlyRevenue,
       value: `${stats.currentRevenue.toLocaleString()} ₴`,
       change: stats.revenueTrend.value,
       trend: stats.revenueTrend.direction,

@@ -9,9 +9,11 @@ import { UpcomingAppointments } from "@/components/dashboard/upcoming-appointmen
 import { useAuth } from "@/lib/auth-context" 
 import { MechanicDashboard } from "@/components/dashboard/mechanic-dashboard"
 import { ClientDashboard } from "@/components/dashboard/client-dashboard"
+import { useTranslation } from "@/hooks/use-translation"
 
 export default function DashboardPage() {
   const { user } = useAuth() 
+  const { t } = useTranslation()
 
   if (!user) return null
 
@@ -19,8 +21,8 @@ export default function DashboardPage() {
     return (
       <div className="flex flex-1 flex-col overflow-hidden">
         <PageHeader 
-          title="Панель керування" 
-          description="Огляд призначених вам робіт та завдань" 
+          title={t("title", "dashboard")} 
+          description={t("mechanicDesc", "dashboard")} 
         />
         <div className="flex-1 overflow-auto p-6">
           <MechanicDashboard />
@@ -33,8 +35,8 @@ export default function DashboardPage() {
     return (
       <div className="flex flex-1 flex-col overflow-hidden">
         <PageHeader 
-          title="Панель керування" 
-          description="Огляд сервісного обслуговування ваших авто" 
+          title={t("title", "dashboard")} 
+          description={t("clientDesc", "dashboard")} 
         />
         <div className="flex-1 overflow-auto p-6">
           <ClientDashboard />
@@ -46,8 +48,8 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <PageHeader 
-        title="Панель керування" 
-        description="Загальний огляд роботи автосервісу" 
+        title={t("title", "dashboard")} 
+        description={t("adminDesc", "dashboard")} 
       />
       <div className="flex-1 overflow-auto p-6">
         <div className="space-y-6">

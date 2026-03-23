@@ -6,10 +6,15 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useAppointments } from "@/lib/appointments-context"
 import { useEmployees } from "@/lib/employees-context"
 import { Loader2 } from "lucide-react"
+import { useSettings } from "@/lib/settings-context"
+import { translations } from "@/lib/translations"
 
 export function MechanicProductivityChart() {
   const { appointments, isLoading: isAppointmentsLoading } = useAppointments()
   const { employees, isLoading: isEmployeesLoading } = useEmployees()
+  const { settings } = useSettings()
+
+  const t = translations[settings.language].dashboard.charts
 
   const chartData = useMemo(() => {
     const mechanics = employees.filter((e) => e.role === "MECHANIC")
@@ -45,7 +50,7 @@ export function MechanicProductivityChart() {
     return (
       <Card className="border-border bg-card">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base font-medium">Продуктивність механіків</CardTitle>
+          <CardTitle className="text-base font-medium">{t.mechanicProductivity}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex h-[300px] items-center justify-center">
@@ -60,14 +65,14 @@ export function MechanicProductivityChart() {
     <Card className="border-border bg-card">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-foreground">
-          Завантаженість механіків (замовлення)
+          {t.mechanicLoad}
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="h-72">
           {chartData.length === 0 ? (
             <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-              Немає даних про механіків
+              {t.noMechanicData}
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
@@ -98,9 +103,9 @@ export function MechanicProductivityChart() {
                   }}
                 />
                 <Legend iconType="circle" />
-                <Bar dataKey="scheduled" name="Очікують" stackId="a" fill="oklch(0.80 0.15 90)" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="arrived" name="В роботі" stackId="a" fill="oklch(0.65 0.18 220)" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="completed" name="Завершені" stackId="a" fill="oklch(0.65 0.15 150)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="scheduled" name={t.statusWaiting} stackId="a" fill="oklch(0.80 0.15 90)" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="arrived" name={t.statusInProgress} stackId="a" fill="oklch(0.65 0.18 220)" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="completed" name={t.statusCompleted} stackId="a" fill="oklch(0.65 0.15 150)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}

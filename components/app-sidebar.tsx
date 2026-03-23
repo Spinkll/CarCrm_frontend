@@ -30,116 +30,13 @@ import { useCompanySettings } from "@/lib/company-settings-context"
 import { useAuth, type UserRole } from "@/lib/auth-context"
 import { useServiceRequests } from "@/lib/service-requests-context"
 import { cn } from "@/lib/utils"
+import { useTranslation } from "@/hooks/use-translation"
 
 type NavItem = {
   label: string
   href: string
   icon: typeof LayoutDashboard
   roles: UserRole[]
-}
-
-const navItems: NavItem[] = [
-  {
-    label: "Головна",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-    roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"],
-  },
-  {
-    label: "Вхідні заявки",
-    href: "/requests",
-    icon: MessageSquare,
-    roles: ["ADMIN", "MANAGER"],
-  },
-  {
-    label: "Клієнти",
-    href: "/customers",
-    icon: Users,
-    roles: ["ADMIN", "MECHANIC", "MANAGER"],
-  },
-  {
-    label: "Автомобілі",
-    href: "/vehicles",
-    icon: Car,
-    roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"],
-  },
-  {
-    label: "Замовлення",
-    href: "/orders",
-    icon: ClipboardList,
-    roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"],
-  },
-  {
-    label: "Календар",
-    href: "/appointments",
-    icon: CalendarDays,
-    roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"],
-  },
-  {
-    label: "Персонал",
-    href: "/employees",
-    icon: UserCog,
-    roles: ["ADMIN", "MANAGER"],
-  },
-  {
-    label: "Склад",
-    href: "/inventory",
-    icon: Package,
-    roles: ["ADMIN", "MANAGER", "MECHANIC"],
-  },
-  {
-    label: "Послуги",
-    href: "/services",
-    icon: Wrench,
-    roles: ["ADMIN", "MANAGER", "MECHANIC"],
-  },
-  {
-    label: "Зарплати",
-    href: "/payroll",
-    icon: Banknote,
-    roles: ["ADMIN", "MANAGER"],
-  },
-  {
-    label: "Звіти",
-    href: "/reports",
-    icon: BarChart3,
-    roles: ["ADMIN", "MANAGER"],
-  },
-  {
-    label: "Мої доходи",
-    href: "/earnings",
-    icon: Banknote,
-    roles: ["MECHANIC"],
-  },
-  {
-    label: "Компанія",
-    href: "/company",
-    icon: Building2,
-    roles: ["ADMIN", "MANAGER"],
-  },
-  {
-    label: "Налаштування",
-    href: "/settings",
-    icon: Settings2,
-    roles: ["ADMIN", "MANAGER", "MECHANIC", "CLIENT"],
-  },
-]
-
-const serviceProfileLabels: Record<string, string> = {
-  "full-service": "CRM автосервісу",
-  diagnostics: "Діагностика та електрика",
-  bodywork: "Кузовний ремонт",
-  tires: "Шиномонтаж і сервіс",
-}
-
-function getSidebarSubtitle(settings: CompanySettings) {
-  const baseLabel = serviceProfileLabels[settings.serviceProfile] || "CRM автосервісу"
-
-  if (settings.city) {
-    return `${baseLabel} • ${settings.city}`
-  }
-
-  return baseLabel
 }
 
 export function AppSidebar() {
@@ -149,6 +46,111 @@ export function AppSidebar() {
   const { user } = useAuth()
   const { requests } = useServiceRequests()
   const { companySettings } = useCompanySettings()
+  const { t } = useTranslation()
+
+  const navItems: NavItem[] = [
+    {
+      label: t("dashboard"),
+      href: "/dashboard",
+      icon: LayoutDashboard,
+      roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"],
+    },
+    {
+      label: t("requests"),
+      href: "/requests",
+      icon: MessageSquare,
+      roles: ["ADMIN", "MANAGER"],
+    },
+    {
+      label: t("customers"),
+      href: "/customers",
+      icon: Users,
+      roles: ["ADMIN", "MECHANIC", "MANAGER"],
+    },
+    {
+      label: t("vehicles"),
+      href: "/vehicles",
+      icon: Car,
+      roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"],
+    },
+    {
+      label: t("orders"),
+      href: "/orders",
+      icon: ClipboardList,
+      roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"],
+    },
+    {
+      label: t("calendar"),
+      href: "/appointments",
+      icon: CalendarDays,
+      roles: ["ADMIN", "MECHANIC", "CLIENT", "MANAGER"],
+    },
+    {
+      label: t("employees"),
+      href: "/employees",
+      icon: UserCog,
+      roles: ["ADMIN", "MANAGER"],
+    },
+    {
+      label: t("inventory"),
+      href: "/inventory",
+      icon: Package,
+      roles: ["ADMIN", "MANAGER", "MECHANIC"],
+    },
+    {
+      label: t("services"),
+      href: "/services",
+      icon: Wrench,
+      roles: ["ADMIN", "MANAGER", "MECHANIC"],
+    },
+    {
+      label: t("payroll"),
+      href: "/payroll",
+      icon: Banknote,
+      roles: ["ADMIN", "MANAGER"],
+    },
+    {
+      label: t("reports"),
+      href: "/reports",
+      icon: BarChart3,
+      roles: ["ADMIN", "MANAGER"],
+    },
+    {
+      label: t("earnings"),
+      href: "/earnings",
+      icon: Banknote,
+      roles: ["MECHANIC"],
+    },
+    {
+      label: t("company"),
+      href: "/company",
+      icon: Building2,
+      roles: ["ADMIN", "MANAGER"],
+    },
+    {
+      label: t("settings"),
+      href: "/settings",
+      icon: Settings2,
+      roles: ["ADMIN", "MANAGER", "MECHANIC", "CLIENT"],
+    },
+  ]
+
+  const serviceProfileLabels: Record<string, string> = {
+    "full-service": t("crm_auto_service", "sidebar"),
+    diagnostics: t("diagnostics", "sidebar"),
+    bodywork: t("bodywork", "sidebar"),
+    tires: t("tires", "sidebar"),
+  }
+
+  function getSidebarSubtitle(settings: CompanySettings) {
+    const baseLabel = serviceProfileLabels[settings.serviceProfile] || t("crm_auto_service", "sidebar")
+
+    if (settings.city) {
+      return `${baseLabel} • ${settings.city}`
+    }
+
+    return baseLabel
+  }
 
   useEffect(() => {
     setMobileOpen(false)
@@ -196,7 +198,7 @@ export function AppSidebar() {
         <button
           onClick={() => setMobileOpen(false)}
           className="ml-auto flex size-8 items-center justify-center rounded-lg text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground md:hidden"
-          aria-label="Закрити меню"
+          aria-label={t("close")}
         >
           <X className="size-5" />
         </button>
@@ -251,10 +253,10 @@ export function AppSidebar() {
           <button
             onClick={() => setCollapsed(!collapsed)}
             className="flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-            aria-label={collapsed ? "Розгорнути панель" : "Згорнути панель"}
+            aria-label={collapsed ? t("expand") : t("collapse")}
           >
             {collapsed ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
-            {!collapsed && <span>Згорнути</span>}
+            {!collapsed && <span>{t("collapse")}</span>}
           </button>
         </div>
       </div>
@@ -266,7 +268,7 @@ export function AppSidebar() {
       <button
         onClick={() => setMobileOpen(true)}
         className="fixed left-3 top-3 z-50 flex size-10 items-center justify-center rounded-xl border border-sidebar-border bg-sidebar text-sidebar-foreground shadow-lg transition-colors hover:bg-sidebar-accent md:hidden"
-        aria-label="Відкрити меню"
+        aria-label={t("expand")}
       >
         <Menu className="size-5" />
       </button>

@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils"
+import { useTranslation } from "@/hooks/use-translation"
 
 const statusStyles: Record<string, string> = {
   completed: "bg-success/15 text-success border-success/20",
@@ -15,25 +16,12 @@ const statusStyles: Record<string, string> = {
   no_show: "bg-destructive/15 text-destructive border-destructive/20",
 }
 
-const statusTranslations: Record<string, string> = {
-  completed: "Виконано",
-  paid: "Оплачено",
-  in_progress: "В процесі",
-  in_process: "В процесі",
-  waiting_parts: "Очікує запчастини",
-  pending: "Очікує",
-  received: "Отримано",
-  cancelled: "Скасовано",
-  scheduled: "Заплановано",
-  confirmed: "Підтверджено",
-  arrived: "Прибув",
-  no_show: "Не з'явився",
-}
-
 export function StatusBadge({ status }: { status: string }) {
+  const { t } = useTranslation()
   const normalizedStatus = status?.toLowerCase().replace("-", "_") || "pending"
 
-  const translatedText = statusTranslations[normalizedStatus] || status.toLowerCase().replace(/[-_]/g, " ")
+  // We look for status_key in search namespace as it's already used there
+  const translatedText = t("status_" + normalizedStatus.toUpperCase(), "search")
 
   return (
     <span
@@ -59,4 +47,4 @@ export function StatusBadge({ status }: { status: string }) {
       {translatedText}
     </span>
   )
-}
+}

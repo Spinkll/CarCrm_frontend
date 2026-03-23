@@ -37,38 +37,26 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { format } from "date-fns"
-import { uk } from "date-fns/locale"
+import { uk, enUS } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { StatusBadge } from "@/components/status-badge"
 import { KanbanBoard } from "@/components/dashboard/kanban-board"
-import { Plus, ChevronDown, Eye, CalendarIcon, LayoutList, KanbanSquare } from "lucide-react"
+import { Plus, ChevronDown, Eye, CalendarIcon, LayoutList, KanbanSquare, Loader2 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useOrders } from "@/lib/orders-context"
 import { useVehicles } from "@/lib/vehicles-context"
 import { useAppointments } from "@/lib/appointments-context"
 import { useCrm } from "@/lib/crm-context"
 import { useNotifications } from "@/lib/notifications-context"
-
-// ДОБАВЛЯЕМ ИМПОРТ НОВОГО ХУКА ЗАЯВОК:
 import { useServiceRequests } from "@/lib/service-requests-context"
+import { useTranslation } from "@/hooks/use-translation"
 
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
-
-const statusTranslations: Record<string, string> = {
-  PENDING: "Очікує",
-  CONFIRMED: "Підтверджено",
-  IN_PROGRESS: "В процесі",
-  WAITING_PARTS: "Очікування запчастин",
-  COMPLETED: "Виконано",
-  PAID: "Оплачено",
-  CANCELLED: "Скасовано",
-}
 
 export default function OrdersPage() {
   const { user } = useAuth()
@@ -77,20 +65,21 @@ export default function OrdersPage() {
   const { orders, createOrder, updateStatus, isLoading: isOrdersLoading, fetchOrders } = useOrders()
   const { vehicles, isLoading: isVehiclesLoading } = useVehicles()
   const { customers, refreshData: refreshCrm } = useCrm()
+  const { t, lang } = useTranslation()
 
   const { createRequest } = useServiceRequests()
-  const { appointments, fetchAppointments, getAvailableSlots, updateStatus: updateAppointmentStatus } = useAppointments()
+  const { fetchAppointments, getAvailableSlots } = useAppointments()
   const { fetchNotifications } = useNotifications()
 
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState("all")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-
   const isLoading = isOrdersLoading || isVehiclesLoading
   const [currentPage, setCurrentPage] = useState(1)
 
-  // View mode toggle (table / kanban) with localStorage persistence
+  const dateLocale = lang === "uk" ? uk : enUS
+
   const [viewMode, setViewMode] = useState<"table" | "kanban">(() => {
     if (typeof window !== "undefined") {
       return (localStorage.getItem("orders_view_mode") as "table" | "kanban") || "table"
@@ -112,14 +101,12 @@ export default function OrdersPage() {
     estimatedTime: "",
   })
 
-  // Стан для календаря (клієнта)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>("")
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [availableSlots, setAvailableSlots] = useState<string[]>([])
   const [isLoadingSlots, setIsLoadingSlots] = useState(false)
 
-  // Доступні слоти часу (наприклад, з 9:00 до 17:00)
   const timeSlots = [
     "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"
   ]
@@ -136,7 +123,6 @@ export default function OrdersPage() {
       setAvailableSlots(slots)
       setIsLoadingSlots(false)
 
-      // Скидаємо вибраний час, якщо він тепер не доступний
       if (selectedTimeSlot && !slots.includes(selectedTimeSlot)) {
         setSelectedTimeSlot("")
       }
@@ -144,17 +130,14 @@ export default function OrdersPage() {
     fetchSlots()
   }, [selectedDate, getAvailableSlots])
 
-  // Розрахунок role-based фільтрованих замовлень локально
   const role = user?.role?.toUpperCase() || "CLIENT"
 
   const roleFilteredOrders = useMemo(() => {
     if (role === "ADMIN" || role === "MANAGER") return orders
     if (role === "MECHANIC") return orders
-    // Client
     return orders.filter(o => o.car?.userId === user?.id || (vehicles.find(v => v.id === o.carId)?.userId === user?.id))
   }, [orders, role, user?.id, vehicles])
 
-  // Фильтруем автомобили для выпадающего списка (чтобы клиент не видел чужие)
   const availableVehicles = useMemo(() => {
     if (role === "ADMIN" || role === "MANAGER") return vehicles
     return vehicles.filter(v => v.userId === user?.id)
@@ -178,29 +161,25 @@ export default function OrdersPage() {
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   )
 
-  // Пагінація
   const totalPages = Math.max(1, Math.ceil(sorted.length / settings.tableRowsPerPage))
   const paginatedOrders = sorted.slice(
     (currentPage - 1) * settings.tableRowsPerPage,
     currentPage * settings.tableRowsPerPage
   )
 
-  // Скидати сторінку при зміні табу
   useEffect(() => { setCurrentPage(1) }, [tab])
 
-  // ПОЛНОСТЬЮ ОБНОВЛЕННАЯ ФУНКЦИЯ SUBMIT
   async function handleSubmit() {
     if (!form.vehicleId || !form.description || !form.mileage) {
-      toast({ title: "Будь ласка, заповніть всі обов'язкові поля", variant: "destructive" })
+      toast({ title: t("fillRequired", "orders"), variant: "destructive" })
       return
     }
     if (role !== "CLIENT" && (!form.estimatedDate || !form.estimatedTime)) {
-      toast({ title: "Будь ласка, вкажіть дату та час запису", variant: "destructive" })
+      toast({ title: t("selectDateTime", "orders"), variant: "destructive" })
       return
     }
     setIsSubmitting(true)
 
-    // --- ЛОГИКА ДЛЯ КЛИЕНТА (СОЗДАЕТ ServiceRequest) ---
     if (role === "CLIENT") {
       let scheduledAt
       if (selectedDate && selectedTimeSlot) {
@@ -217,22 +196,20 @@ export default function OrdersPage() {
         setSelectedDate(undefined);
         setSelectedTimeSlot("");
         setOpen(false);
-        toast({ title: "Заявку надіслано", description: "Менеджер зв'яжеться з вами.", variant: "success" });
+        toast({ title: t("requestSent", "orders"), description: t("requestSentDesc", "orders"), variant: "success" });
       } else {
-        toast({ title: result.error || "Не вдалося надіслати заявку", variant: "destructive" });
+        toast({ title: result.error || t("requestFailed", "orders"), variant: "destructive" });
       }
 
-      return; // Выходим из функции, чтобы заказ не создавался!
+      return;
     }
 
-    // --- ЛОГИКА ДЛЯ МЕНЕДЖЕРА/АДМИНА (СОЗДАЕТ ПРЯМОЙ ЗАКАЗ) ---
     const payload: any = {
       vehicleId: Number(form.vehicleId),
       description: form.description,
       mileage: Number(form.mileage),
     }
 
-    // Дата + час для створення запису в календарі
     payload.scheduledAt = new Date(`${form.estimatedDate}T${form.estimatedTime}:00`).toISOString()
 
     const result = await createOrder(payload)
@@ -242,10 +219,10 @@ export default function OrdersPage() {
     if (result.success) {
       setForm({ vehicleId: "", description: "", mileage: "", services: "", estimatedDate: "", estimatedTime: "" })
       setOpen(false)
-      toast({ title: "Замовлення створено", variant: "success" })
+      toast({ title: t("orderCreated", "orders"), variant: "success" })
       await fetchNotifications()
     } else {
-      toast({ title: result.error || "Не вдалося створити замовлення", variant: "destructive" })
+      toast({ title: result.error || t("orderFailed", "orders"), variant: "destructive" })
     }
   }
 
@@ -257,17 +234,17 @@ export default function OrdersPage() {
   }
 
   const descriptions: Record<string, string> = {
-    ADMIN: "Управління замовленнями та заявками на сервіс",
-    MANAGER: "Управління замовленнями та заявками на сервіс",
-    MECHANIC: "Призначені вам замовлення на ремонт",
-    CLIENT: "Відстеження ваших заявок на сервіс",
+    ADMIN: t("descriptionStaff", "orders"),
+    MANAGER: t("descriptionStaff", "orders"),
+    MECHANIC: t("descriptionMechanic", "orders"),
+    CLIENT: t("descriptionClient", "orders"),
   }
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <PageHeader
-        title={role === "CLIENT" ? "Мої замовлення" : "Замовлення сервісу"}
-        description={descriptions[role] || "Замовлення"}
+        title={role === "CLIENT" ? t("myOrders", "orders") : t("title", "orders")}
+        description={descriptions[role] || t("orders", "common")}
       />
 
       <div className="flex-1 overflow-auto p-6">
@@ -277,13 +254,13 @@ export default function OrdersPage() {
               <Tabs value={tab} onValueChange={setTab} className="w-full sm:w-auto">
                 <TabsList>
                   <TabsTrigger value="all">
-                    Всі <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.all})</span>
+                    {t("all", "orders")} <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.all})</span>
                   </TabsTrigger>
                   <TabsTrigger value="in_progress">
-                    В роботі <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.inProgress})</span>
+                    {t("inProgress", "orders")} <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.inProgress})</span>
                   </TabsTrigger>
                   <TabsTrigger value="completed">
-                    Завершені <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.completed})</span>
+                    {t("completed", "orders")} <span className="ml-1.5 text-xs text-muted-foreground">({statusCounts.completed})</span>
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
@@ -291,7 +268,6 @@ export default function OrdersPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* View mode toggle */}
             <div className="flex items-center rounded-lg border border-border bg-card p-0.5">
               <button
                 onClick={() => handleViewModeChange("table")}
@@ -301,7 +277,7 @@ export default function OrdersPage() {
                   }`}
               >
                 <LayoutList className="size-3.5" />
-                Таблиця
+                {t("tableView", "orders")}
               </button>
               <button
                 onClick={() => handleViewModeChange("kanban")}
@@ -311,7 +287,7 @@ export default function OrdersPage() {
                   }`}
               >
                 <KanbanSquare className="size-3.5" />
-                Канбан
+                {t("kanbanView", "orders")}
               </button>
             </div>
 
@@ -320,8 +296,8 @@ export default function OrdersPage() {
                 onClick={() => {
                   if (role === "CLIENT" && !user?.isVerified) {
                     toast({
-                      title: "Необхідна верифікація",
-                      description: "Будь ласка, підтвердіть вашу електронну пошту, щоб залишити заявку.",
+                      title: t("verificationRequired", "vehicles"),
+                      description: t("verificationRequiredDesc", "vehicles"),
                       variant: "destructive"
                     });
                     return;
@@ -331,7 +307,7 @@ export default function OrdersPage() {
                 className="w-full sm:w-auto gap-2 shadow-sm"
               >
                 <Plus className="size-4" />
-                {role === "CLIENT" ? "Залишити заявку" : "Нове замовлення"}
+                {role === "CLIENT" ? t("leaveRequest", "orders") : t("newOrder", "orders")}
               </Button>
             )}
           </div>
@@ -340,7 +316,7 @@ export default function OrdersPage() {
         {viewMode === "kanban" ? (
           <div className="flex-1" style={{ height: "calc(100vh - 220px)" }}>
             {isLoading ? (
-              <div className="p-8 text-center text-muted-foreground">Завантаження замовлень...</div>
+              <div className="p-8 text-center text-muted-foreground">{t("loading", "orders")}</div>
             ) : (
               <KanbanBoard
                 orders={orders}
@@ -357,19 +333,19 @@ export default function OrdersPage() {
               <Card className={cn("border-border bg-card", settings.showTableBorders && "table-bordered")}>
                 <CardContent className="p-0">
                   {isLoading ? (
-                    <div className="p-8 text-center text-muted-foreground">Завантаження замовлень...</div>
+                    <div className="p-8 text-center text-muted-foreground">{t("loading", "orders")}</div>
                   ) : (
                     <Table>
                       <TableHeader>
                         <TableRow className="border-border hover:bg-transparent">
-                          <TableHead className="pl-6 text-muted-foreground">№ Замовлення</TableHead>
-                          <TableHead className="text-muted-foreground">Автомобіль</TableHead>
-                          {role !== "CLIENT" && <TableHead className="text-muted-foreground">Клієнт</TableHead>}
-                          {role !== "CLIENT" && <TableHead className="text-muted-foreground">Менеджер</TableHead>}
-                          {role !== "CLIENT" && <TableHead className="text-muted-foreground">Механік</TableHead>}
-                          <TableHead className="text-muted-foreground">Опис</TableHead>
-                          <TableHead className="text-muted-foreground">Статус</TableHead>
-                          <TableHead className="text-muted-foreground">Сума</TableHead>
+                          <TableHead className="pl-6 text-muted-foreground">{t("orderNo", "orders")}</TableHead>
+                          <TableHead className="text-muted-foreground">{t("vehicle", "orders")}</TableHead>
+                          {role !== "CLIENT" && <TableHead className="text-muted-foreground">{t("customer", "orders")}</TableHead>}
+                          {role !== "CLIENT" && <TableHead className="text-muted-foreground">{t("manager", "orders")}</TableHead>}
+                          {role !== "CLIENT" && <TableHead className="text-muted-foreground">{t("mechanic", "orders")}</TableHead>}
+                          <TableHead className="text-muted-foreground">{t("description", "orders")}</TableHead>
+                          <TableHead className="text-muted-foreground">{t("status", "orders")}</TableHead>
+                          <TableHead className="text-muted-foreground">{t("amount", "orders")}</TableHead>
                           <TableHead className="pr-6 text-right text-muted-foreground"></TableHead>
                         </TableRow>
                       </TableHeader>
@@ -385,13 +361,13 @@ export default function OrdersPage() {
                               </TableCell>
                               <TableCell className="text-muted-foreground">
                                 {vehicleData
-                                  ? `${vehicleData.brand} ${vehicleData.model} (${vehicleData.plate || 'Немає номерів'})`
-                                  : `Авто #${order.carId || order.vehicleId}`}
+                                  ? `${vehicleData.brand} ${vehicleData.model} (${vehicleData.plate || t("noNumbers", "orders")})`
+                                  : `${t("car", "requests")} #${order.carId || order.vehicleId}`}
                               </TableCell>
 
                               {role !== "CLIENT" && (
                                 <TableCell className="text-foreground">
-                                  {customer ? `${customer.firstName} ${customer.lastName}` : "Невідомо"}
+                                  {customer ? `${customer.firstName} ${customer.lastName}` : t("unknown", "orders")}
                                 </TableCell>
                               )}
 
@@ -421,7 +397,7 @@ export default function OrdersPage() {
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="start" className="w-48">
                                       <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                                        Змінити статус
+                                        {t("changeStatus", "orders")}
                                       </div>
                                       {["CONFIRMED", "IN_PROGRESS", "WAITING_PARTS", "COMPLETED", "CANCELLED"]
                                         .filter((s) => s !== order.status)
@@ -434,11 +410,11 @@ export default function OrdersPage() {
                                               fetchOrders(true)
                                               refreshCrm()
                                               fetchNotifications()
-                                              toast({ title: "Статус оновлено", variant: "success" })
+                                              toast({ title: t("statusUpdatedSuccess", "orders"), variant: "success" })
                                             }}
                                             className="cursor-pointer"
                                           >
-                                            {statusTranslations[status] || status}
+                                            {t(`status_${status}`, "search") || status}
                                           </DropdownMenuItem>
                                         ))}
                                     </DropdownMenuContent>
@@ -459,7 +435,7 @@ export default function OrdersPage() {
                                   onClick={() => router.push(`/orders-detail/${order.id}`)}
                                 >
                                   <Eye className="size-4" />
-                                  Деталі
+                                  {t("details", "orders")}
                                 </Button>
                               </TableCell>
                             </TableRow>
@@ -468,26 +444,25 @@ export default function OrdersPage() {
                         {paginatedOrders.length === 0 && (
                           <TableRow>
                             <TableCell colSpan={role !== "CLIENT" ? 9 : 6} className="py-12 text-center text-muted-foreground">
-                              Замовлень не знайдено
+                              {t("notFound", "orders")}
                             </TableCell>
                           </TableRow>
                         )}
                       </TableBody>
                     </Table>
                   )}
-                  {/* Пагінація */}
                   {!isLoading && sorted.length > settings.tableRowsPerPage && (
                     <div className="flex items-center justify-between border-t border-border px-6 py-3">
                       <span className="text-xs text-muted-foreground">
-                        {(currentPage - 1) * settings.tableRowsPerPage + 1}–{Math.min(currentPage * settings.tableRowsPerPage, sorted.length)} з {sorted.length}
+                        {(currentPage - 1) * settings.tableRowsPerPage + 1}–{Math.min(currentPage * settings.tableRowsPerPage, sorted.length)} {t("of", "customers")} {sorted.length}
                       </span>
                       <div className="flex items-center gap-2">
                         <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage <= 1} className="h-7 text-xs">
-                          Назад
+                          {t("prev", "customers")}
                         </Button>
                         <span className="text-xs text-muted-foreground">{currentPage} / {totalPages}</span>
                         <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages} className="h-7 text-xs">
-                          Далі
+                          {t("next", "customers")}
                         </Button>
                       </div>
                     </div>
@@ -503,18 +478,18 @@ export default function OrdersPage() {
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
-              <DialogTitle>{role === "CLIENT" ? "Залишити заявку на сервіс" : "Створити замовлення"}</DialogTitle>
+              <DialogTitle>{role === "CLIENT" ? t("newRequestTitle", "orders") : t("newOrderTitle", "orders")}</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
 
               <div className="grid gap-2">
-                <Label>Автомобіль</Label>
+                <Label>{t("vehicle", "orders")}</Label>
                 <Select
                   value={form.vehicleId}
                   onValueChange={(v) => setForm({ ...form, vehicleId: v })}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Оберіть автомобіль" />
+                    <SelectValue placeholder={t("selectVehiclePlaceholder", "orders")} />
                   </SelectTrigger>
                   <SelectContent>
                     {availableVehicles.map((v) => {
@@ -527,7 +502,7 @@ export default function OrdersPage() {
                       )
                     })}
                     {availableVehicles.length === 0 && (
-                      <div className="p-2 text-sm text-muted-foreground">Транспортних засобів не знайдено. Додайте авто спочатку.</div>
+                      <div className="p-2 text-sm text-muted-foreground">{t("vehiclesNotFound", "orders")}</div>
                     )}
                   </SelectContent>
                 </Select>
@@ -535,32 +510,32 @@ export default function OrdersPage() {
 
               <div className="grid gap-2">
                 <Label htmlFor="o-desc">
-                  {role === "CLIENT" ? "Опишіть проблему" : "Опис / Скарги клієнта"}
+                  {role === "CLIENT" ? t("describeProblem", "orders") : t("describeProblemStaff", "orders")}
                 </Label>
                 <Textarea
                   id="o-desc"
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder={role === "CLIENT" ? "Наприклад: Скриплять гальма, потрібна заміна мастила..." : "Скарги клієнта або необхідний сервіс..."}
+                  placeholder={role === "CLIENT" ? t("describeProblemPlaceholder", "orders") : t("describeProblemStaffPlaceholder", "orders")}
                   rows={3}
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="o-mileage">Пробіг</Label>
+                <Label htmlFor="o-mileage">{t("mileage", "orders")}</Label>
                 <Input
                   id="o-mileage"
                   type="number"
                   value={form.mileage}
                   onChange={(e) => setForm({ ...form, mileage: e.target.value })}
-                  placeholder="Введіть поточний пробіг авто..."
+                  placeholder={t("mileagePlaceholder", "orders")}
                   required
                 />
               </div>
 
               <div className="grid gap-2">
                 <Label htmlFor="o-date">
-                  {role === "CLIENT" ? "Бажана дата та час (необов'язково)" : "Дата запису *"}
+                  {role === "CLIENT" ? t("desiredDate", "orders") : t("dateLabel", "orders")}
                 </Label>
                 {role === "CLIENT" ? (
                   <div className="grid gap-4">
@@ -574,7 +549,7 @@ export default function OrdersPage() {
                           )}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
-                          {selectedDate ? format(selectedDate, "PPP", { locale: uk }) : <span>Оберіть дату</span>}
+                          {selectedDate ? format(selectedDate, "PPP", { locale: dateLocale }) : <span>{t("selectDate", "orders")}</span>}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
@@ -591,6 +566,7 @@ export default function OrdersPage() {
                             return date < today
                           }}
                           initialFocus
+                          locale={dateLocale}
                         />
                       </PopoverContent>
                     </Popover>
@@ -599,7 +575,7 @@ export default function OrdersPage() {
                       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                         {isLoadingSlots ? (
                           <div className="col-span-full py-4 text-center text-xs text-muted-foreground">
-                            Завантаження вільних годин...
+                            {t("loadingSlots", "orders")}
                           </div>
                         ) : (
                           timeSlots.map((time) => {
@@ -651,10 +627,11 @@ export default function OrdersPage() {
 
             <DialogFooter>
               <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>
-                Скасувати
+                {t("cancel", "common")}
               </Button>
               <Button onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? "Обробка..." : (role === "CLIENT" ? "Відправити заявку" : "Створити замовлення")}
+                {isSubmitting ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
+                {isSubmitting ? t("processing", "orders") : (role === "CLIENT" ? t("leaveRequest", "orders") : t("newOrder", "orders"))}
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -46,19 +46,21 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { UserPlus, Shield, Settings, Search, Trash2, Briefcase, Percent, Pencil, Banknote, Lock, Unlock } from "lucide-react"
+import { UserPlus, Shield, Settings, Search, Trash2, Briefcase, Percent, Pencil, Banknote, Lock, Unlock, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-
-const roleConfig = {
-  ADMIN: { label: "Адміністратор", icon: Shield, className: "bg-primary/15 text-primary border-primary/30" },
-  MANAGER: { label: "Менеджер", icon: Briefcase, className: "bg-purple-100 text-purple-700 border-purple-200" },
-  MECHANIC: { label: "Механік", icon: Settings, className: "bg-orange-100 text-orange-700 border-orange-200" },
-}
+import { useTranslation } from "@/hooks/use-translation"
 
 export default function EmployeesPage() {
   const { user } = useAuth()
   const { employees, createEmployee, updateEmployee, deleteEmployee, blockEmployee, unblockEmployee, isLoading } = useEmployees()
   const router = useRouter()
+  const { t } = useTranslation()
+
+  const roleConfig = {
+    ADMIN: { label: t("admin", "employees"), icon: Shield, className: "bg-primary/15 text-primary border-primary/30" },
+    MANAGER: { label: t("manager", "employees"), icon: Briefcase, className: "bg-purple-100 text-purple-700 border-purple-200" },
+    MECHANIC: { label: t("mechanic", "employees"), icon: Settings, className: "bg-orange-100 text-orange-700 border-orange-200" },
+  }
 
   const [search, setSearch] = useState("")
   const [filterStatus, setFilterStatus] = useState("ACTIVE") // ACTIVE, BLOCKED, ALL
@@ -114,17 +116,17 @@ export default function EmployeesPage() {
     setError("")
 
     if (!form.firstName || !form.lastName || !form.email || !form.role) {
-      setError("Будь ласка, заповніть усі поля")
+      setError(t("fillAllFields", "employees"))
       return
     }
 
     if (form.role === "MECHANIC" && (!form.commissionRate || Number(form.commissionRate) <= 0 || Number(form.commissionRate) > 100)) {
-      setError("Вкажіть коректний % від робіт (1-100%)")
+      setError(t("invalidCommission", "employees"))
       return
     }
 
     if (!form.baseSalary || Number(form.baseSalary) < 0) {
-      setError("Вкажіть коректну базову ставку")
+      setError(t("invalidSalary", "employees"))
       return
     }
 
@@ -148,7 +150,7 @@ export default function EmployeesPage() {
       setForm({ firstName: "", lastName: "", email: "", phone: "", role: "", commissionRate: "", baseSalary: "" })
       setDialogOpen(false)
     } else {
-      setError(result.error || "Не вдалося додати працівника")
+      setError(result.error || t("addError", "employees"))
     }
   }
 
@@ -192,7 +194,7 @@ export default function EmployeesPage() {
     // Базова ставка — для всіх
     const salary = Number(editBaseSalary)
     if (!editBaseSalary || salary < 0) {
-      setEditError("Вкажіть коректну базову ставку")
+      setEditError(t("invalidSalary", "employees"))
       return
     }
     updateData.baseSalary = salary
@@ -201,7 +203,7 @@ export default function EmployeesPage() {
     if (editingEmployee.role === "MECHANIC" || editingEmployee.role === "MANAGER") {
       const rate = Number(editCommission)
       if (!rate || rate <= 0 || rate > 100) {
-        setEditError("Вкажіть коректний відсоток комісії (1-100%)")
+        setEditError(t("invalidCommission", "employees"))
         return
       }
       updateData.commissionRate = rate
@@ -215,7 +217,7 @@ export default function EmployeesPage() {
       setSettingsOpen(false)
       setEditingEmployee(null)
     } else {
-      setEditError(result.error || "Не вдалося зберегти зміни")
+      setEditError(result.error || t("error", "common"))
     }
   }
 
@@ -227,7 +229,7 @@ export default function EmployeesPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <PageHeader title="Персонал" description="Управління доступом та ролями" />
+      <PageHeader title={t("title", "employees")} description={t("description", "employees")} />
 
       <div className="flex-1 space-y-6 p-6">
         {/* Статистика */}
@@ -239,7 +241,7 @@ export default function EmployeesPage() {
               </div>
               <div>
                 <p className="text-2xl font-semibold text-foreground">{employees.length}</p>
-                <p className="text-sm text-muted-foreground">Всього працівників</p>
+                <p className="text-sm text-muted-foreground">{t("totalEmployees", "employees")}</p>
               </div>
             </CardContent>
           </Card>
@@ -250,7 +252,7 @@ export default function EmployeesPage() {
               </div>
               <div>
                 <p className="text-2xl font-semibold text-foreground">{mechanicCount}</p>
-                <p className="text-sm text-muted-foreground">Механіки</p>
+                <p className="text-sm text-muted-foreground">{t("mechanics", "employees")}</p>
               </div>
             </CardContent>
           </Card>
@@ -261,7 +263,7 @@ export default function EmployeesPage() {
               </div>
               <div>
                 <p className="text-2xl font-semibold text-foreground">{managerCount}</p>
-                <p className="text-sm text-muted-foreground">Менеджери</p>
+                <p className="text-sm text-muted-foreground">{t("managers", "employees")}</p>
               </div>
             </CardContent>
           </Card>
@@ -273,7 +275,7 @@ export default function EmployeesPage() {
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Пошук працівників..."
+                placeholder={t("searchPlaceholder", "employees")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="bg-card pl-9 w-full"
@@ -281,12 +283,12 @@ export default function EmployeesPage() {
             </div>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger className="w-full sm:w-[180px] bg-card">
-                <SelectValue placeholder="Статус" />
+                <SelectValue placeholder={t("status", "requests")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ACTIVE">Активні</SelectItem>
-                <SelectItem value="ALL">Всі працівники</SelectItem>
-                <SelectItem value="BLOCKED">Заблоковані</SelectItem>
+                <SelectItem value="ACTIVE">{t("filterActive", "employees")}</SelectItem>
+                <SelectItem value="ALL">{t("filterAll", "employees")}</SelectItem>
+                <SelectItem value="BLOCKED">{t("filterBlocked", "employees")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -296,12 +298,12 @@ export default function EmployeesPage() {
               <DialogTrigger asChild>
                 <Button className="gap-2 shadow-sm">
                   <UserPlus className="size-4" />
-                  Додати працівника
+                  {t("addEmployee", "employees")}
                 </Button>
               </DialogTrigger>
               <DialogContent className="border-border bg-card sm:max-w-md">
                 <DialogHeader>
-                  <DialogTitle className="text-foreground">Новий працівник</DialogTitle>
+                  <DialogTitle className="text-foreground">{t("newEmployee", "employees")}</DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   {error && (
@@ -312,29 +314,29 @@ export default function EmployeesPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
-                      <Label htmlFor="emp-first">Ім'я</Label>
+                      <Label htmlFor="emp-first">{t("firstName", "employees")}</Label>
                       <Input
                         id="emp-first"
                         value={form.firstName}
                         onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-                        placeholder="Іван"
+                        placeholder="Ivan"
                         className="bg-secondary"
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="emp-last">Прізвище</Label>
+                      <Label htmlFor="emp-last">{t("lastName", "employees")}</Label>
                       <Input
                         id="emp-last"
                         value={form.lastName}
                         onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-                        placeholder="Іванов"
+                        placeholder="Ivanov"
                         className="bg-secondary"
                       />
                     </div>
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="emp-email">Email</Label>
+                    <Label htmlFor="emp-email">{t("email", "employees")}</Label>
                     <Input
                       id="emp-email"
                       type="email"
@@ -346,7 +348,7 @@ export default function EmployeesPage() {
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="emp-phone">Телефон</Label>
+                    <Label htmlFor="emp-phone">{t("phone", "employees")}</Label>
                     <PhoneInput
                       id="emp-phone"
                       value={form.phone}
@@ -355,24 +357,24 @@ export default function EmployeesPage() {
                   </div>
 
                   <div className="grid gap-2">
-                    <Label>Роль</Label>
+                    <Label>{t("role", "employees")}</Label>
                     <Select
                       value={form.role}
                       onValueChange={(v) => setForm({ ...form, role: v as any, commissionRate: v === "MECHANIC" ? form.commissionRate : "" })}
                     >
                       <SelectTrigger className="w-full bg-secondary">
-                        <SelectValue placeholder="Оберіть роль" />
+                        <SelectValue placeholder={t("selectRole", "employees")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="MECHANIC">Механік</SelectItem>
-                        <SelectItem value="MANAGER">Менеджер</SelectItem>
+                        <SelectItem value="MECHANIC">{t("mechanic", "employees")}</SelectItem>
+                        <SelectItem value="MANAGER">{t("manager", "employees")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   {form.role && (
                     <div className="grid gap-2">
-                      <Label htmlFor="emp-salary">Базова ставка (₴)</Label>
+                      <Label htmlFor="emp-salary">{t("baseSalary", "employees")}</Label>
                       <div className="relative">
                         <Input
                           id="emp-salary"
@@ -380,21 +382,21 @@ export default function EmployeesPage() {
                           min="0"
                           value={form.baseSalary}
                           onChange={(e) => setForm({ ...form, baseSalary: e.target.value })}
-                          placeholder="Наприклад, 15000"
+                          placeholder={t("salaryPlaceholder", "employees")}
                           className="bg-secondary pr-10"
                           required
                         />
                         <Banknote className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Фіксована місячна ставка працівника
+                        {t("salaryDesc", "employees")}
                       </p>
                     </div>
                   )}
 
                   {(form.role === "MECHANIC" || form.role === "MANAGER") && (
                     <div className="grid gap-2">
-                      <Label htmlFor="emp-commission">% від виконаних робіт</Label>
+                      <Label htmlFor="emp-commission">{t("commissionRate", "employees")}</Label>
                       <div className="relative">
                         <Input
                           id="emp-commission"
@@ -403,23 +405,23 @@ export default function EmployeesPage() {
                           max="100"
                           value={form.commissionRate}
                           onChange={(e) => setForm({ ...form, commissionRate: e.target.value })}
-                          placeholder="Наприклад, 30"
+                          placeholder={t("commissionPlaceholder", "employees")}
                           className="bg-secondary pr-10"
                           required
                         />
                         <Percent className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        % від вартості послуги, який отримує {form.role === "MECHANIC" ? "механік" : "менеджер"}
+                        {t("commissionDesc", "employees").replace("{role}", form.role === "MECHANIC" ? t("mechanic", "employees").toLowerCase() : t("manager", "employees").toLowerCase())}
                       </p>
                     </div>
                   )}
 
                   <Button onClick={handleAdd} disabled={isSubmitting} className="gap-2">
-                    {isSubmitting ? "Збереження..." : (
+                    {isSubmitting ? t("saving", "common") : (
                       <>
                         <UserPlus className="size-4" />
-                        Додати працівника
+                        {t("addEmployee", "employees")}
                       </>
                     )}
                   </Button>
@@ -433,29 +435,29 @@ export default function EmployeesPage() {
         <Card className="border-border bg-card">
           <CardContent className="p-0">
             {isLoading ? (
-              <div className="p-8 text-center text-muted-foreground">Завантаження персоналу...</div>
+              <div className="p-8 text-center text-muted-foreground">{t("loading", "employees")}</div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow className="border-border hover:bg-transparent">
-                    <TableHead className="text-muted-foreground">Працівник</TableHead>
-                    <TableHead className="text-muted-foreground">Email</TableHead>
-                    <TableHead className="text-muted-foreground">Роль</TableHead>
-                    <TableHead className="text-center text-muted-foreground">Ставка</TableHead>
-                    <TableHead className="text-center text-muted-foreground">% від робіт</TableHead>
-                    <TableHead className="text-right text-muted-foreground">Дії</TableHead>
+                    <TableHead className="text-muted-foreground">{t("employee", "employees")}</TableHead>
+                    <TableHead className="text-muted-foreground">{t("email", "employees")}</TableHead>
+                    <TableHead className="text-muted-foreground">{t("role", "employees")}</TableHead>
+                    <TableHead className="text-center text-muted-foreground">{t("salary", "employees")}</TableHead>
+                    <TableHead className="text-center text-muted-foreground">{t("commission", "employees")}</TableHead>
+                    <TableHead className="text-right text-muted-foreground">{t("actions", "employees")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
-                        Працівників не знайдено
+                        {t("notFound", "employees")}
                       </TableCell>
                     </TableRow>
                   ) : (
                     filtered.map((emp) => {
-                      const config = roleConfig[emp.role] || roleConfig.MECHANIC
+                      const config = (roleConfig as any)[emp.role] || roleConfig.MECHANIC
                       const isSelf = emp.id === user?.id
                       return (
                         <TableRow key={emp.id} className="border-border">
@@ -468,10 +470,10 @@ export default function EmployeesPage() {
                                 <p className="font-medium text-foreground">
                                   {emp.firstName} {emp.lastName}
                                   {isSelf && (
-                                    <span className="ml-2 text-xs text-muted-foreground">(Ви)</span>
+                                    <span className="ml-2 text-xs text-muted-foreground">({t("selfBadge", "employees")})</span>
                                   )}
                                   {emp.isBlocked && (
-                                    <Badge variant="destructive" className="ml-2 px-1.5 py-0 text-[10px]">Заблоковано</Badge>
+                                    <Badge variant="destructive" className="ml-2 px-1.5 py-0 text-[10px]">{t("blockedBadge", "employees")}</Badge>
                                   )}
                                 </p>
                                 <p className="text-xs text-muted-foreground">ID: {emp.id}</p>
@@ -526,7 +528,7 @@ export default function EmployeesPage() {
                                     onClick={() => openSettings(emp)}
                                   >
                                     <Pencil className="size-4" />
-                                    <span className="sr-only">Налаштування працівника</span>
+                                    <span className="sr-only">{t("edit", "common")}</span>
                                   </Button>
                                 )}
                                 {emp.isBlocked ? (
@@ -534,23 +536,23 @@ export default function EmployeesPage() {
                                     <AlertDialogTrigger asChild>
                                       <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-green-600">
                                         <Unlock className="size-4" />
-                                        <span className="sr-only">Розблокувати</span>
+                                        <span className="sr-only">{t("unblockTitle", "employees")}</span>
                                       </Button>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent className="border-border bg-card">
                                       <AlertDialogHeader>
-                                        <AlertDialogTitle className="text-foreground">Розблокувати працівника</AlertDialogTitle>
+                                        <AlertDialogTitle className="text-foreground">{t("unblockTitle", "employees")}</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                          Ви впевнені, що хочете розблокувати <strong>{emp.firstName} {emp.lastName}</strong>?
+                                          {t("unblockConfirm", "employees")} <strong>{emp.firstName} {emp.lastName}</strong>?
                                         </AlertDialogDescription>
                                       </AlertDialogHeader>
                                       <AlertDialogFooter>
-                                        <AlertDialogCancel className="border-border bg-secondary text-foreground hover:bg-accent">Скасувати</AlertDialogCancel>
+                                        <AlertDialogCancel className="border-border bg-secondary text-foreground hover:bg-accent">{t("cancel", "common")}</AlertDialogCancel>
                                         <AlertDialogAction
                                           onClick={() => handleUnblock(emp.id)}
                                           className="bg-primary text-primary-foreground"
                                         >
-                                          Розблокувати
+                                          {t("unblockTitle", "employees")}
                                         </AlertDialogAction>
                                       </AlertDialogFooter>
                                     </AlertDialogContent>
@@ -563,30 +565,30 @@ export default function EmployeesPage() {
                                     onClick={() => openBlockDialog(emp)}
                                   >
                                     <Lock className="size-4" />
-                                    <span className="sr-only">Заблокувати</span>
+                                    <span className="sr-only">{t("blockTitle", "employees")}</span>
                                   </Button>
                                 )}
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
                                     <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive">
                                       <Trash2 className="size-4" />
-                                      <span className="sr-only">Видалити працівника</span>
+                                      <span className="sr-only">{t("deleteTitle", "employees")}</span>
                                     </Button>
                                   </AlertDialogTrigger>
                                   <AlertDialogContent className="border-border bg-card">
                                     <AlertDialogHeader>
-                                      <AlertDialogTitle className="text-foreground">Видалити працівника</AlertDialogTitle>
+                                      <AlertDialogTitle className="text-foreground">{t("deleteTitle", "employees")}</AlertDialogTitle>
                                       <AlertDialogDescription>
-                                        Ви впевнені, що хочете видалити <strong>{emp.firstName} {emp.lastName}</strong> із системи? Цю дію неможливо скасувати.
+                                        {t("deleteConfirm", "employees").replace("{name}", `${emp.firstName} ${emp.lastName}`)}
                                       </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
-                                      <AlertDialogCancel className="border-border bg-secondary text-foreground hover:bg-accent">Скасувати</AlertDialogCancel>
+                                      <AlertDialogCancel className="border-border bg-secondary text-foreground hover:bg-accent">{t("cancel", "common")}</AlertDialogCancel>
                                       <AlertDialogAction
                                         onClick={() => handleRemove(emp.id)}
                                         className="bg-destructive text-foreground hover:bg-destructive/90"
                                       >
-                                        Видалити
+                                        {t("delete", "common")}
                                       </AlertDialogAction>
                                     </AlertDialogFooter>
                                   </AlertDialogContent>
@@ -612,7 +614,7 @@ export default function EmployeesPage() {
         <DialogContent className="border-border bg-card sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-foreground">
-              Налаштування: {editingEmployee?.firstName} {editingEmployee?.lastName}
+              {t("settingsTitle", "employees")} {editingEmployee?.firstName} {editingEmployee?.lastName}
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -623,7 +625,7 @@ export default function EmployeesPage() {
             )}
 
             <div className="grid gap-2">
-              <Label htmlFor="edit-salary">Базова ставка (₴)</Label>
+              <Label htmlFor="edit-salary">{t("baseSalary", "employees")}</Label>
               <div className="relative">
                 <Input
                   id="edit-salary"
@@ -631,19 +633,19 @@ export default function EmployeesPage() {
                   min="0"
                   value={editBaseSalary}
                   onChange={(e) => setEditBaseSalary(e.target.value)}
-                  placeholder="Наприклад, 15000"
+                  placeholder={t("salaryPlaceholder", "employees")}
                   className="bg-secondary pr-10"
                 />
                 <Banknote className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               </div>
               <p className="text-xs text-muted-foreground">
-                Фіксована місячна ставка працівника
+                {t("salaryDesc", "employees")}
               </p>
             </div>
 
             {(editingEmployee?.role === "MECHANIC" || editingEmployee?.role === "MANAGER") && (
               <div className="grid gap-2">
-                <Label htmlFor="edit-commission">% від виконаних робіт</Label>
+                <Label htmlFor="edit-commission">{t("commissionRate", "employees")}</Label>
                 <div className="relative">
                   <Input
                     id="edit-commission"
@@ -652,23 +654,23 @@ export default function EmployeesPage() {
                     max="100"
                     value={editCommission}
                     onChange={(e) => setEditCommission(e.target.value)}
-                    placeholder="Наприклад, 30"
+                    placeholder={t("commissionPlaceholder", "employees")}
                     className="bg-secondary pr-10"
                   />
                   <Percent className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Відсоток від вартості послуги, який отримує {editingEmployee?.role === "MECHANIC" ? "механік" : "менеджер"}
+                  {t("commissionDesc", "employees").replace("{role}", editingEmployee?.role === "MECHANIC" ? t("mechanic", "employees").toLowerCase() : t("manager", "employees").toLowerCase())}
                 </p>
               </div>
             )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSettingsOpen(false)} className="border-border">
-              Скасувати
+              {t("cancel", "common")}
             </Button>
             <Button onClick={handleSaveSettings} disabled={isSavingSettings} className="gap-2">
-              {isSavingSettings ? "Збереження..." : "Зберегти"}
+              {isSavingSettings ? t("saving", "common") : t("save", "common")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -678,29 +680,29 @@ export default function EmployeesPage() {
       <Dialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
         <DialogContent className="border-border bg-card sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-foreground">Заблокувати працівника</DialogTitle>
+            <DialogTitle className="text-foreground">{t("blockTitle", "employees")}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <p className="text-sm text-muted-foreground">
-              Ви впевнені, що хочете заблокувати <strong>{employeeToBlock?.firstName} {employeeToBlock?.lastName}</strong>?
+              {t("blockConfirm", "employees")} <strong>{employeeToBlock?.firstName} {employeeToBlock?.lastName}</strong>?
             </p>
             <div className="grid gap-2">
-              <Label htmlFor="block-reason">Причина блокування (необов'язково)</Label>
+              <Label htmlFor="block-reason">{t("blockReason", "employees")}</Label>
               <Input
                 id="block-reason"
                 value={blockReason}
                 onChange={(e) => setBlockReason(e.target.value)}
-                placeholder="Причина..."
+                placeholder={t("blockPlaceholder", "employees")}
                 className="bg-secondary"
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setBlockDialogOpen(false)} className="border-border">
-              Скасувати
+              {t("cancel", "common")}
             </Button>
             <Button onClick={handleBlock} disabled={isBlocking} className="bg-orange-600 hover:bg-orange-700 text-white gap-2">
-              {isBlocking ? "Блокування..." : "Заблокувати"}
+              {isBlocking ? t("blocking", "employees") : t("blockTitle", "employees")}
             </Button>
           </DialogFooter>
         </DialogContent>

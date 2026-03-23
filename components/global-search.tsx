@@ -31,6 +31,7 @@ import { useCrm } from "@/lib/crm-context"
 import { useInventory } from "@/lib/inventory-context"
 import { useAuth } from "@/lib/auth-context"
 import { cn } from "@/lib/utils"
+import { useTranslation } from "@/hooks/use-translation"
 
 const SEARCH_LIMIT = 5
 
@@ -55,34 +56,24 @@ function matchesSearch(query: string, fields: Array<string | number | null | und
   return tokens.every((token) => haystack.includes(token))
 }
 
-function formatOrderStatus(status: string) {
-  const labels: Record<string, string> = {
-    PENDING: "Очікує",
-    CONFIRMED: "Підтверджено",
-    IN_PROGRESS: "В роботі",
-    WAITING_PARTS: "Очікує запчастини",
-    COMPLETED: "Завершено",
-    PAID: "Оплачено",
-    CANCELLED: "Скасовано",
-  }
-
-  return labels[status] ?? status
-}
-
 export function GlobalSearch() {
   const [isExpanded, setIsExpanded] = React.useState(false)
   const [searchValue, setSearchValue] = React.useState("")
   const router = useRouter()
   const { user } = useAuth()
+  const { t } = useTranslation()
 
   const containerRef = React.useRef<HTMLDivElement>(null)
-  // ФІКС 1: Додали правильний ref для інпуту
   const inputRef = React.useRef<HTMLInputElement>(null)
 
   const { orders, isLoading: ordersLoading } = useOrders()
   const { vehicles, isLoading: vehiclesLoading } = useVehicles()
   const { customers, isLoading: customersLoading } = useCrm()
   const { inventory, isLoading: inventoryLoading } = useInventory()
+
+  const formatOrderStatus = (status: string) => {
+    return t(`status_${status}`, "search")
+  }
 
   if (!user) return null
 
@@ -99,7 +90,6 @@ export function GlobalSearch() {
         e.preventDefault()
         setIsExpanded(true)
 
-        // ФІКС 2: Фокусуємо через нормальний ref
         window.setTimeout(() => {
           inputRef.current?.focus()
         }, 50)
@@ -179,15 +169,15 @@ export function GlobalSearch() {
   const navigationItems = React.useMemo(() => {
     const items = [
       {
-        key: "dashboard", label: "Панель керування", description: "Головні показники та активність сервісу", href: "/dashboard", icon: CommandIcon, search: ["панель", "dashboard", "головна"],
+        key: "dashboard", label: t("dashboard"), description: t("adminDesc", "dashboard"), href: "/dashboard", icon: CommandIcon, search: ["панель", "dashboard", "головна"],
       },
       {
-        key: "orders", label: "Всі замовлення", description: "Перегляд та керування сервісними замовленнями", href: "/orders", icon: ClipboardList, search: ["замовлення", "orders", "сервіс"],
+        key: "orders", label: t("orders"), description: t("orders", "search"), href: "/orders", icon: ClipboardList, search: ["замовлення", "orders", "сервіс"],
       },
       ...(isStaff
         ? [
-          { key: "inventory", label: "Склад та запчастини", description: "Залишки, SKU та рівні запасів", href: "/inventory", icon: Package, search: ["склад", "inventory", "запчастини", "sku"] },
-          { key: "customers", label: "Клієнти", description: "База клієнтів та контактні дані", href: "/customers", icon: User, search: ["клієнти", "customers", "контакти"] },
+          { key: "inventory", label: t("inventory"), description: t("inventory", "search"), href: "/inventory", icon: Package, search: ["склад", "inventory", "запчастини", "sku"] },
+          { key: "customers", label: t("customers"), description: t("customers", "search"), href: "/customers", icon: User, search: ["клієнти", "customers", "контакти"] },
         ]
         : []),
     ]
@@ -195,30 +185,26 @@ export function GlobalSearch() {
     return items.filter((item) =>
       matchesSearch(searchValue, [item.label, item.description, ...item.search]),
     )
-  }, [isStaff, searchValue])
+  }, [isStaff, searchValue, t])
 
   const totalResults = orderResults.length + vehicleResults.length + customerResults.length + inventoryResults.length + navigationItems.length
 
-  // ФІКС 4: Показуємо дропдаун завжди, коли поле активне (isExpanded)
   const showDropdown = isExpanded
 
-  // Shared search results JSX
   const searchResultsContent = (
     <>
-      {/* 1. Показуємо спінер, ТІЛЬКИ якщо вантажимо і ще немає жодного результату */}
       {isLoading && totalResults === 0 && (
         <div className="flex items-center justify-center py-6">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
       )}
 
-      {/* 2. Показуємо "Нічого не знайдено", тільки коли завантаження завершено і пусто */}
       {!isLoading && totalResults === 0 && (
         <CommandEmpty className="flex flex-col items-center py-10 text-center">
           <Search className="mb-3 size-9 text-muted-foreground/60" />
-          <p className="font-medium text-foreground">Нічого не знайдено</p>
+          <p className="font-medium text-foreground">{t("nothingFound", "search")}</p>
           <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-            Спробуйте номер замовлення, ім&apos;я клієнта, номер авто, VIN, телефон або SKU.
+            {t("nothingFoundDesc", "search")}
           </p>
         </CommandEmpty>
       )}
@@ -226,7 +212,7 @@ export function GlobalSearch() {
       {totalResults > 0 && (
         <>
           {orderResults.length > 0 && (
-            <CommandGroup heading="Замовлення">
+            <CommandGroup heading={t("orders", "search")}>
               {orderResults.map((order) => (
                 <CommandItem
                   key={`order-${order.id}`}
@@ -237,7 +223,7 @@ export function GlobalSearch() {
                   <ClipboardList className="size-4 text-primary" />
                   <div className="flex flex-1 items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate font-medium text-foreground">Замовлення #{order.id}</p>
+                      <p className="truncate font-medium text-foreground">{t("orderId", "search")}{order.id}</p>
                       <p className="line-clamp-1 text-xs text-muted-foreground">{order.description}</p>
                     </div>
                     <div className="flex flex-col items-end text-right">
@@ -255,7 +241,7 @@ export function GlobalSearch() {
           {vehicleResults.length > 0 && (
             <>
               {orderResults.length > 0 && <CommandSeparator />}
-              <CommandGroup heading="Автомобілі">
+              <CommandGroup heading={t("vehicles", "search")}>
                 {vehicleResults.map((vehicle) => (
                   <CommandItem
                     key={`vehicle-${vehicle.id}`}
@@ -281,7 +267,7 @@ export function GlobalSearch() {
           {isStaff && customerResults.length > 0 && (
             <>
               {(orderResults.length > 0 || vehicleResults.length > 0) && <CommandSeparator />}
-              <CommandGroup heading="Клієнти">
+              <CommandGroup heading={t("customers", "search")}>
                 {customerResults.map((customer) => (
                   <CommandItem
                     key={`customer-${customer.id}`}
@@ -314,7 +300,7 @@ export function GlobalSearch() {
           {isStaff && inventoryResults.length > 0 && (
             <>
               {(orderResults.length > 0 || vehicleResults.length > 0 || customerResults.length > 0) && <CommandSeparator />}
-              <CommandGroup heading="Склад">
+              <CommandGroup heading={t("inventory", "search")}>
                 {inventoryResults.map((item) => (
                   <CommandItem
                     key={`inventory-${item.id}`}
@@ -327,7 +313,7 @@ export function GlobalSearch() {
                       <div className="min-w-0">
                         <p className="truncate font-medium text-foreground">{item.name}</p>
                         <p className="truncate text-xs text-muted-foreground">
-                          SKU: {item.sku || "не вказано"}
+                          {t("sku", "search")}: {item.sku || t("notSpecified", "search")}
                         </p>
                       </div>
                       <span
@@ -338,7 +324,7 @@ export function GlobalSearch() {
                             : "text-muted-foreground",
                         )}
                       >
-                        {item.stockQuantity} шт
+                        {item.stockQuantity} {t("pcs", "search")}
                       </span>
                     </div>
                   </CommandItem>
@@ -350,7 +336,7 @@ export function GlobalSearch() {
           {navigationItems.length > 0 && (
             <>
               {(orderResults.length > 0 || vehicleResults.length > 0 || customerResults.length > 0 || inventoryResults.length > 0) && <CommandSeparator />}
-              <CommandGroup heading="Навігація">
+              <CommandGroup heading={t("navigation", "search")}>
                 {navigationItems.map((item) => {
                   const Icon = item.icon
                   return (
@@ -378,11 +364,10 @@ export function GlobalSearch() {
 
   return (
     <>
-      {/* ===== MOBILE: icon button + fullscreen overlay ===== */}
       <div className="sm:hidden">
         <button
           type="button"
-          aria-label="Відкрити пошук"
+          aria-label={t("openSearch", "search")}
           onClick={() => {
             setIsExpanded(true)
             window.setTimeout(() => {
@@ -404,7 +389,6 @@ export function GlobalSearch() {
               className="fixed inset-0 z-[100] flex flex-col bg-background/98 backdrop-blur-sm"
             >
               <Command shouldFilter={false} className="flex flex-1 flex-col overflow-hidden bg-transparent">
-                {/* Mobile search header */}
                 <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2">
                   <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <Search className="size-4 shrink-0" />
@@ -412,7 +396,7 @@ export function GlobalSearch() {
 
                   <CommandInput
                     ref={inputRef}
-                    placeholder="Пошук замовлення, телефону, VIN, авто або SKU..."
+                    placeholder={t("expandedPlaceholder", "search")}
                     value={searchValue}
                     onValueChange={setSearchValue}
                     // @ts-ignore
@@ -423,7 +407,7 @@ export function GlobalSearch() {
 
                   <button
                     type="button"
-                    aria-label="Закрити пошук"
+                    aria-label={t("closeSearch", "search")}
                     onClick={() => {
                       setIsExpanded(false)
                       setSearchValue("")
@@ -434,21 +418,21 @@ export function GlobalSearch() {
                   </button>
                 </div>
 
-                {/* Mobile search status */}
                 <div className="border-b border-border/40 bg-muted/20 px-4 py-2">
                   <p className="truncate text-sm font-medium text-foreground">
-                    {normalizedQuery.length > 0 ? `Результати за запитом "${searchValue}"` : "Глобальний пошук"}
+                    {normalizedQuery.length > 0 
+                      ? `${t("resultsFor", "search")} "${searchValue}"` 
+                      : t("globalSearch", "search")}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {isLoading
-                      ? "Оновлюємо дані..."
+                      ? t("updating", "search")
                       : normalizedQuery.length === 0
-                        ? "Швидка навігація"
-                        : `Знайдено ${totalResults} результатів`}
+                        ? t("quickNav", "search")
+                        : `${t("found", "search")} ${totalResults} ${t("results", "search")}`}
                   </p>
                 </div>
 
-                {/* Mobile search results */}
                 <CommandList className="flex-1 overflow-y-auto px-2 py-2">
                   {searchResultsContent}
                 </CommandList>
@@ -458,7 +442,6 @@ export function GlobalSearch() {
         </AnimatePresence>
       </div>
 
-      {/* ===== DESKTOP (sm+): inline expandable search ===== */}
       <div
         ref={containerRef}
         className={cn(
@@ -489,8 +472,8 @@ export function GlobalSearch() {
               ref={inputRef}
               placeholder={
                 isExpanded
-                  ? "Пошук замовлення, телефону, VIN, авто або SKU..."
-                  : "Пошук по CRM"
+                  ? t("expandedPlaceholder", "search")
+                  : t("placeholder", "search")
               }
               onFocus={() => setIsExpanded(true)}
               value={searchValue}
@@ -510,7 +493,7 @@ export function GlobalSearch() {
             {isExpanded && (
               <button
                 type="button"
-                aria-label="Закрити пошук"
+                aria-label={t("closeSearch", "search")}
                 onClick={() => {
                   setIsExpanded(false)
                   setSearchValue("")
@@ -533,14 +516,16 @@ export function GlobalSearch() {
                 <div className="flex items-start justify-between gap-3 border-b border-border/60 bg-muted/30 px-4 py-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-foreground">
-                      {normalizedQuery.length > 0 ? `Результати за запитом "${searchValue}"` : "Глобальний пошук"}
+                      {normalizedQuery.length > 0 
+                        ? `${t("resultsFor", "search")} "${searchValue}"` 
+                        : t("globalSearch", "search")}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {isLoading
-                        ? "Оновлюємо дані..."
+                        ? t("updating", "search")
                         : normalizedQuery.length === 0
-                          ? "Швидка навігація"
-                          : `Знайдено ${totalResults} результатів`}
+                          ? t("quickNav", "search")
+                          : `${t("found", "search")} ${totalResults} ${t("results", "search")}`}
                     </p>
                   </div>
 

@@ -40,6 +40,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
 import { useToast } from "@/components/ui/use-toast"
+import { useTranslation } from "@/hooks/use-translation"
 
 /* ─────────────────── helpers ─────────────────── */
 
@@ -117,18 +118,12 @@ function SectionCard({
 
 /* ─────────────────── theme cards ─────────────────── */
 
-const themeOptions: { value: AppTheme; label: string; icon: typeof Sun; desc: string }[] = [
-  { value: "light", label: "Світла", icon: Sun, desc: "Яскрава тема для робочого дня" },
-  { value: "dark", label: "Темна", icon: Moon, desc: "М'яке підсвічування для очей" },
-  { value: "system", label: "Системна", icon: Monitor, desc: "Автоматично за налаштуванням ОС" },
-]
-
 function ThemeCard({
   option,
   isActive,
   onClick,
 }: {
-  option: (typeof themeOptions)[0]
+  option: { value: AppTheme; label: string; icon: typeof Sun; desc: string }
   isActive: boolean
   onClick: () => void
 }) {
@@ -183,9 +178,16 @@ export default function SettingsPage() {
   const { settings, updateSetting, resetSettings } = useSettings()
   const { setTheme } = useTheme()
   const { toast } = useToast()
+  const { t } = useTranslation()
   const [resetting, setResetting] = useState(false)
 
   if (!user) return null
+
+  const themeOptions: { value: AppTheme; label: string; icon: typeof Sun; desc: string }[] = [
+    { value: "light", label: t("themeLight", "settings"), icon: Sun, desc: t("themeLightDesc", "settings") },
+    { value: "dark", label: t("themeDark", "settings"), icon: Moon, desc: t("themeDarkDesc", "settings") },
+    { value: "system", label: t("themeSystem", "settings"), icon: Monitor, desc: t("themeSystemDesc", "settings") },
+  ]
 
   const handleThemeChange = (value: AppTheme) => {
     updateSetting("theme", value)
@@ -199,8 +201,8 @@ export default function SettingsPage() {
     setTimeout(() => {
       setResetting(false)
       toast({
-        title: "Налаштування скинуто",
-        description: "Всі параметри повернено до значень за замовчуванням.",
+        title: t("resetSuccessTitle", "settings"),
+        description: t("resetSuccessDesc", "settings"),
       })
     }, 400)
   }
@@ -208,8 +210,8 @@ export default function SettingsPage() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <PageHeader
-        title="Налаштування"
-        description="Керуйте параметрами системи під свої потреби"
+        title={t("title", "settings")}
+        description={t("description", "settings")}
       >
         <button
           onClick={handleReset}
@@ -220,7 +222,7 @@ export default function SettingsPage() {
           )}
         >
           <RotateCcw className={cn("size-4", resetting && "animate-spin")} />
-          Скинути
+          {resetting ? t("resetting", "settings") : t("reset", "settings")}
         </button>
       </PageHeader>
 
@@ -231,16 +233,16 @@ export default function SettingsPage() {
           <SectionCard
             icon={Bell}
             iconClassName="bg-blue-500/10 text-blue-500"
-            title="Повідомлення"
-            description="Налаштуйте, як і коли ви отримуєте сповіщення"
+            title={t("notifications", "settings")}
+            description={t("notificationsDesc", "settings")}
           >
             <SettingRow
               icon={settings.notificationsEnabled ? Bell : BellOff}
               iconClassName={settings.notificationsEnabled
                 ? "bg-blue-500/10 text-blue-500"
                 : "bg-muted text-muted-foreground"}
-              label="Push-сповіщення"
-              description="Отримувати сповіщення в браузері про нові події"
+              label={t("pushNotifications", "settings")}
+              description={t("pushNotificationsDesc", "settings")}
             >
               <Switch
                 id="notifications-enabled"
@@ -254,8 +256,8 @@ export default function SettingsPage() {
             <SettingRow
               icon={Volume2}
               iconClassName="bg-violet-500/10 text-violet-500"
-              label="Звукові сповіщення"
-              description="Відтворювати звук при новому повідомленні"
+              label={t("soundNotifications", "settings")}
+              description={t("soundNotificationsDesc", "settings")}
             >
               <Switch
                 id="sound-enabled"
@@ -270,8 +272,8 @@ export default function SettingsPage() {
             <SettingRow
               icon={Mail}
               iconClassName="bg-emerald-500/10 text-emerald-500"
-              label="Email-сповіщення"
-              description="Отримувати дублікати сповіщень на email"
+              label={t("emailNotifications", "settings")}
+              description={t("emailNotificationsDesc", "settings")}
             >
               <Switch
                 id="email-notifications"
@@ -286,14 +288,14 @@ export default function SettingsPage() {
                 <Separator />
                 <div className="py-2">
                   <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Типи сповіщень
+                    {t("notificationTypes", "settings")}
                   </p>
 
                   <SettingRow
                     icon={ShoppingCart}
                     iconClassName="bg-orange-500/10 text-orange-500"
-                    label="Нові замовлення"
-                    description="Сповіщення про створення нових замовлень"
+                    label={t("newOrders", "settings")}
+                    description={t("newOrdersDesc", "settings")}
                     className="py-3"
                   >
                     <Switch
@@ -306,8 +308,8 @@ export default function SettingsPage() {
                   <SettingRow
                     icon={RefreshCw}
                     iconClassName="bg-cyan-500/10 text-cyan-500"
-                    label="Зміни статусів"
-                    description="Сповіщення про зміну статусу замовлень"
+                    label={t("statusChanges", "settings")}
+                    description={t("statusChangesDesc", "settings")}
                     className="py-3"
                   >
                     <Switch
@@ -320,8 +322,8 @@ export default function SettingsPage() {
                   <SettingRow
                     icon={CalendarClock}
                     iconClassName="bg-pink-500/10 text-pink-500"
-                    label="Записи на прийом"
-                    description="Нагадування про заплановані візити"
+                    label={t("appointments", "settings")}
+                    description={t("appointmentsDesc", "settings")}
                     className="py-3"
                   >
                     <Switch
@@ -339,13 +341,13 @@ export default function SettingsPage() {
           <SectionCard
             icon={Palette}
             iconClassName="bg-purple-500/10 text-purple-500"
-            title="Зовнішній вигляд"
-            description="Оберіть тему та налаштуйте відображення інтерфейсу"
+            title={t("appearance", "settings")}
+            description={t("appearanceDesc", "settings")}
           >
             {/* Theme picker */}
             <div className="py-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Тема оформлення
+                {t("theme", "settings")}
               </p>
               <div className="grid grid-cols-3 gap-3">
                 {themeOptions.map((opt) => (
@@ -364,8 +366,8 @@ export default function SettingsPage() {
             <SettingRow
               icon={Minimize2}
               iconClassName="bg-teal-500/10 text-teal-500"
-              label="Компактний режим"
-              description="Зменшити відступи та розміри елементів для більшого контенту"
+              label={t("compactMode", "settings")}
+              description={t("compactModeDesc", "settings")}
             >
               <Switch
                 id="compact-mode"
@@ -379,14 +381,14 @@ export default function SettingsPage() {
           <SectionCard
             icon={Globe}
             iconClassName="bg-amber-500/10 text-amber-500"
-            title="Регіональні"
-            description="Мова інтерфейсу та формат дати"
+            title={t("regional", "settings")}
+            description={t("regionalDesc", "settings")}
           >
             <SettingRow
               icon={Globe}
               iconClassName="bg-amber-500/10 text-amber-500"
-              label="Мова інтерфейсу"
-              description="Основна мова системи"
+              label={t("language", "settings")}
+              description={t("languageDesc", "settings")}
             >
               <Select
                 value={settings.language}
@@ -407,8 +409,8 @@ export default function SettingsPage() {
             <SettingRow
               icon={Calendar}
               iconClassName="bg-rose-500/10 text-rose-500"
-              label="Формат дати"
-              description="Як відображати дати в системі"
+              label={t("dateFormat", "settings")}
+              description={t("dateFormatDesc", "settings")}
             >
               <Select
                 value={settings.dateFormat}
@@ -430,14 +432,14 @@ export default function SettingsPage() {
           <SectionCard
             icon={Table2}
             iconClassName="bg-indigo-500/10 text-indigo-500"
-            title="Таблиці та дані"
-            description="Налаштування рядків, меж та порядку таблиць"
+            title={t("tables", "settings")}
+            description={t("tablesDesc", "settings")}
           >
             <SettingRow
               icon={Columns3}
               iconClassName="bg-indigo-500/10 text-indigo-500"
-              label="Рядків на сторінку"
-              description="Кількість рядків, що відображаються в таблицях"
+              label={t("rowsPerPage", "settings")}
+              description={t("rowsPerPageDesc", "settings")}
             >
               <Select
                 value={settings.tableRowsPerPage.toString()}
@@ -460,8 +462,8 @@ export default function SettingsPage() {
             <SettingRow
               icon={SeparatorHorizontal}
               iconClassName="bg-sky-500/10 text-sky-500"
-              label="Межі таблиць"
-              description="Показувати розділові лінії між рядками"
+              label={t("tableBorders", "settings")}
+              description={t("tableBordersDesc", "settings")}
             >
               <Switch
                 id="show-table-borders"
@@ -474,7 +476,7 @@ export default function SettingsPage() {
           {/* ═══════ INFO FOOTER ═══════ */}
           <div className="flex items-center justify-center gap-2 pb-6 pt-2 text-xs text-muted-foreground/60">
             <Settings className="size-3.5" />
-            <span>Налаштування зберігаються автоматично у вашому браузері</span>
+            <span>{t("autoSave", "settings")}</span>
           </div>
 
         </div>

@@ -20,11 +20,13 @@ import { StatusBadge } from "@/components/status-badge"
 import { CalendarDays, Clock, User, Car, Loader2, Wrench, AlertCircle, History, CalendarClock } from "lucide-react"
 import { useAppointments } from "@/lib/appointments-context"
 import { useAuth } from "@/lib/auth-context"
+import { useTranslation } from "@/hooks/use-translation"
 
 
 export default function AppointmentsPage() {
   const { appointments, isLoading, fetchAppointments, reschedule } = useAppointments()
   const { user } = useAuth()
+  const { t, lang } = useTranslation()
 
   const [rescheduleOpen, setRescheduleOpen] = useState(false)
   const [rescheduleTarget, setRescheduleTarget] = useState<{ id: number; scheduledAt: string; estimatedMin: number | null } | null>(null)
@@ -63,16 +65,17 @@ export default function AppointmentsPage() {
   )
 
   function formatDate(dateStr: string) {
-    if (dateStr === "unknown") return "Невідома дата"
+    if (dateStr === "unknown") return t("unknownDate", "calendarPage")
     const date = new Date(dateStr + "T00:00:00")
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const tomorrow = new Date(today)
     tomorrow.setDate(tomorrow.getDate() + 1)
 
-    if (date.getTime() === today.getTime()) return "Сьогодні"
-    if (date.getTime() === tomorrow.getTime()) return "Завтра"
-    return date.toLocaleDateString("uk-UA", {
+    if (date.getTime() === today.getTime()) return t("today", "calendarPage")
+    if (date.getTime() === tomorrow.getTime()) return t("tomorrow", "calendarPage")
+    
+    return date.toLocaleDateString(lang === "uk" ? "uk-UA" : "en-US", {
       weekday: "long",
       day: "numeric",
       month: "long",
@@ -81,7 +84,7 @@ export default function AppointmentsPage() {
 
   function formatTime(isoStr: string) {
     const d = new Date(isoStr)
-    return d.toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })
+    return d.toLocaleTimeString(lang === "uk" ? "uk-UA" : "en-US", { hour: "2-digit", minute: "2-digit" })
   }
 
 
@@ -91,7 +94,7 @@ export default function AppointmentsPage() {
     setRescheduleTarget({ id: appt.id, scheduledAt: appt.scheduledAt, estimatedMin: appt.estimatedMin })
     setRescheduleForm({
       date: d.toISOString().split("T")[0],
-      time: d.toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" }),
+      time: d.toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit", hour12: false }),
       estimatedMin: appt.estimatedMin?.toString() || "",
     })
     setRescheduleOpen(true)
@@ -106,30 +109,38 @@ export default function AppointmentsPage() {
     const result = await reschedule(rescheduleTarget.id, scheduledAt, estimatedMin)
     if (result.success) {
       setRescheduleOpen(false)
-      toast({ title: "Запис перенесено", variant: "success" })
+      toast({ title: t("rescheduleSuccess", "calendarPage"), variant: "success" })
       fetchNotifications()
     } else {
-      toast({ title: "Помилка перенесення", description: result.error, variant: "destructive" })
+      toast({ title: t("rescheduleError", "calendarPage"), description: result.error || t("error", "common"), variant: "destructive" })
     }
   }
 
   const descriptions: Record<string, string> = {
-    admin: "Планування та управління записами на сервіс",
-    manager: "Планування та управління записами на сервіс",
-    mechanic: "Ваші призначені записи",
-    client: "Перегляд запланованих записів",
+    admin: t("descriptionStaff", "calendarPage"),
+    manager: t("descriptionStaff", "calendarPage"),
+    mechanic: t("descriptionMechanic", "calendarPage"),
+    client: t("descriptionClient", "calendarPage"),
   }
 
-  const pluralize = (count: number) => {
-    if (count === 1) return "запис"
-    if (count >= 2 && count <= 4) return "записи"
-    return "записів"
+  const pluralizeAppointments = (count: number) => {
+    if (lang !== "uk") {
+      return count === 1 ? t("record_1", "calendarPage") : t("record_2", "calendarPage")
+    }
+    
+    const lastDigit = count % 10
+    const lastTwoDigits = count % 100
+
+    if (lastTwoDigits >= 11 && lastTwoDigits <= 19) return t("record_5", "calendarPage")
+    if (lastDigit === 1) return t("record_1", "calendarPage")
+    if (lastDigit >= 2 && lastDigit <= 4) return t("record_2", "calendarPage")
+    return t("record_5", "calendarPage")
   }
 
   return (
     <div className="flex h-full flex-1 flex-col overflow-hidden">
       <PageHeader
-        title={role === "client" ? "Мої записи" : "Записи на сервіс"}
+        title={role === "client" ? t("myAppointments", "calendarPage") : t("serviceAppointments", "calendarPage")}
         description={descriptions[role] || ""}
       />
 
@@ -139,12 +150,12 @@ export default function AppointmentsPage() {
             <TabsList>
               <TabsTrigger value="active">
                 <CalendarDays className="mr-1.5 size-3.5" />
-                Активні
+                {t("active", "calendarPage")}
                 <span className="ml-1.5 text-xs text-muted-foreground">({activeCounts.active})</span>
               </TabsTrigger>
               <TabsTrigger value="history">
                 <History className="mr-1.5 size-3.5" />
-                Історія
+                {t("history", "calendarPage")}
                 <span className="ml-1.5 text-xs text-muted-foreground">({activeCounts.history})</span>
               </TabsTrigger>
             </TabsList>
@@ -162,7 +173,7 @@ export default function AppointmentsPage() {
                 <h3 className="mb-3 text-sm font-semibold text-foreground">
                   {formatDate(date)}
                   <span className="ml-2 text-xs font-normal text-muted-foreground">
-                    {grouped[date].length} {pluralize(grouped[date].length)}
+                    {grouped[date].length} {pluralizeAppointments(grouped[date].length)}
                   </span>
                 </h3>
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -187,7 +198,7 @@ export default function AppointmentsPage() {
                                   </p>
                                   {appt.estimatedMin && (
                                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                                      ~{appt.estimatedMin} хв
+                                      ~{appt.estimatedMin} {t("min", "calendarPage")}
                                     </p>
                                   )}
                                 </div>
@@ -199,11 +210,11 @@ export default function AppointmentsPage() {
                                     variant="ghost"
                                     size="icon"
                                     className="size-7"
-                                    title="Перенести запис"
+                                    title={t("reschedule", "calendarPage")}
                                     onClick={() => openReschedule(appt)}
                                   >
                                     <CalendarClock className="size-3.5" />
-                                    <span className="sr-only">Перенести</span>
+                                    <span className="sr-only">{t("reschedule", "calendarPage")}</span>
                                   </Button>
                                 )}
                               </div>
@@ -216,11 +227,11 @@ export default function AppointmentsPage() {
                                 <div className="flex items-center gap-1.5 mb-1">
                                   <AlertCircle className="size-3.5 text-muted-foreground" />
                                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-                                    Опис проблеми
+                                    {t("problemDescription", "calendarPage")}
                                   </p>
                                 </div>
                                 <p className="text-sm font-medium text-foreground whitespace-pre-wrap line-clamp-3" title={appt.order?.description}>
-                                  {(appt.order?.description || "Опис відсутній").replace(/^Бажана дата:\s*\S+\s*/i, "").trim() || "Опис відсутній"}
+                                  {(appt.order?.description || t("noDescription", "calendarPage")).replace(/^Бажана дата:\s*\S+\s*/i, "").trim() || t("noDescription", "calendarPage")}
                                 </p>
                               </div>
 
@@ -238,7 +249,7 @@ export default function AppointmentsPage() {
                                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                     <Car className="size-3.5 shrink-0" />
                                     <span className="truncate font-medium text-foreground/80">
-                                      {car.brand} {car.model} • {car.plate}
+                                      {car.brand} {car.model} • {car.plate || t("noNumbers", "orders")}
                                     </span>
                                   </div>
                                 )}
@@ -246,7 +257,7 @@ export default function AppointmentsPage() {
                                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                     <Wrench className="size-3.5 shrink-0" />
                                     <span className="truncate">
-                                      Механік: {mechanic.firstName} {mechanic.lastName}
+                                      {t("mechanic", "calendarPage")}: {mechanic.firstName} {mechanic.lastName}
                                     </span>
                                   </div>
                                 )}
@@ -275,8 +286,8 @@ export default function AppointmentsPage() {
                   )}
                   <p className="mt-4 text-sm font-medium text-muted-foreground">
                     {tab === "history"
-                      ? "Історія записів порожня"
-                      : role === "client" ? "У вас немає запланованих записів" : "Немає активних записів"}
+                      ? t("noAppointmentsHistory", "calendarPage")
+                      : role === "client" ? t("noPlannedAppointments", "calendarPage") : t("noActiveAppointments", "calendarPage")}
                   </p>
                 </CardContent>
               </Card>
@@ -289,12 +300,12 @@ export default function AppointmentsPage() {
       <Dialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Перенести запис</DialogTitle>
+            <DialogTitle>{t("rescheduleTitle", "calendarPage")}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="r-date">Дата</Label>
+                <Label htmlFor="r-date">{t("dateLabel", "calendarPage")}</Label>
                 <Input
                   id="r-date"
                   type="date"
@@ -303,7 +314,7 @@ export default function AppointmentsPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="r-time">Час</Label>
+                <Label htmlFor="r-time">{t("timeLabel", "calendarPage")}</Label>
                 <Input
                   id="r-time"
                   type="time"
@@ -313,23 +324,23 @@ export default function AppointmentsPage() {
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="r-est">Орієнтовний час (хв)</Label>
+              <Label htmlFor="r-est">{t("estTimeLabel", "calendarPage")}</Label>
               <Input
                 id="r-est"
                 type="number"
                 min={0}
                 value={rescheduleForm.estimatedMin}
                 onChange={(e) => setRescheduleForm({ ...rescheduleForm, estimatedMin: e.target.value })}
-                placeholder="Наприклад: 60"
+                placeholder={t("placeholderEst", "calendarPage")}
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRescheduleOpen(false)}>
-              Скасувати
+              {t("cancel", "common")}
             </Button>
             <Button onClick={handleReschedule}>
-              Перенести
+              {t("reschedule", "calendarPage")}
             </Button>
           </DialogFooter>
         </DialogContent>

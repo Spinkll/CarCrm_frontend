@@ -26,5 +26,10 @@ export function SettingsApplier() {
     }
   }, [settings.compactMode])
 
+  // Sync html lang attribute
+  useEffect(() => {
+    document.documentElement.lang = settings.language || "uk"
+  }, [settings.language])
+
   return null
 }

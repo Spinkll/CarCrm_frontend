@@ -30,8 +30,8 @@ import { Button } from "@/components/ui/button"
 import { Loader2, Banknote, Users, TrendingUp, Eye, Percent, Settings, Briefcase } from "lucide-react"
 import api from "@/lib/api"
 import { format } from "date-fns"
-import { uk } from "date-fns/locale"
 import { cn } from "@/lib/utils"
+import { useTranslation } from "@/hooks/use-translation"
 
 interface WorkDetail {
     orderId: number
@@ -53,19 +53,9 @@ interface EmployeePayroll {
     details: WorkDetail[]
 }
 
-const monthNames = [
-    "Січень", "Лютий", "Березень", "Квітень", "Травень", "Червень",
-    "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень"
-]
-
-const roleConfig: Record<string, { label: string; icon: any; className: string }> = {
-    ADMIN: { label: "Адміністратор", icon: Briefcase, className: "bg-primary/15 text-primary border-primary/30" },
-    MECHANIC: { label: "Механік", icon: Settings, className: "bg-orange-100 text-orange-700 border-orange-200" },
-    MANAGER: { label: "Менеджер", icon: Briefcase, className: "bg-purple-100 text-purple-700 border-purple-200" },
-}
-
 export default function PayrollPage() {
     const { user } = useAuth()
+    const { t, lang } = useTranslation()
     const now = new Date()
 
     const [selectedMonth, setSelectedMonth] = useState(String(now.getMonth() + 1))
@@ -76,6 +66,14 @@ export default function PayrollPage() {
 
     const [detailEmployee, setDetailEmployee] = useState<EmployeePayroll | null>(null)
     const [detailOpen, setDetailOpen] = useState(false)
+
+    const monthNames = (t("months", "payroll") as unknown as string[]) || []
+
+    const roleConfig: Record<string, { label: string; icon: any; className: string }> = {
+        ADMIN: { label: t("admin", "employees"), icon: Briefcase, className: "bg-primary/15 text-primary border-primary/30" },
+        MECHANIC: { label: t("mechanic", "employees"), icon: Settings, className: "bg-orange-100 text-orange-700 border-orange-200" },
+        MANAGER: { label: t("manager", "employees"), icon: Briefcase, className: "bg-purple-100 text-purple-700 border-purple-200" },
+    }
 
     const years = useMemo(() => {
         const result: string[] = []
@@ -96,8 +94,8 @@ export default function PayrollPage() {
                 const summary = response.data?.summary
                 setData(Array.isArray(summary) ? summary : [])
             } catch (err: any) {
-                console.error("Помилка завантаження зарплат:", err)
-                setError(err.response?.data?.message || "Не вдалося завантажити дані про зарплати")
+                console.error("Failed to fetch payroll:", err)
+                setError(err.response?.data?.message || t("fetchError", "payroll"))
             } finally {
                 setIsLoading(false)
             }
@@ -106,7 +104,7 @@ export default function PayrollPage() {
         if (user?.role === "ADMIN" || user?.role === "MANAGER") {
             fetchPayroll()
         }
-    }, [user, selectedMonth, selectedYear])
+    }, [user, selectedMonth, selectedYear, t])
 
     if (!user || (user.role !== "ADMIN" && user.role !== "MANAGER")) return null
 
@@ -122,8 +120,8 @@ export default function PayrollPage() {
     return (
         <div className="flex flex-1 flex-col overflow-hidden">
             <PageHeader
-                title="Зарплати працівників"
-                description="Перегляд нарахувань та деталізація по кожному працівнику"
+                title={t("title", "payroll")}
+                description={t("description", "payroll")}
             />
 
             <div className="flex-1 overflow-auto p-6 space-y-6">
@@ -177,39 +175,41 @@ export default function PayrollPage() {
                         <div className="grid gap-4 md:grid-cols-3">
                             <Card className="border-border bg-card">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Загальний фонд зарплат</CardTitle>
+                                    <CardTitle className="text-sm font-medium">{t("totalFund", "payroll")}</CardTitle>
                                     <Banknote className="size-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
                                     <div className="text-2xl font-bold">{totalFund.toLocaleString()} ₴</div>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        {monthNames[Number(selectedMonth) - 1]} {selectedYear}
+                                        {t("fundPeriod", "payroll")
+                                            .replace("{month}", monthNames[Number(selectedMonth) - 1])
+                                            .replace("{year}", selectedYear)}
                                     </p>
                                 </CardContent>
                             </Card>
 
                             <Card className="border-border bg-card">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Працівників з нарахуваннями</CardTitle>
+                                    <CardTitle className="text-sm font-medium">{t("employeesCount", "payroll")}</CardTitle>
                                     <Users className="size-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
                                     <div className="text-2xl font-bold">{employeesWithPayroll}</div>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        з {data.length} загалом
+                                        {t("employeesSub", "payroll").replace("{total}", data.length.toString())}
                                     </p>
                                 </CardContent>
                             </Card>
 
                             <Card className="border-border bg-card">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Середня зарплата</CardTitle>
+                                    <CardTitle className="text-sm font-medium">{t("avgSalary", "payroll")}</CardTitle>
                                     <TrendingUp className="size-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
                                     <div className="text-2xl font-bold">{avgSalary.toLocaleString()} ₴</div>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        на одного працівника
+                                        {t("avgSub", "payroll")}
                                     </p>
                                 </CardContent>
                             </Card>
@@ -218,29 +218,31 @@ export default function PayrollPage() {
                         {/* Таблиця працівників */}
                         <Card className="border-border bg-card">
                             <CardHeader>
-                                <CardTitle>Деталізація по працівниках</CardTitle>
+                                <CardTitle>{t("breakdownTitle", "payroll")}</CardTitle>
                                 <CardDescription>
-                                    Нарахування за {monthNames[Number(selectedMonth) - 1].toLowerCase()} {selectedYear} р.
+                                    {t("breakdownDesc", "payroll")
+                                        .replace("{month}", monthNames[Number(selectedMonth) - 1].toLowerCase())
+                                        .replace("{year}", selectedYear)}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="p-0">
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="border-border hover:bg-transparent">
-                                            <TableHead className="pl-6 text-muted-foreground">Працівник</TableHead>
-                                            <TableHead className="text-center text-muted-foreground">Роль</TableHead>
-                                            <TableHead className="text-right text-muted-foreground">Ставка</TableHead>
-                                            <TableHead className="text-right text-muted-foreground">% від робіт</TableHead>
-                                            <TableHead className="text-right text-muted-foreground">Від робіт</TableHead>
-                                            <TableHead className="text-right text-muted-foreground font-semibold">До виплати</TableHead>
-                                            <TableHead className="pr-6 text-right text-muted-foreground">Дії</TableHead>
+                                            <TableHead className="pl-6 text-muted-foreground">{t("tableHeader_employee", "payroll")}</TableHead>
+                                            <TableHead className="text-center text-muted-foreground">{t("tableHeader_role", "payroll")}</TableHead>
+                                            <TableHead className="text-right text-muted-foreground">{t("tableHeader_base", "payroll")}</TableHead>
+                                            <TableHead className="text-right text-muted-foreground">{t("tableHeader_commission", "payroll")}</TableHead>
+                                            <TableHead className="text-right text-muted-foreground">{t("tableHeader_fromWork", "payroll")}</TableHead>
+                                            <TableHead className="text-right text-muted-foreground font-semibold">{t("tableHeader_total", "payroll")}</TableHead>
+                                            <TableHead className="pr-6 text-right text-muted-foreground">{t("tableHeader_actions", "payroll")}</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {data.length === 0 ? (
                                             <TableRow>
                                                 <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">
-                                                    Немає даних за обраний період
+                                                    {t("emptyData", "payroll")}
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
@@ -310,7 +312,7 @@ export default function PayrollPage() {
                                                                 disabled={emp.tasksCount === 0}
                                                             >
                                                                 <Eye className="size-4" />
-                                                                Деталі
+                                                                {t("detailsBtn", "payroll")}
                                                             </Button>
                                                         </TableCell>
                                                     </TableRow>
@@ -330,10 +332,10 @@ export default function PayrollPage() {
                 <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
                     <DialogHeader>
                         <DialogTitle>
-                            Деталізація: {detailEmployee?.name}
+                            {t("dialogTitle", "payroll").replace("{name}", detailEmployee?.name || "")}
                             {detailEmployee?.currentCommissionRate ? (
                                 <span className="ml-2 text-sm font-normal text-muted-foreground">
-                                    (% від робіт: {detailEmployee.currentCommissionRate}%)
+                                    {t("dialogCommission", "payroll").replace("{rate}", detailEmployee.currentCommissionRate.toString())}
                                 </span>
                             ) : null}
                         </DialogTitle>
@@ -343,19 +345,19 @@ export default function PayrollPage() {
                     {detailEmployee && (
                         <div className="grid grid-cols-3 gap-3 px-1">
                             <div className="rounded-lg bg-secondary p-3 text-center">
-                                <p className="text-xs text-muted-foreground mb-1">Ставка</p>
+                                <p className="text-xs text-muted-foreground mb-1">{t("labelBase", "payroll")}</p>
                                 <p className="font-semibold text-foreground">
                                     {(Number(detailEmployee.baseSalary) || 0).toLocaleString()} ₴
                                 </p>
                             </div>
                             <div className="rounded-lg bg-secondary p-3 text-center">
-                                <p className="text-xs text-muted-foreground mb-1">Від робіт</p>
+                                <p className="text-xs text-muted-foreground mb-1">{t("labelFromWork", "payroll")}</p>
                                 <p className="font-semibold text-foreground">
                                     {(Number(detailEmployee.commissionEarnings) || 0).toLocaleString()} ₴
                                 </p>
                             </div>
                             <div className="rounded-lg bg-primary/10 p-3 text-center">
-                                <p className="text-xs text-muted-foreground mb-1">До виплати</p>
+                                <p className="text-xs text-muted-foreground mb-1">{t("labelTotal", "payroll")}</p>
                                 <p className="font-bold text-primary text-lg">
                                     {(Number(detailEmployee.totalEarnings) || 0).toLocaleString()} ₴
                                 </p>
@@ -368,11 +370,11 @@ export default function PayrollPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow className="border-border hover:bg-transparent">
-                                        <TableHead className="pl-4 text-muted-foreground">№ Замовлення</TableHead>
-                                        <TableHead className="text-muted-foreground">Автомобіль</TableHead>
-                                        <TableHead className="text-muted-foreground">Опис</TableHead>
-                                        <TableHead className="text-right text-muted-foreground">Зароблено</TableHead>
-                                        <TableHead className="pr-4 text-right text-muted-foreground">Дата</TableHead>
+                                        <TableHead className="pl-4 text-muted-foreground">{t("modalTableHeader_order", "payroll")}</TableHead>
+                                        <TableHead className="text-muted-foreground">{t("modalTableHeader_car", "payroll")}</TableHead>
+                                        <TableHead className="text-muted-foreground">{t("modalTableHeader_desc", "payroll")}</TableHead>
+                                        <TableHead className="text-right text-muted-foreground">{t("modalTableHeader_earned", "payroll")}</TableHead>
+                                        <TableHead className="pr-4 text-right text-muted-foreground">{t("modalTableHeader_date", "payroll")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -397,17 +399,17 @@ export default function PayrollPage() {
                             </Table>
                         ) : (
                             <div className="py-12 text-center text-muted-foreground">
-                                Цей працівник не має виконаних робіт за обраний період
+                                {t("emptyDetails", "payroll")}
                             </div>
                         )}
                     </div>
                     {detailEmployee && detailEmployee.details.length > 0 && (
                         <div className="border-t border-border pt-4 flex justify-between items-center">
                             <span className="text-sm text-muted-foreground">
-                                Всього задач: {detailEmployee.tasksCount}
+                                {t("footerTasks", "payroll").replace("{count}", detailEmployee.tasksCount.toString())}
                             </span>
                             <span className="text-lg font-bold text-foreground">
-                                Від робіт: {(Number(detailEmployee.commissionEarnings) || 0).toLocaleString()} ₴
+                                {t("footerComm", "payroll").replace("{amount}", (Number(detailEmployee.commissionEarnings) || 0).toLocaleString())}
                             </span>
                         </div>
                     )}

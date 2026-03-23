@@ -52,12 +52,14 @@ import type { Customer } from "@/lib/customers-context"
 import { useVehicles } from "@/lib/vehicles-context"
 import { useOrders } from "@/lib/orders-context"
 import { toast } from "@/hooks/use-toast"
+import { useTranslation } from "@/hooks/use-translation"
 
 export default function CustomersPage() {
   const { user } = useAuth()
   const { customers, createCustomer, blockCustomer, unblockCustomer, isLoading: customersLoading } = useCustomers()
   const { vehicles, isLoading: vehiclesLoading } = useVehicles()
   const { orders, isLoading: ordersLoading } = useOrders()
+  const { t } = useTranslation()
 
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -128,9 +130,9 @@ export default function CustomersPage() {
     if (result.success) {
       setForm({ firstName: "", lastName: "", email: "", phone: "" })
       setOpen(false)
-      toast({ title: "Клієнта додано", variant: "success" })
+      toast({ title: t("addSuccess", "customers"), variant: "success" })
     } else {
-      toast({ title: result.error || "Не вдалося додати клієнта", variant: "destructive" })
+      toast({ title: result.error || t("addError", "customers"), variant: "destructive" })
     }
   }
 
@@ -148,18 +150,18 @@ export default function CustomersPage() {
     if (res.success) {
       setBlockDialogOpen(false)
       setCustomerToBlock(null)
-      toast({ title: "Клієнта заблоковано", variant: "success" })
+      toast({ title: t("blockSuccess", "customers"), variant: "success" })
     } else {
-      toast({ title: res.error || "Не вдалося заблокувати клієнта", variant: "destructive" })
+      toast({ title: res.error || t("blockError", "customers"), variant: "destructive" })
     }
   }
 
   async function handleUnblock(userId: number) {
     const res = await unblockCustomer(userId)
     if (res.success) {
-      toast({ title: "Клієнта розблоковано", variant: "success" })
+      toast({ title: t("unblockSuccess", "customers"), variant: "success" })
     } else {
-      toast({ title: res.error || "Не вдалося розблокувати клієнта", variant: "destructive" })
+      toast({ title: res.error || t("unblockError", "customers"), variant: "destructive" })
     }
   }
 
@@ -171,27 +173,27 @@ export default function CustomersPage() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <PageHeader
-        title="Клієнти"
-        description={user.role === "MECHANIC" ? "Перегляд інформації про клієнтів" : "Управління базою клієнтів"}
+        title={t("title", "customers")}
+        description={user.role === "MECHANIC" ? t("descriptionMechanic", "customers") : t("descriptionStaff", "customers")}
       />
 
       <div className="flex-1 overflow-auto p-6">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex w-full flex-col gap-4 sm:max-w-md sm:flex-row">
             <Input
-              placeholder="Пошук клієнтів..."
+              placeholder={t("searchPlaceholder", "customers")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full bg-card"
             />
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger className="w-full sm:w-[180px] bg-card">
-                <SelectValue placeholder="Статус" />
+                <SelectValue placeholder={t("status", "customers")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ACTIVE">Активні</SelectItem>
-                <SelectItem value="ALL">Всі клієнти</SelectItem>
-                <SelectItem value="BLOCKED">Заблоковані</SelectItem>
+                <SelectItem value="ACTIVE">{t("active", "customers")}</SelectItem>
+                <SelectItem value="ALL">{t("all", "customers")}</SelectItem>
+                <SelectItem value="BLOCKED">{t("blocked", "customers")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -200,17 +202,17 @@ export default function CustomersPage() {
               <DialogTrigger asChild>
                 <Button className="gap-2 shadow-sm">
                   <Plus className="size-4" />
-                  Додати клієнта
+                  {t("addCustomer", "customers")}
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Новий клієнт</DialogTitle>
+                  <DialogTitle>{t("newCustomer", "customers")}</DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
-                      <Label htmlFor="first-name">Ім'я</Label>
+                       <Label htmlFor="first-name">{t("firstName", "customers")}</Label>
                       <Input
                         id="first-name"
                         value={form.firstName}
@@ -219,7 +221,7 @@ export default function CustomersPage() {
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="last-name">Прізвище</Label>
+                      <Label htmlFor="last-name">{t("lastName", "customers")}</Label>
                       <Input
                         id="last-name"
                         value={form.lastName}
@@ -229,7 +231,7 @@ export default function CustomersPage() {
                     </div>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">{t("email", "customers")}</Label>
                     <Input
                       id="email"
                       type="email"
@@ -239,7 +241,7 @@ export default function CustomersPage() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="phone">Телефон</Label>
+                    <Label htmlFor="phone">{t("phone", "customers")}</Label>
                     <PhoneInput
                       id="phone"
                       value={form.phone}
@@ -249,11 +251,11 @@ export default function CustomersPage() {
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>
-                    Скасувати
+                    {t("cancel")}
                   </Button>
                   <Button onClick={handleSubmit} disabled={isSubmitting}>
                     {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
-                    Додати клієнта
+                    {t("addCustomer", "customers")}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -266,19 +268,19 @@ export default function CustomersPage() {
             {isDataLoading ? (
               <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
                 <Loader2 className="mb-2 size-8 animate-spin" />
-                <p>Завантаження даних клієнтів...</p>
+                <p>{t("loading", "customers")}</p>
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
-                    <TableHead className="pl-6">Клієнт</TableHead>
-                    <TableHead>Контакти</TableHead>
-                    <TableHead>Автомобілі</TableHead>
-                    <TableHead>Замовлення</TableHead>
-                    <TableHead>Всього витрачено</TableHead>
-                    <TableHead>В системі з</TableHead>
-                    {canCreateCustomers && <TableHead className="pr-6 text-right">Дії</TableHead>}
+                    <TableHead className="pl-6">{t("customer", "customers")}</TableHead>
+                    <TableHead>{t("contacts", "customers")}</TableHead>
+                    <TableHead>{t("vehicles", "customers")}</TableHead>
+                    <TableHead>{t("orders", "customers")}</TableHead>
+                    <TableHead>{t("totalSpent", "customers")}</TableHead>
+                    <TableHead>{t("inSystemSince", "customers")}</TableHead>
+                    {canCreateCustomers && <TableHead className="pr-6 text-right">{t("actions", "customers")}</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -314,7 +316,7 @@ export default function CustomersPage() {
                               <p className="font-semibold text-foreground">
                                 {customer.firstName} {customer.lastName}
                                 {customer.isBlocked && (
-                                  <Badge variant="destructive" className="ml-2 px-1.5 py-0 text-[10px]">Заблоковано</Badge>
+                                  <Badge variant="destructive" className="ml-2 px-1.5 py-0 text-[10px]">{t("blockedBadge", "customers")}</Badge>
                                 )}
                               </p>
                               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">ID: {customer.id}</p>
@@ -359,23 +361,23 @@ export default function CustomersPage() {
                                   <AlertDialogTrigger asChild>
                                     <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-green-600">
                                       <Unlock className="size-4" />
-                                      <span className="sr-only">Розблокувати</span>
+                                      <span className="sr-only">{t("unblockTitle", "customers")}</span>
                                     </Button>
                                   </AlertDialogTrigger>
                                   <AlertDialogContent className="border-border bg-card">
                                     <AlertDialogHeader>
-                                      <AlertDialogTitle className="text-foreground">Розблокувати клієнта</AlertDialogTitle>
+                                      <AlertDialogTitle className="text-foreground">{t("unblockTitle", "customers")}</AlertDialogTitle>
                                       <AlertDialogDescription>
-                                        Ви впевнені, що хочете розблокувати <strong>{customer.firstName} {customer.lastName}</strong>?
+                                        {t("unblockConfirm", "customers")} <strong>{customer.firstName} {customer.lastName}</strong>?
                                       </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
-                                      <AlertDialogCancel className="border-border bg-secondary text-foreground hover:bg-accent">Скасувати</AlertDialogCancel>
+                                      <AlertDialogCancel className="border-border bg-secondary text-foreground hover:bg-accent">{t("cancel")}</AlertDialogCancel>
                                       <AlertDialogAction
                                         onClick={() => handleUnblock(customer.id)}
                                         className="bg-primary text-primary-foreground"
                                       >
-                                        Розблокувати
+                                        {t("unblockTitle", "customers")}
                                       </AlertDialogAction>
                                     </AlertDialogFooter>
                                   </AlertDialogContent>
@@ -388,7 +390,7 @@ export default function CustomersPage() {
                                   onClick={() => openBlockDialog(customer)}
                                 >
                                   <Lock className="size-4" />
-                                  <span className="sr-only">Заблокувати</span>
+                                  <span className="sr-only">{t("blockTitle", "customers")}</span>
                                 </Button>
                               )}
                             </div>
@@ -403,7 +405,7 @@ export default function CustomersPage() {
 
             {!isDataLoading && filtered.length === 0 && (
               <div className="py-20 text-center">
-                <p className="text-muted-foreground">Клієнтів не знайдено.</p>
+                <p className="text-muted-foreground">{t("notFound", "customers")}</p>
               </div>
             )}
 
@@ -411,15 +413,15 @@ export default function CustomersPage() {
             {!isDataLoading && filtered.length > settings.tableRowsPerPage && (
               <div className="flex items-center justify-between border-t border-border px-6 py-3">
                 <span className="text-xs text-muted-foreground">
-                  {(currentPage - 1) * settings.tableRowsPerPage + 1}–{Math.min(currentPage * settings.tableRowsPerPage, filtered.length)} з {filtered.length}
+                  {(currentPage - 1) * settings.tableRowsPerPage + 1}–{Math.min(currentPage * settings.tableRowsPerPage, filtered.length)} {t("of", "customers")} {filtered.length}
                 </span>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage <= 1} className="h-7 text-xs">
-                    Назад
+                    {t("prev", "customers")}
                   </Button>
                   <span className="text-xs text-muted-foreground">{currentPage} / {totalPages}</span>
                   <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages} className="h-7 text-xs">
-                    Далі
+                    {t("next", "customers")}
                   </Button>
                 </div>
               </div>
@@ -432,30 +434,30 @@ export default function CustomersPage() {
       <Dialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
         <DialogContent className="border-border bg-card sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-foreground">Заблокувати клієнта</DialogTitle>
+            <DialogTitle className="text-foreground">{t("blockTitle", "customers")}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <p className="text-sm text-muted-foreground">
-              Ви впевнені, що хочете заблокувати <strong>{customerToBlock?.firstName} {customerToBlock?.lastName}</strong>?
-              Клієнт не зможе записуватись на сервіс.
+              {t("blockConfirm", "customers")} <strong>{customerToBlock?.firstName} {customerToBlock?.lastName}</strong>?
+              {t("blockWarning", "customers")}
             </p>
             <div className="grid gap-2">
-              <Label htmlFor="block-reason-customer">Причина блокування (необов'язково)</Label>
+              <Label htmlFor="block-reason-customer">{t("blockReason", "customers")}</Label>
               <Input
                 id="block-reason-customer"
                 value={blockReason}
                 onChange={(e) => setBlockReason(e.target.value)}
-                placeholder="Причина..."
+                placeholder={t("blockPlaceholder", "customers")}
                 className="bg-secondary"
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setBlockDialogOpen(false)} className="border-border">
-              Скасувати
+              {t("cancel")}
             </Button>
             <Button onClick={handleBlock} disabled={isBlocking} className="bg-orange-600 hover:bg-orange-700 text-white gap-2">
-              {isBlocking ? "Блокування..." : "Заблокувати"}
+              {isBlocking ? t("blocking", "customers") : t("blockTitle", "customers")}
             </Button>
           </DialogFooter>
         </DialogContent>

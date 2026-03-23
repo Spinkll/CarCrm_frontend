@@ -18,10 +18,16 @@ import {
   Car,
 } from "lucide-react"
 
+import { useSettings } from "@/lib/settings-context"
+import { translations } from "@/lib/translations"
+
 export function MechanicDashboard() {
   const router = useRouter()
   const { filteredAppointments, customers, isLoading: isCrmLoading } = useCrm()
   const { orders, isLoading: isOrdersLoading } = useOrders()
+  const { settings } = useSettings()
+
+  const t = translations[settings.language].dashboard.mechanic
 
   const isLoading = isCrmLoading || isOrdersLoading
 
@@ -39,7 +45,6 @@ export function MechanicDashboard() {
   }, [mechanicOrders])
 
   const completedOrders = useMemo(() => {
-    // For KPIs we can check all orders, not just mechanicOrders since mechanicOrders excludes completed ones now
     return orders.filter((o) => o.status?.toLowerCase() === "completed" || o.status?.toLowerCase() === "paid")
   }, [orders])
 
@@ -53,13 +58,11 @@ export function MechanicDashboard() {
   }, [filteredAppointments])
 
   const kpis = [
-    { label: "В роботі", value: activeOrders.length, icon: ClipboardList },
-    { label: "Завершено (Усі)", value: completedOrders.length, icon: CheckCircle2 },
-    { label: "Записи на сьогодні", value: todayAppointments.length, icon: CalendarDays },
-    { label: "Відкриті замовлення", value: mechanicOrders.length, icon: Wrench },
+    { label: t.kpiWork, value: activeOrders.length, icon: ClipboardList },
+    { label: t.kpiCompletedAll, value: completedOrders.length, icon: CheckCircle2 },
+    { label: t.kpiTodayAppts, value: todayAppointments.length, icon: CalendarDays },
+    { label: t.kpiOpenOrders, value: mechanicOrders.length, icon: Wrench },
   ]
-
-
 
   if (isLoading) {
     return (
@@ -68,6 +71,8 @@ export function MechanicDashboard() {
       </div>
     )
   }
+
+  const locale = settings.language === "uk" ? "uk-UA" : "en-US"
 
   return (
     <div className="space-y-6">
@@ -93,13 +98,13 @@ export function MechanicDashboard() {
       {/* Active Orders - card-based for quick actions */}
       <Card className="border-border bg-card">
         <CardHeader className="pb-3 border-b border-border">
-          <CardTitle className="text-sm font-medium text-foreground">Мої активні замовлення</CardTitle>
+          <CardTitle className="text-sm font-medium text-foreground">{t.activeOrdersTitle}</CardTitle>
         </CardHeader>
         <CardContent className="p-3 sm:p-4">
           {activeOrders.length === 0 ? (
             <div className="flex flex-col items-center py-8 text-muted-foreground">
               <CheckCircle2 className="size-8 opacity-20" />
-              <p className="mt-2 text-sm">У вас немає активних замовлень 🎉</p>
+              <p className="mt-2 text-sm">{t.noActiveOrders}</p>
             </div>
           ) : (
             <div className="space-y-2.5">
@@ -125,11 +130,11 @@ export function MechanicDashboard() {
                         <StatusBadge status={order.status} />
                       </div>
                       <p className="text-sm font-medium text-foreground truncate">
-                        {vehicle ? `${vehicle.brand} ${vehicle.model}` : "Немає даних"}
+                        {vehicle ? `${vehicle.brand} ${vehicle.model}` : t.noData}
                         {customer ? ` — ${customer.firstName} ${customer.lastName}` : ""}
                       </p>
                       <p className="text-xs text-muted-foreground truncate mt-0.5">
-                        {order.description || "Без опису"}
+                        {order.description || t.noDescription}
                       </p>
                     </div>
 
@@ -162,14 +167,14 @@ export function MechanicDashboard() {
       {/* Today's Schedule */}
       <Card className="border-border bg-card">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-foreground">Розклад на сьогодні</CardTitle>
+          <CardTitle className="text-sm font-medium text-foreground">{t.todayScheduleTitle}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             {todayAppointments.length === 0 ? (
               <div className="flex flex-col items-center py-8 text-muted-foreground">
                 <CalendarDays className="size-8 opacity-20" />
-                <p className="mt-2 text-sm">На сьогодні записів немає</p>
+                <p className="mt-2 text-sm">{t.noScheduleToday}</p>
               </div>
             ) : (
               todayAppointments
@@ -177,7 +182,7 @@ export function MechanicDashboard() {
                 .map((appt) => {
                   const car = appt.order?.car
                   const customer = car?.user
-                  const timeStr = appt.scheduledAt ? new Date(appt.scheduledAt).toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" }) : ""
+                  const timeStr = appt.scheduledAt ? new Date(appt.scheduledAt).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" }) : ""
                   return (
                     <div
                       key={appt.id}
@@ -189,12 +194,12 @@ export function MechanicDashboard() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-sm font-medium text-foreground truncate">
-                            {timeStr} - {customer ? `${customer.firstName}` : "Клієнт"}
+                            {timeStr} - {customer ? `${customer.firstName}` : t.client}
                           </p>
                           <StatusBadge status={appt.status} />
                         </div>
                         <p className="text-xs text-muted-foreground truncate">
-                          {car ? `${car.brand} ${car.model}` : "Невідоме авто"} — {appt.order?.description || "Без опису"}
+                          {car ? `${car.brand} ${car.model}` : t.unknownVehicle} — {appt.order?.description || t.noDescription}
                         </p>
                       </div>
                     </div>

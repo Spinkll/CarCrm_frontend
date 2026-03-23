@@ -24,13 +24,16 @@ import { api } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { motion } from "framer-motion"
 import { format, addDays, isSameDay } from "date-fns"
-import { uk } from "date-fns/locale"
+import { uk, enUS } from "date-fns/locale"
+import { useTranslation } from "@/hooks/use-translation"
 
 export default function SchedulerPage() {
   const router = useRouter()
   const { appointments, isLoading, fetchAppointments, reschedule } = useAppointments()
   const { employees } = useEmployees()
   const { user } = useAuth()
+  const { t, lang } = useTranslation()
+  const ts = (key: string) => t(key, "scheduler")
   
   const [currentDate, setCurrentDate] = useState(new Date())
   const [fallbackMechanics, setFallbackMechanics] = useState<{id: number; firstName: string; lastName: string; role: string}[]>([])
@@ -103,17 +106,17 @@ export default function SchedulerPage() {
       const result = await reschedule(apptId, scheduledAt)
       
       if (!result.success) {
-        throw new Error(result.error || "Не вдалося змінити час")
+        throw new Error(result.error || t("error", "common"))
       }
 
       toast({ 
-        title: "Час оновлено", 
-        description: `Новий час: ${format(newDate, "HH:mm")}`,
+        title: ts("timeUpdated"), 
+        description: `${ts("newTime")}: ${format(newDate, "HH:mm")}`,
         variant: "success" 
       })
 
     } catch (error: any) {
-       toast({ title: "Помилка", description: error.message, variant: "destructive" })
+       toast({ title: ts("error"), description: error.message, variant: "destructive" })
     }
   }
 
@@ -123,22 +126,24 @@ export default function SchedulerPage() {
   if (isLoading) {
     return (
       <div className="flex h-full flex-1 flex-col overflow-hidden bg-background/50 backdrop-blur-3xl">
-        <PageHeader title="Планувальник" description="Візуальне управління завантаженням сервісу" />
+        <PageHeader title={ts("title")} description={ts("description")} />
         <div className="flex flex-1 items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="size-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Завантаження розкладу...</p>
+            <p className="text-sm text-muted-foreground">{ts("loading")}</p>
           </div>
         </div>
       </div>
     )
   }
 
+  const dateLocale = lang === "uk" ? uk : enUS
+
   return (
     <div className="flex h-full flex-1 flex-col overflow-hidden bg-background/50 backdrop-blur-3xl">
       <PageHeader 
-        title="Планувальник" 
-        description={canDrag ? "Перетягуйте картки для зміни часу" : "Перегляд розкладу на день"}
+        title={ts("title")} 
+        description={canDrag ? ts("dragDescription") : ts("viewDescription")}
       >
         <div className="flex items-center gap-2">
           <div className="flex items-center rounded-lg border bg-card/50 backdrop-blur-xl p-0.5 shadow-sm">
@@ -146,14 +151,14 @@ export default function SchedulerPage() {
               <ChevronLeft className="size-4" />
             </Button>
             <div className="px-3 text-xs sm:text-sm font-semibold min-w-[100px] sm:min-w-[140px] text-center">
-              {format(currentDate, "d MMMM, EE", { locale: uk })}
+              {format(currentDate, "d MMMM, EE", { locale: dateLocale })}
             </div>
             <Button variant="ghost" size="icon" className="size-8 rounded-md" onClick={() => setCurrentDate(addDays(currentDate, 1))}>
               <ChevronRight className="size-4" />
             </Button>
           </div>
           
-          <Button variant="outline" size="icon" className="size-9 bg-card/50" onClick={() => setCurrentDate(new Date())} title="Сьогодні">
+          <Button variant="outline" size="icon" className="size-9 bg-card/50" onClick={() => setCurrentDate(new Date())} title={ts("today")}>
             <CalendarClock className="size-4" />
           </Button>
         </div>
@@ -161,13 +166,12 @@ export default function SchedulerPage() {
 
       <div className="relative flex-1 overflow-auto p-3 sm:p-4 md:p-6 lg:p-8">
         {mechanics.length === 0 ? (
-          /* No mechanics */
           <div className="flex h-full items-center justify-center">
             <Card className="flex flex-col items-center gap-3 p-8 text-center border-dashed">
               <User className="size-10 text-muted-foreground/30" />
               <div>
-                <p className="text-sm font-medium text-foreground">Механіків не знайдено</p>
-                <p className="text-xs text-muted-foreground mt-1">Додайте механіків у розділі «Персонал»</p>
+                <p className="text-sm font-medium text-foreground">{ts("mechanicsNotFound")}</p>
+                <p className="text-xs text-muted-foreground mt-1">{ts("addMechanics")}</p>
               </div>
             </Card>
           </div>
@@ -187,7 +191,7 @@ export default function SchedulerPage() {
                         <User className="size-4" />
                       </div>
                       <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 mb-1">
-                        Механік
+                        {ts("mechanic")}
                       </p>
                       <p className="text-xs sm:text-sm font-semibold text-foreground/90 truncate max-w-full">
                         {mech.firstName} {mech.lastName}
@@ -230,19 +234,16 @@ export default function SchedulerPage() {
                       key={mech.id} 
                       className="flex-1 border-r border-border/50 last:border-r-0 relative group"
                     >
-                      {/* Column hover highlight */}
                       <div className="absolute inset-0 group-hover:bg-primary/[0.03] transition-colors" />
                       
-                      {/* Empty column state */}
                       {columnAppointments.length === 0 && (
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                           <p className="text-[10px] text-muted-foreground/30 rotate-[-90deg] whitespace-nowrap select-none">
-                            Немає записів
+                            {ts("noAppointments")}
                           </p>
                         </div>
                       )}
                       
-                      {/* Appointment Cards */}
                       {columnAppointments.map((appt) => {
                         const date = new Date(appt.scheduledAt)
                         const h = date.getHours()
@@ -256,7 +257,6 @@ export default function SchedulerPage() {
 
                         const cardContent = (
                           <>
-                            {/* Status Side Marker */}
                             <div className={cn(
                               "absolute top-0 left-0 w-1 h-full rounded-l-xl",
                               appt.status === "SCHEDULED" && "bg-blue-500",
@@ -282,14 +282,14 @@ export default function SchedulerPage() {
                             </div>
 
                             <p className="text-[10px] text-muted-foreground/80 leading-relaxed line-clamp-2">
-                              {appt.order?.description || "Без опису"}
+                              {appt.order?.description || ts("noDescription")}
                             </p>
                             
                             {height > 70 && (
                               <div className="mt-auto flex items-center justify-between pt-1.5 border-t border-border/50">
                                 <div className="flex items-center gap-1 text-[9px] font-medium text-muted-foreground/70">
                                   <Maximize2 className="size-2.5 text-primary/50" />
-                                  {duration} хв
+                                  {duration} {ts("min")}
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                   {ownerName && (
@@ -329,7 +329,7 @@ export default function SchedulerPage() {
                                 height: Math.max(height, 50),
                               }}
                               onDoubleClick={() => appt.orderId && router.push(`/orders-detail/${appt.orderId}`)}
-                              title="Перетягніть для зміни часу • Подвійний клік — деталі замовлення"
+                              title={ts("dragHint")}
                             >
                               {cardContent}
                             </motion.div>
@@ -353,7 +353,7 @@ export default function SchedulerPage() {
                               height: Math.max(height, 50),
                             }}
                             onClick={() => appt.orderId && router.push(`/orders-detail/${appt.orderId}`)}
-                            title="Натисніть для перегляду деталей замовлення"
+                            title={ts("clickHint")}
                           >
                             {cardContent}
                           </div>
@@ -363,7 +363,6 @@ export default function SchedulerPage() {
                   )
                 })}
                 
-                {/* Current Time Line */}
                 {isSameDay(currentDate, new Date()) && (
                   <CurrentTimeIndicator startHour={startHour} hourHeight={hourHeight} />
                 )}
@@ -378,25 +377,25 @@ export default function SchedulerPage() {
         <div className="flex flex-wrap gap-3 sm:gap-6">
           <div className="flex items-center gap-1.5 sm:gap-2">
             <div className="size-2 sm:size-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-            <span>Заплановано</span>
+            <span>{ts("scheduled")}</span>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2">
             <div className="size-2 sm:size-2.5 rounded-full bg-primary shadow-[0_0_8px_rgba(234,88,12,0.5)]" />
-            <span>Підтверджено</span>
+            <span>{ts("confirmed")}</span>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2">
             <div className="size-2 sm:size-2.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
-            <span>В роботі</span>
+            <span>{ts("inProgress")}</span>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2">
             <div className="size-2 sm:size-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
-            <span>Виконано</span>
+            <span>{ts("completed")}</span>
           </div>
         </div>
         {canDrag && (
           <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/5 text-primary border border-primary/10">
             <GripVertical className="size-3" />
-            <span>Перетягуйте картки для зміни часу</span>
+            <span>{ts("dragDescription")}</span>
           </div>
         )}
       </div>

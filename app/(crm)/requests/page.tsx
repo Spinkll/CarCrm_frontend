@@ -31,13 +31,7 @@ import { useOrders } from "@/lib/orders-context"
 import { useAppointments } from "@/lib/appointments-context"
 import { useNotifications } from "@/lib/notifications-context"
 import { toast } from "@/hooks/use-toast"
-
-const statusConfig: Record<string, { label: string; color: string }> = {
-  NEW: { label: "Нова", color: "bg-blue-100 text-blue-700 border-blue-200" },
-  IN_REVIEW: { label: "В обробці", color: "bg-yellow-100 text-yellow-700 border-yellow-200" },
-  PROCESSED: { label: "Схвалено", color: "bg-green-100 text-green-700 border-green-200" },
-  REJECTED: { label: "Відхилено", color: "bg-red-100 text-red-700 border-red-200" },
-}
+import { useTranslation } from "@/hooks/use-translation"
 
 export default function ServiceRequestsPage() {
   const { user } = useAuth()
@@ -46,11 +40,19 @@ export default function ServiceRequestsPage() {
   const { fetchAppointments } = useAppointments()
   const { fetchNotifications } = useNotifications()
   const { settings } = useSettings()
+  const { t } = useTranslation()
 
   const [approveOpen, setApproveOpen] = useState(false)
   const [rejectOpen, setRejectOpen] = useState(false)
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const statusConfig: Record<string, { label: string; color: string }> = {
+    NEW: { label: t("statusNew", "requests"), color: "bg-blue-100 text-blue-700 border-blue-200" },
+    IN_REVIEW: { label: t("statusInReview", "requests"), color: "bg-yellow-100 text-yellow-700 border-yellow-200" },
+    PROCESSED: { label: t("statusProcessed", "requests"), color: "bg-green-100 text-green-700 border-green-200" },
+    REJECTED: { label: t("statusRejected", "requests"), color: "bg-red-100 text-red-700 border-red-200" },
+  }
 
   // Форма для схвалення (призначення дати і часу)
   const [approveForm, setApproveForm] = useState({
@@ -98,7 +100,7 @@ export default function ServiceRequestsPage() {
 
   const handleApprove = async () => {
     if (!selectedRequestId || !approveForm.date || !approveForm.time) {
-      toast({ title: "Будь ласка, оберіть дату та час", variant: "destructive" })
+      toast({ title: t("selectDateTime", "requests"), variant: "destructive" })
       return
     }
 
@@ -118,10 +120,14 @@ export default function ServiceRequestsPage() {
       setApproveOpen(false)
       setSelectedRequestId(null)
       setApproveForm({ date: "", time: "10:00", estimatedMin: 60 })
-      toast({ title: "Заявку схвалено", description: "Створено замовлення та запис в календарі.", variant: "success" })
+      toast({ 
+        title: t("approveSuccess", "requests"), 
+        description: t("approveSuccessDesc", "requests"), 
+        variant: "success" 
+      })
       await fetchNotifications()
     } else {
-      toast({ title: result.error || "Не вдалося схвалити заявку", variant: "destructive" })
+      toast({ title: result.error || t("approveError", "requests"), variant: "destructive" })
     }
   }
 
@@ -139,14 +145,14 @@ export default function ServiceRequestsPage() {
 
     setRejectOpen(false)
     setSelectedRequestId(null)
-    toast({ title: "Заявку відхилено", variant: "default" })
+    toast({ title: t("rejectSuccess", "requests"), variant: "default" })
   }
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <PageHeader
-        title="Вхідні заявки"
-        description="Обробка нових звернень від клієнтів"
+        title={t("title", "requests")}
+        description={t("description", "requests")}
       />
 
       <div className="flex-1 overflow-auto p-6">
@@ -160,13 +166,13 @@ export default function ServiceRequestsPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-border hover:bg-transparent">
-                    <TableHead className="pl-6 text-muted-foreground">Клієнт</TableHead>
-                    <TableHead className="text-muted-foreground">Автомобіль</TableHead>
-                    <TableHead className="text-muted-foreground">Причина звернення</TableHead>
-                    <TableHead className="text-muted-foreground">Статус</TableHead>
-                    <TableHead className="text-muted-foreground">Дата заявки</TableHead>
-                    <TableHead className="text-muted-foreground">Бажаний час</TableHead>
-                    <TableHead className="pr-6 text-right text-muted-foreground">Дії</TableHead>
+                    <TableHead className="pl-6 text-muted-foreground">{t("client", "requests")}</TableHead>
+                    <TableHead className="text-muted-foreground">{t("car", "requests")}</TableHead>
+                    <TableHead className="text-muted-foreground">{t("reason", "requests")}</TableHead>
+                    <TableHead className="text-muted-foreground">{t("status", "requests")}</TableHead>
+                    <TableHead className="text-muted-foreground">{t("date", "requests")}</TableHead>
+                    <TableHead className="text-muted-foreground">{t("desiredTime", "requests")}</TableHead>
+                    <TableHead className="pr-6 text-right text-muted-foreground">{t("actions", "requests")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -175,7 +181,7 @@ export default function ServiceRequestsPage() {
                       <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">
                         <div className="flex flex-col items-center justify-center">
                           <MessageSquare className="mb-2 size-8 opacity-20" />
-                          <p>Нових заявок немає</p>
+                          <p>{t("noRequests", "requests")}</p>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -213,7 +219,7 @@ export default function ServiceRequestsPage() {
                                 {formatAppDate(req.scheduledAt, settings.dateFormat, { includeTime: true })}
                               </Badge>
                             ) : (
-                              <span className="text-muted-foreground text-[10px] uppercase tracking-wider opacity-60">Не вказано</span>
+                              <span className="text-muted-foreground text-[10px] uppercase tracking-wider opacity-60">{t("notSpecified", "requests")}</span>
                             )}
                           </TableCell>
                           <TableCell className="pr-6 text-right">
@@ -225,7 +231,7 @@ export default function ServiceRequestsPage() {
                                 onClick={() => openApproveModal(req)}
                               >
                                 <CheckCircle2 className="mr-1 size-4" />
-                                Одобрити
+                                {t("approve", "requests")}
                               </Button>
                               <Button
                                 size="sm"
@@ -252,12 +258,12 @@ export default function ServiceRequestsPage() {
       <Dialog open={approveOpen} onOpenChange={setApproveOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Призначити час візиту</DialogTitle>
+            <DialogTitle>{t("approveTitle", "requests")}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="date">Дата</Label>
+                <Label htmlFor="date">{t("date", "requests")}</Label>
                 <Input
                   id="date"
                   type="date"
@@ -267,7 +273,7 @@ export default function ServiceRequestsPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="time">Час</Label>
+                <Label htmlFor="time">{t("desiredTime", "requests")}</Label>
                 <Input
                   id="time"
                   type="time"
@@ -277,7 +283,7 @@ export default function ServiceRequestsPage() {
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="duration">Орієнтовна тривалість (хвилин)</Label>
+              <Label htmlFor="duration">{t("duration", "requests")}</Label>
               <div className="relative">
                 <Clock className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -294,11 +300,11 @@ export default function ServiceRequestsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setApproveOpen(false)} disabled={isSubmitting}>
-              Скасувати
+              {t("cancel")}
             </Button>
             <Button onClick={handleApprove} disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
-              Підтвердити та записати
+              {t("confirmAndRecord", "requests")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -308,20 +314,20 @@ export default function ServiceRequestsPage() {
       <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Відхилити заявку?</DialogTitle>
+            <DialogTitle>{t("rejectTitle", "requests")}</DialogTitle>
           </DialogHeader>
           <div className="py-4">
             <p className="text-sm text-muted-foreground">
-              Ви впевнені, що хочете відхилити цю заявку? Цю дію не можна скасувати.
+              {t("rejectConfirm", "requests")}
             </p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRejectOpen(false)} disabled={isSubmitting}>
-              Скасувати
+              {t("cancel")}
             </Button>
             <Button variant="destructive" onClick={handleReject} disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
-              Відхилити
+              {t("reject", "requests")}
             </Button>
           </DialogFooter>
         </DialogContent>
