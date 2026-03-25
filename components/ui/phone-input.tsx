@@ -16,6 +16,7 @@ const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
                 mask="+{380} (00) 000-00-00"
                 placeholder="+380 (XX) XXX-XX-XX"
                 inputRef={ref as any}
+                unmask={true}
                 onAccept={(value: string) => {
                     if (onValueChange) {
                         onValueChange(value)

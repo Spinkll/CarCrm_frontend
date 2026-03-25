@@ -49,7 +49,7 @@ export interface Appointment {
     carId: number
     description: string
     car: { brand: string; model: string; plate: string; userId?: number; user?: { firstName: string; lastName: string } }
-    mechanic?: { firstName: string; lastName: string }
+    mechanic?: { id: number; firstName: string; lastName: string }
   }
 }
 
@@ -130,6 +130,16 @@ export function CrmProvider({ children }: { children: React.ReactNode }) {
 
   const filteredAppointments = useMemo(() => {
     if (userRole === "ADMIN" || userRole === "MANAGER") return appointments
+    
+    if (userRole === "MECHANIC") {
+      return appointments.filter(a => {
+        // Handle nested mechanic object or direct mechanicId (depending on backend response)
+        const mechanicId = a.order?.mechanic?.id || (a.order as any)?.mechanicId
+        return Number(mechanicId) === Number(currentUserId)
+      })
+    }
+    
+    // Default CLIENT logic: only show appointments for cars owned by current user
     return appointments.filter(a => {
       const carUserId = a.order?.car?.userId
       return Number(carUserId) === Number(currentUserId)

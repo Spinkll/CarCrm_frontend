@@ -137,7 +137,11 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Phone className="size-4 text-muted-foreground" />
-                                    {user?.phone || "Телефон не вказано"}
+                                    {user?.phone ? (
+                                        user.phone.replace(/\D/g, '').length === 12 && user.phone.replace(/\D/g, '').startsWith('380') 
+                                            ? `+380 (${user.phone.replace(/\D/g, '').slice(3, 5)}) ${user.phone.replace(/\D/g, '').slice(5, 8)}-${user.phone.replace(/\D/g, '').slice(8, 10)}-${user.phone.replace(/\D/g, '').slice(10, 12)}`
+                                            : user.phone
+                                    ) : "Телефон не вказано"}
                                 </div>
                                 <p className="mt-2 text-sm text-muted-foreground">
                                     Зміна імені та електронної пошти наразі недоступна. Зверніться до адміністратора для їх зміни.

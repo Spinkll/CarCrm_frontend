@@ -21,8 +21,11 @@ import {
 import { useSettings } from "@/lib/settings-context"
 import { translations } from "@/lib/translations"
 
+import { useAuth } from "@/lib/auth-context"
+
 export function MechanicDashboard() {
   const router = useRouter()
+  const { user } = useAuth()
   const { filteredAppointments, customers, isLoading: isCrmLoading } = useCrm()
   const { orders, isLoading: isOrdersLoading } = useOrders()
   const { settings } = useSettings()
@@ -33,8 +36,13 @@ export function MechanicDashboard() {
 
   // Local calculation of mechanic's assigned orders (exclude permanently closed)
   const mechanicOrders = useMemo(() => {
-    return orders.filter(o => o.status !== "COMPLETED" && o.status !== "PAID" && o.status !== "CANCELLED")
-  }, [orders])
+    return orders.filter(o => 
+      o.mechanic?.id === user?.id && 
+      o.status !== "COMPLETED" && 
+      o.status !== "PAID" && 
+      o.status !== "CANCELLED"
+    )
+  }, [orders, user?.id])
 
   // Active orders
   const activeOrders = useMemo(() => {

@@ -794,7 +794,7 @@ export default function OrderDetailsPage() {
                           ) : (
                             <FileDown className="size-4" />
                           )}
-                          {isReceiptDownloading ? t("loading", "common") : t("receipt", "inventory")}
+                          {isReceiptDownloading ? t("loading", "common") : t("receipt", "orderDetails")}
                         </Button>
                       </>
                     ) : (

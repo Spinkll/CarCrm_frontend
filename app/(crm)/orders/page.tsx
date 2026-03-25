@@ -134,7 +134,7 @@ export default function OrdersPage() {
 
   const roleFilteredOrders = useMemo(() => {
     if (role === "ADMIN" || role === "MANAGER") return orders
-    if (role === "MECHANIC") return orders
+    if (role === "MECHANIC") return orders.filter(o => o.mechanic?.id === user?.id)
     return orders.filter(o => o.car?.userId === user?.id || (vehicles.find(v => v.id === o.carId)?.userId === user?.id))
   }, [orders, role, user?.id, vehicles])
 
