@@ -7,6 +7,14 @@ import { useAuth } from "./auth-context"
 
 import { useAppointments } from "./appointments-context"
 
+export interface OrderReview {
+  id: number
+  rating: number
+  comment: string
+  createdAt: string
+  updatedAt?: string
+}
+
 export interface Order {
   id: number
   customerId: number
@@ -26,6 +34,7 @@ export interface Order {
   }
   manager?: { id: number; firstName: string; lastName: string } | null
   mechanic?: { id: number; firstName: string; lastName: string } | null
+  review?: OrderReview | null
   items?: Array<{ id: number; name: string; quantity: number; price: number; type?: "SERVICE" | "PART" }>
 }
 

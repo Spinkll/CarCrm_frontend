@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { StatusBadge } from "@/components/status-badge"
 import { useCrm } from "@/lib/crm-context"
 import { useOrders } from "@/lib/orders-context"
@@ -16,6 +17,7 @@ import {
   Loader2,
   Eye,
   Car,
+  Star,
 } from "lucide-react"
 
 import { useSettings } from "@/lib/settings-context"
@@ -36,10 +38,10 @@ export function MechanicDashboard() {
 
   // Local calculation of mechanic's assigned orders (exclude permanently closed)
   const mechanicOrders = useMemo(() => {
-    return orders.filter(o => 
-      o.mechanic?.id === user?.id && 
-      o.status !== "COMPLETED" && 
-      o.status !== "PAID" && 
+    return orders.filter(o =>
+      o.mechanic?.id === user?.id &&
+      o.status !== "COMPLETED" &&
+      o.status !== "PAID" &&
       o.status !== "CANCELLED"
     )
   }, [orders, user?.id])
@@ -65,11 +67,24 @@ export function MechanicDashboard() {
     })
   }, [filteredAppointments])
 
+  // Calculate mechanic rating
+  const mechanicRating = useMemo(() => {
+    const reviews = orders
+      .filter((o) => o.mechanic?.id === user?.id && o.review)
+      .map((o) => o.review?.rating || 0)
+
+    if (reviews.length === 0) return null
+
+    const sum = reviews.reduce((a, b) => a + b, 0)
+    return (sum / reviews.length).toFixed(1)
+  }, [orders, user?.id])
+
   const kpis = [
-    { label: t.kpiWork, value: activeOrders.length, icon: ClipboardList },
-    { label: t.kpiCompletedAll, value: completedOrders.length, icon: CheckCircle2 },
-    { label: t.kpiTodayAppts, value: todayAppointments.length, icon: CalendarDays },
-    { label: t.kpiOpenOrders, value: mechanicOrders.length, icon: Wrench },
+    { label: t.myRating, value: mechanicRating ? `${mechanicRating}/5.0` : "—", icon: Star, color: "text-amber-500", bg: "bg-amber-500/10" },
+    { label: t.kpiWork, value: activeOrders.length, icon: ClipboardList, color: "text-primary", bg: "bg-primary/10" },
+    { label: t.kpiCompletedAll, value: completedOrders.length, icon: CheckCircle2, color: "text-primary", bg: "bg-primary/10" },
+    { label: t.kpiTodayAppts, value: todayAppointments.length, icon: CalendarDays, color: "text-primary", bg: "bg-primary/10" },
+    { label: t.kpiOpenOrders, value: mechanicOrders.length, icon: Wrench, color: "text-primary", bg: "bg-primary/10" },
   ]
 
   if (isLoading) {
@@ -85,13 +100,13 @@ export function MechanicDashboard() {
   return (
     <div className="space-y-6">
       {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {kpis.map((kpi) => (
           <Card key={kpi.label} className="border-border bg-card">
             <CardContent className="p-5">
               <div className="flex items-center gap-3">
-                <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10">
-                  <kpi.icon className="size-5 text-primary" />
+                <div className={cn("flex size-10 items-center justify-center rounded-lg", kpi.bg)}>
+                  <kpi.icon className={cn("size-5", kpi.color)} />
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">{kpi.value}</p>

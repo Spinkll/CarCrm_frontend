@@ -246,10 +246,12 @@ export function AppSidebar() {
 
       <div className="hidden border-t border-sidebar-border p-2 md:block">
         <div className="flex items-center gap-1">
-          <ThemeToggle
-            variant="icon"
-            className="shrink-0 text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-          />
+          {pathname === "/dashboard" && (
+            <ThemeToggle
+              variant="icon"
+              className="shrink-0 text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            />
+          )}
           <button
             onClick={() => setCollapsed(!collapsed)}
             className="flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"

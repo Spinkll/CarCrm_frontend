@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "@/hooks/use-toast"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import {
   Table,
@@ -338,7 +339,7 @@ export default function OrdersPage() {
                     <Table>
                       <TableHeader>
                         <TableRow className="border-border hover:bg-transparent">
-                          <TableHead className="pl-6 text-muted-foreground">{t("orderNo", "orders")}</TableHead>
+                          <TableHead className="text-muted-foreground">{t("orderNo", "orders")}</TableHead>
                           <TableHead className="text-muted-foreground">{t("vehicle", "orders")}</TableHead>
                           {role !== "CLIENT" && <TableHead className="text-muted-foreground">{t("customer", "orders")}</TableHead>}
                           {role !== "CLIENT" && <TableHead className="text-muted-foreground">{t("manager", "orders")}</TableHead>}
@@ -346,7 +347,7 @@ export default function OrdersPage() {
                           <TableHead className="text-muted-foreground">{t("description", "orders")}</TableHead>
                           <TableHead className="text-muted-foreground">{t("status", "orders")}</TableHead>
                           <TableHead className="text-muted-foreground">{t("amount", "orders")}</TableHead>
-                          <TableHead className="pr-6 text-right text-muted-foreground"></TableHead>
+                          <TableHead className="text-right text-muted-foreground"></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -356,7 +357,7 @@ export default function OrdersPage() {
 
                           return (
                             <TableRow key={order.id} className="border-border group">
-                              <TableCell className="pl-6 font-medium font-mono text-foreground">
+                              <TableCell className="font-medium font-mono text-foreground">
                                 #{order.id}
                               </TableCell>
                               <TableCell className="text-muted-foreground">
@@ -387,47 +388,49 @@ export default function OrdersPage() {
                                 {order.description}
                               </TableCell>
                               <TableCell>
-                                {canEditOrderStatus && order.status !== "PAID" && order.status !== "CANCELLED" ? (
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <button className="inline-flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity">
-                                        <StatusBadge status={order.status.toLowerCase()} />
-                                        <ChevronDown className="size-3 text-muted-foreground" />
-                                      </button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="start" className="w-48">
-                                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                                        {t("changeStatus", "orders")}
-                                      </div>
-                                      {["CONFIRMED", "IN_PROGRESS", "WAITING_PARTS", "COMPLETED", "CANCELLED"]
-                                        .filter((s) => s !== order.status)
-                                        .map((status) => (
-                                          <DropdownMenuItem
-                                            key={status}
-                                            onClick={async () => {
-                                              await updateStatus(order.id, status)
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {canEditOrderStatus && order.status !== "PAID" && order.status !== "CANCELLED" ? (
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <button className="inline-flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity">
+                                          <StatusBadge status={order.status.toLowerCase()} />
+                                          <ChevronDown className="size-3 text-muted-foreground" />
+                                        </button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="start" className="w-48">
+                                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                                          {t("changeStatus", "orders")}
+                                        </div>
+                                        {["CONFIRMED", "IN_PROGRESS", "WAITING_PARTS", "COMPLETED", "CANCELLED"]
+                                          .filter((s) => s !== order.status)
+                                          .map((status) => (
+                                            <DropdownMenuItem
+                                              key={status}
+                                              onClick={async () => {
+                                                await updateStatus(order.id, status)
 
-                                              fetchOrders(true)
-                                              refreshCrm()
-                                              fetchNotifications()
-                                              toast({ title: t("statusUpdatedSuccess", "orders"), variant: "success" })
-                                            }}
-                                            className="cursor-pointer"
-                                          >
-                                            {t(`status_${status}`, "search") || status}
-                                          </DropdownMenuItem>
-                                        ))}
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                ) : (
-                                  <StatusBadge status={order.status.toLowerCase()} />
-                                )}
+                                                fetchOrders(true)
+                                                refreshCrm()
+                                                fetchNotifications()
+                                                toast({ title: t("statusUpdatedSuccess", "orders"), variant: "success" })
+                                              }}
+                                              className="cursor-pointer"
+                                            >
+                                              {t(`status_${status}`, "search") || status}
+                                            </DropdownMenuItem>
+                                          ))}
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  ) : (
+                                    <StatusBadge status={order.status.toLowerCase()} />
+                                  )}
+                                </div>
                               </TableCell>
                               <TableCell className="font-medium text-foreground">
                                 {Number(order.totalAmount || 0).toLocaleString()} ₴
                               </TableCell>
 
-                              <TableCell className="pr-6 text-right">
+                              <TableCell className="text-right">
                                 <Button
                                   variant="ghost"
                                   size="sm"

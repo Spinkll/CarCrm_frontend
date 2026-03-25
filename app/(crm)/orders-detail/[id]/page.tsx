@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { PageHeader } from "@/components/page-header"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -13,9 +14,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
+import { Textarea } from "@/components/ui/textarea"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { StatusBadge } from "@/components/status-badge"
-import { ArrowLeft, Plus, Trash2, Wrench, Clock, ShieldCheck, Loader2, Check, ChevronsUpDown, ChevronDown, Banknote, CreditCard, Wallet, FileDown, ClipboardList, Package, AlertTriangle, User, Phone, Mail, MapPin, Landmark } from "lucide-react"
+import { ArrowLeft, Plus, Trash2, Wrench, Clock, ShieldCheck, Loader2, Check, ChevronsUpDown, ChevronDown, Banknote, CreditCard, Wallet, FileDown, ClipboardList, Package, AlertTriangle, User, Phone, Mail, MapPin, Landmark, MessageSquareText, Star } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +37,15 @@ import { useSettings } from "@/lib/settings-context"
 import { useTranslation } from "@/hooks/use-translation"
 
 // Локальні типи
+interface OrderReview {
+  id: number
+  rating: number
+  comment: string
+  createdAt: string
+  updatedAt?: string
+  client?: { firstName: string; lastName: string } | null
+}
+
 interface OrderDetails {
   id: number
   status: string
@@ -46,6 +57,7 @@ interface OrderDetails {
   customer?: { firstName: string; lastName: string; phone: string; email: string }
   manager: { id: number; firstName: string; lastName: string } | null
   mechanic: { id: number; firstName: string; lastName: string } | null
+  review?: OrderReview | null
   items: Array<{ id: number; name: string; quantity: number; price: number; type?: "SERVICE" | "PART" }>
   history: Array<{ id: number; action: string; comment: string; timestamp: string; changedBy: { firstName: string; lastName: string } }>
 }
@@ -92,10 +104,10 @@ function OrderStepper({ currentStatus }: { currentStatus: string }) {
       <div className="relative flex justify-between items-start max-w-3xl mx-auto">
         {/* Background Line */}
         <div className="absolute top-5 left-[10%] right-[10%] h-0.5 bg-secondary -z-0" />
-        
+
         {/* Active Line Progress */}
-        <div 
-          className="absolute top-5 left-[10%] h-0.5 bg-primary transition-all duration-700 ease-in-out -z-0" 
+        <div
+          className="absolute top-5 left-[10%] h-0.5 bg-primary transition-all duration-700 ease-in-out -z-0"
           style={{ width: `${currentIndex >= 0 ? (currentIndex / (steps.length - 1)) * 80 : 0}%` }}
         />
 
@@ -107,23 +119,23 @@ function OrderStepper({ currentStatus }: { currentStatus: string }) {
 
           return (
             <div key={step.key} className="flex flex-col items-center relative z-10 w-16 sm:w-24">
-              <div 
+              <div
                 className={cn(
                   "size-10 sm:size-11 rounded-full flex items-center justify-center border-2 transition-all duration-500",
-                  isCompleted ? "bg-primary border-primary text-primary-foreground shadow-sm" : 
-                  isActive ? "bg-card border-primary text-primary shadow-[0_0_20px_rgba(var(--primary),0.2)] ring-4 ring-primary/5" : 
-                  "bg-card border-secondary text-muted-foreground"
+                  isCompleted ? "bg-primary border-primary text-primary-foreground shadow-sm" :
+                    isActive ? "bg-card border-primary text-primary shadow-[0_0_20px_rgba(var(--primary),0.2)] ring-4 ring-primary/5" :
+                      "bg-card border-secondary text-muted-foreground"
                 )}
               >
                 {isCompleted && idx !== 3 ? <Check className="size-5 sm:size-6" /> : <Icon className="size-5 sm:size-5" />}
-                
+
                 {isStepWaiting && (
                   <div className="absolute -top-1 -right-1 size-5 bg-amber-500 rounded-full flex items-center justify-center border-2 border-card shadow-sm">
                     <AlertTriangle className="size-2.5 text-white" />
                   </div>
                 )}
               </div>
-              
+
               <div className="mt-3 text-center">
                 <p className={cn(
                   "text-[9px] sm:text-[11px] font-bold uppercase tracking-tight transition-colors",
@@ -193,6 +205,9 @@ export default function OrderDetailsPage() {
   const [isPaymentSubmitting, setIsPaymentSubmitting] = useState(false)
   const [isReceiptDownloading, setIsReceiptDownloading] = useState(false)
   const [isWorkOrderDownloading, setIsWorkOrderDownloading] = useState(false)
+  const [review, setReview] = useState<OrderReview | null>(null)
+  const [reviewForm, setReviewForm] = useState({ rating: 0, comment: "" })
+  const [isReviewSubmitting, setIsReviewSubmitting] = useState(false)
 
   const paymentMethodLabels: Record<string, { label: string; icon: React.ElementType }> = {
     CASH: { label: t("cash", "orderDetails"), icon: Banknote },
@@ -205,6 +220,8 @@ export default function OrderDetailsPage() {
   const canManageItems = (role === "ADMIN" || role === "MANAGER" || role === "MECHANIC") && !isOrderClosed
   const canAssign = role === "ADMIN" || role === "MANAGER"
   const canEditStatus = (role === "ADMIN" || role === "MANAGER" || role === "MECHANIC") && order?.status !== "PAID" && order?.status !== "CANCELLED"
+  const canReviewMechanic = role === "CLIENT" && !!order?.mechanic && (order?.status === "COMPLETED" || order?.status === "PAID")
+  const hasReview = !!review
 
   const managers = employees.filter(e => e.role === "MANAGER" || e.role === "ADMIN")
   const mechanics = employees.filter(e => e.role === "MECHANIC")
@@ -213,8 +230,22 @@ export default function OrderDetailsPage() {
     try {
       const { data } = await api.get(`/orders/${orderId}`)
       setOrder(data)
+      setReview(data.review ?? null)
     } catch (error) {
       console.error("Failed to fetch order", error)
+    }
+  }
+
+  const fetchReview = async () => {
+    try {
+      const { data } = await api.get(`/orders/${orderId}/review`)
+      setReview(data?.review ?? data ?? null)
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        setReview(null)
+        return
+      }
+      console.error("Failed to fetch review", error)
     }
   }
 
@@ -353,8 +384,8 @@ export default function OrderDetailsPage() {
 
   useEffect(() => {
     if (!order) setIsLoading(true)
-    
-    const promises = [fetchOrderDetails(), fetchPayments()]
+
+    const promises = [fetchOrderDetails(), fetchPayments(), fetchReview()]
     if (canAssign) promises.push(fetchEmployees())
     if (canManageItems) {
       promises.push(fetchCatalogServices())
@@ -522,6 +553,37 @@ export default function OrderDetailsPage() {
     }
   }
 
+  const handleSubmitReview = async () => {
+    if (!order?.mechanic) {
+      toast({ title: "Механіка не призначено", variant: "destructive" })
+      return
+    }
+
+    if (!reviewForm.rating) {
+      toast({ title: "Оберіть оцінку", variant: "destructive" })
+      return
+    }
+
+    setIsReviewSubmitting(true)
+    try {
+      const { data } = await api.post(`/orders/${orderId}/review`, {
+        rating: reviewForm.rating,
+        comment: reviewForm.comment.trim(),
+      })
+
+      setReview(data)
+      await fetchOrderDetails()
+      refreshOrders()
+      setReviewForm({ rating: 0, comment: "" })
+      toast({ title: "Відгук збережено", variant: "success" })
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Не вдалося зберегти відгук"
+      toast({ title: Array.isArray(msg) ? msg[0] : msg, variant: "destructive" })
+    } finally {
+      setIsReviewSubmitting(false)
+    }
+  }
+
   if (isLoading) {
     return <div className="flex h-screen items-center justify-center"><Loader2 className="size-8 animate-spin text-primary" /></div>
   }
@@ -530,7 +592,7 @@ export default function OrderDetailsPage() {
     return <div className="p-8 text-center text-muted-foreground">{t("notFound", "orders")}</div>
   }
 
-  const serviceItems = order.items.filter(i => i.type === "SERVICE" || !i.type) 
+  const serviceItems = order.items.filter(i => i.type === "SERVICE" || !i.type)
   const partItems = order.items.filter(i => i.type === "PART")
 
   return (
@@ -551,10 +613,10 @@ export default function OrderDetailsPage() {
             )}
             <span className="hidden sm:inline">{isWorkOrderDownloading ? t("loading", "common") : t("workOrder", "orderDetails")}</span>
           </Button>
-          <Button 
+          <Button
             type="button"
-            variant="outline" 
-            onClick={() => router.push('/orders')} 
+            variant="outline"
+            onClick={() => router.push('/orders')}
             className="gap-1 sm:gap-2 text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-4"
           >
             <ArrowLeft className="size-3 sm:size-4" />
@@ -583,7 +645,7 @@ export default function OrderDetailsPage() {
                   {canEditStatus ? (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button 
+                        <button
                           type="button"
                           className="inline-flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity outline-none"
                         >
@@ -596,16 +658,16 @@ export default function OrderDetailsPage() {
                           {t("changeStatus", "orders")}
                         </div>
                         {["CONFIRMED", "IN_PROGRESS", "WAITING_PARTS", "COMPLETED", "CANCELLED"]
-                           .filter((s) => s !== order.status)
-                           .map((status) => (
-                             <DropdownMenuItem
-                               key={status}
-                               onSelect={() => handleStatusChange(status)}
-                               className="cursor-pointer"
-                             >
-                               {t(`status_${status}`, "search") || status}
-                             </DropdownMenuItem>
-                           ))}
+                          .filter((s) => s !== order.status)
+                          .map((status) => (
+                            <DropdownMenuItem
+                              key={status}
+                              onSelect={() => handleStatusChange(status)}
+                              className="cursor-pointer"
+                            >
+                              {t(`status_${status}`, "search") || status}
+                            </DropdownMenuItem>
+                          ))}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   ) : (
@@ -636,10 +698,10 @@ export default function OrderDetailsPage() {
                   <CardDescription className="text-xs sm:text-sm">{t("worksAndParts", "orderDetails")}</CardDescription>
                 </div>
                 {canManageItems && (
-                  <Button 
+                  <Button
                     type="button"
-                    size="sm" 
-                    onClick={() => setItemModalOpen(true)} 
+                    size="sm"
+                    onClick={() => setItemModalOpen(true)}
                     className="gap-1 text-xs sm:text-sm w-full sm:w-auto"
                   >
                     <Plus className="size-3" /> {t("addPosition", "orderDetails")}
@@ -673,11 +735,11 @@ export default function OrderDetailsPage() {
                           </TableCell>
                           {canManageItems && (
                             <TableCell className="pr-3 sm:pr-6 text-right">
-                              <Button 
+                              <Button
                                 type="button"
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-7 w-7 sm:h-8 sm:w-8 text-destructive hover:bg-destructive/10" 
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 sm:h-8 sm:w-8 text-destructive hover:bg-destructive/10"
                                 onClick={() => confirmRemoveItem(item.id)}
                               >
                                 <Trash2 className="size-3.5 sm:size-4" />
@@ -723,11 +785,11 @@ export default function OrderDetailsPage() {
                           </TableCell>
                           {canManageItems && (
                             <TableCell className="pr-3 sm:pr-6 text-right">
-                              <Button 
+                              <Button
                                 type="button"
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-7 w-7 sm:h-8 sm:w-8 text-destructive hover:bg-destructive/10" 
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 sm:h-8 sm:w-8 text-destructive hover:bg-destructive/10"
                                 onClick={() => confirmRemoveItem(item.id)}
                               >
                                 <Trash2 className="size-3.5 sm:size-4" />
@@ -782,9 +844,9 @@ export default function OrderDetailsPage() {
                         <p className="text-xs text-success font-medium flex items-center gap-1">
                           <Check className="size-3" /> {t("orderFullyPaid", "orderDetails")}
                         </p>
-                        <Button 
+                        <Button
                           type="button"
-                          variant="outline" 
+                          variant="outline"
                           className="w-full gap-2 mt-2 border-primary/20 hover:bg-primary/5 text-primary"
                           onClick={handleDownloadReceipt}
                           disabled={isReceiptDownloading}
@@ -798,9 +860,9 @@ export default function OrderDetailsPage() {
                         </Button>
                       </>
                     ) : (
-                      <Button 
+                      <Button
                         type="button"
-                        className="w-full gap-2 mt-2" 
+                        className="w-full gap-2 mt-2"
                         onClick={() => setPaymentModalOpen(true)}
                         disabled={order.status === "CANCELLED" || (role === "CLIENT" && order.status !== "COMPLETED")}
                       >
@@ -844,6 +906,101 @@ export default function OrderDetailsPage() {
                     </p>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border bg-card">
+              <CardHeader className="pb-2 border-b border-border">
+                <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <MessageSquareText className="size-4" /> Відгук про механіка
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 p-4">
+                {!order.mechanic ? (
+                  <Alert>
+                    <AlertTriangle className="size-4" />
+                    <AlertTitle>Немає призначеного механіка</AlertTitle>
+                    <AlertDescription>
+                      Відгук можна залишити тільки після того, як до замовлення буде призначено механіка.
+                    </AlertDescription>
+                  </Alert>
+                ) : hasReview ? (
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-foreground">
+                          {order.mechanic.firstName} {order.mechanic.lastName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Відгук залишено {review?.createdAt ? formatAppDate(review.createdAt, settings.dateFormat) : ""}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: 5 }, (_, index) => {
+                          const filled = index < Number(review?.rating || 0)
+                          return (
+                            <Star
+                              key={index}
+                              className={cn("size-4", filled ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30")}
+                            />
+                          )
+                        })}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-border bg-secondary/30 p-3 text-sm text-foreground whitespace-pre-wrap">
+                      {review?.comment?.trim() ? review.comment : "Клієнт залишив лише оцінку без текстового коментаря."}
+                    </div>
+                  </div>
+                ) : canReviewMechanic ? (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-foreground">
+                        Оцініть роботу механіка {order.mechanic.firstName} {order.mechanic.lastName}
+                      </p>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: 5 }, (_, index) => {
+                          const ratingValue = index + 1
+                          const active = ratingValue <= reviewForm.rating
+                          return (
+                            <button
+                              key={ratingValue}
+                              type="button"
+                              className="rounded-md p-1 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                              onClick={() => setReviewForm((current) => ({ ...current, rating: ratingValue }))}
+                              aria-label={`Оцінка ${ratingValue}`}
+                            >
+                              <Star className={cn("size-6", active ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30")} />
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="review-comment">Коментар</Label>
+                      <Textarea
+                        id="review-comment"
+                        rows={4}
+                        value={reviewForm.comment}
+                        onChange={(e) => setReviewForm((current) => ({ ...current, comment: e.target.value }))}
+                        placeholder="Розкажіть, як пройшов ремонт: якість роботи, швидкість, комунікація..."
+                      />
+                    </div>
+
+                    <Button onClick={handleSubmitReview} disabled={isReviewSubmitting || reviewForm.rating === 0} className="w-full gap-2">
+                      {isReviewSubmitting ? <Loader2 className="size-4 animate-spin" /> : <MessageSquareText className="size-4" />}
+                      Залишити відгук
+                    </Button>
+                  </div>
+                ) : (
+                  <Alert>
+                    <MessageSquareText className="size-4" />
+                    <AlertTitle>Ще не час для відгуку</AlertTitle>
+                    <AlertDescription>
+                      Відгук про механіка можна залишити після завершення або оплати цього замовлення.
+                    </AlertDescription>
+                  </Alert>
+                )}
               </CardContent>
             </Card>
 
@@ -902,8 +1059,8 @@ export default function OrderDetailsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>{t("positionType", "orderDetails")}</Label>
-                <RadioGroup 
-                  value={itemForm.type} 
+                <RadioGroup
+                  value={itemForm.type}
                   onValueChange={(v: "SERVICE" | "PART") => {
                     setItemForm({ ...itemForm, type: v, name: "", price: "", id: undefined })
                     setSearchQuery("")
@@ -939,53 +1096,53 @@ export default function OrderDetailsPage() {
                   </PopoverTrigger>
                   <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
                     <Command>
-                      <CommandInput 
-                        placeholder={t("searchPlaceholder", "search")} 
+                      <CommandInput
+                        placeholder={t("searchPlaceholder", "search")}
                         value={searchQuery}
                         onValueChange={setSearchQuery}
                       />
                       <CommandList>
                         <CommandEmpty>{t("nothingFound", "search")}</CommandEmpty>
                         <CommandGroup>
-                        {itemForm.type === "SERVICE" ? (
-                          catalogServices.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase())).map((service) => (
-                            <CommandItem
-                              key={service.id}
-                              value={service.name}
-                              onSelect={() => {
-                                setItemForm({ ...itemForm, id: service.id, name: service.name, price: String(service.price) })
-                                setServiceComboboxOpen(false)
-                              }}
-                            >
-                              <div className="flex flex-col">
-                                <span>{service.name}</span>
-                                <span className="text-xs text-muted-foreground">{service.price.toLocaleString()} ₴</span>
-                              </div>
-                            </CommandItem>
-                          ))
-                        ) : (
-                          inventory.filter(p => (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase())))).map((part) => (
-                            <CommandItem
-                              key={part.id}
-                              value={part.name}
-                              onSelect={() => {
-                                setItemForm({ ...itemForm, id: part.id, name: part.name, price: String(part.salePrice) })
-                                setServiceComboboxOpen(false)
-                              }}
-                              disabled={part.stockQuantity <= 0}
-                            >
-                              <div className="flex justify-between items-center w-full">
+                          {itemForm.type === "SERVICE" ? (
+                            catalogServices.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase())).map((service) => (
+                              <CommandItem
+                                key={service.id}
+                                value={service.name}
+                                onSelect={() => {
+                                  setItemForm({ ...itemForm, id: service.id, name: service.name, price: String(service.price) })
+                                  setServiceComboboxOpen(false)
+                                }}
+                              >
                                 <div className="flex flex-col">
-                                  <span>{part.name} {part.sku && <span className="text-[10px] text-muted-foreground ml-1">({part.sku})</span>}</span>
-                                  <span className="text-xs text-muted-foreground">{part.salePrice.toLocaleString()} ₴</span>
+                                  <span>{service.name}</span>
+                                  <span className="text-xs text-muted-foreground">{service.price.toLocaleString()} ₴</span>
                                 </div>
-                                <Badge variant={part.stockQuantity > 0 ? "secondary" : "destructive"} className="text-[10px]">
-                                  {part.stockQuantity} {t("pcs", "orderDetails")}
-                                </Badge>
-                              </div>
-                            </CommandItem>
-                          ))
-                        )}
+                              </CommandItem>
+                            ))
+                          ) : (
+                            inventory.filter(p => (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase())))).map((part) => (
+                              <CommandItem
+                                key={part.id}
+                                value={part.name}
+                                onSelect={() => {
+                                  setItemForm({ ...itemForm, id: part.id, name: part.name, price: String(part.retailPrice) })
+                                  setServiceComboboxOpen(false)
+                                }}
+                                disabled={part.stockQuantity <= 0}
+                              >
+                                <div className="flex justify-between items-center w-full">
+                                  <div className="flex flex-col">
+                                    <span>{part.name} {part.sku && <span className="text-[10px] text-muted-foreground ml-1">({part.sku})</span>}</span>
+                                    <span className="text-xs text-muted-foreground">{part.salePrice.toLocaleString()} ₴</span>
+                                  </div>
+                                  <Badge variant={part.stockQuantity > 0 ? "secondary" : "destructive"} className="text-[10px]">
+                                    {part.stockQuantity} {t("pcs", "orderDetails")}
+                                  </Badge>
+                                </div>
+                              </CommandItem>
+                            ))
+                          )}
                           <CommandItem
                             onSelect={() => {
                               setItemForm({ ...itemForm, name: searchQuery, id: undefined })
@@ -1005,17 +1162,17 @@ export default function OrderDetailsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>{t("price", "orderDetails")} (₴)</Label>
-                  <Input 
-                    type="number" 
-                    value={itemForm.price} 
+                  <Input
+                    type="number"
+                    value={itemForm.price}
                     onChange={(e) => setItemForm({ ...itemForm, price: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>{t("quantity", "orderDetails")}</Label>
-                  <Input 
-                    type="number" 
-                    value={itemForm.quantity} 
+                  <Input
+                    type="number"
+                    value={itemForm.quantity}
                     onChange={(e) => setItemForm({ ...itemForm, quantity: e.target.value })}
                     min="1"
                   />
@@ -1071,7 +1228,7 @@ export default function OrderDetailsPage() {
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle className="text-destructive flex items-center gap-2">
-               <AlertTriangle className="size-5" /> {t("deletePositionTitle", "orderDetails")}
+              <AlertTriangle className="size-5" /> {t("deletePositionTitle", "orderDetails")}
             </DialogTitle>
           </DialogHeader>
           <div className="py-4 text-sm text-foreground">
@@ -1100,7 +1257,7 @@ export default function OrderDetailsPage() {
           <div className="grid gap-6 py-4">
             <div className="space-y-2">
               <Label htmlFor="s-manager">{t("manager", "orders")}</Label>
-              <Select value={assignForm.managerId} onValueChange={(v) => setAssignForm({...assignForm, managerId: v})}>
+              <Select value={assignForm.managerId} onValueChange={(v) => setAssignForm({ ...assignForm, managerId: v })}>
                 <SelectTrigger id="s-manager">
                   <SelectValue placeholder={t("selectManager", "orderDetails")} />
                 </SelectTrigger>
@@ -1114,7 +1271,7 @@ export default function OrderDetailsPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="s-mechanic">{t("mechanic", "orders")}</Label>
-              <Select value={assignForm.mechanicId} onValueChange={(v) => setAssignForm({...assignForm, mechanicId: v})}>
+              <Select value={assignForm.mechanicId} onValueChange={(v) => setAssignForm({ ...assignForm, mechanicId: v })}>
                 <SelectTrigger id="s-mechanic">
                   <SelectValue placeholder={t("selectMechanic", "orderDetails")} />
                 </SelectTrigger>
@@ -1144,7 +1301,7 @@ export default function OrderDetailsPage() {
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-               <Banknote className="size-5 text-primary" /> {t("payOrder", "orderDetails")}
+              <Banknote className="size-5 text-primary" /> {t("payOrder", "orderDetails")}
             </DialogTitle>
           </DialogHeader>
           <div className="py-6 space-y-6">
@@ -1171,7 +1328,7 @@ export default function OrderDetailsPage() {
                 </div>
               </RadioGroup>
             </div>
-            
+
             <div className="bg-secondary/30 p-4 rounded-lg border border-border">
               <div className="flex justify-between items-center mb-1">
                 <span className="text-xs text-muted-foreground uppercase font-bold">{t("total", "orderDetails")}</span>

@@ -274,13 +274,13 @@ export default function CustomersPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
-                    <TableHead className="pl-6">{t("customer", "customers")}</TableHead>
+                    <TableHead>{t("customer", "customers")}</TableHead>
                     <TableHead>{t("contacts", "customers")}</TableHead>
                     <TableHead>{t("vehicles", "customers")}</TableHead>
                     <TableHead>{t("orders", "customers")}</TableHead>
                     <TableHead>{t("totalSpent", "customers")}</TableHead>
                     <TableHead>{t("inSystemSince", "customers")}</TableHead>
-                    {canCreateCustomers && <TableHead className="pr-6 text-right">{t("actions", "customers")}</TableHead>}
+                    {canCreateCustomers && <TableHead className="text-right">{t("actions", "customers")}</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -307,7 +307,7 @@ export default function CustomersPage() {
 
                     return (
                       <TableRow key={customer.id} className="group border-border transition-colors hover:bg-muted/30">
-                        <TableCell className="pl-6">
+                        <TableCell>
                           <div className="flex items-center gap-3">
                             <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
                               {customer.firstName?.[0]}{customer.lastName?.[0]}
@@ -348,13 +348,13 @@ export default function CustomersPage() {
                         <TableCell className="font-semibold text-foreground">
                           {totalSpent.toLocaleString(undefined, { minimumFractionDigits: 0 })} ₴
                         </TableCell>
-                        <TableCell className={canCreateCustomers ? "" : "pr-6"}>
+                        <TableCell>
                           <span className="text-xs text-muted-foreground">
                             {formatAppDate(customer.createdAt, settings.dateFormat)}
                           </span>
                         </TableCell>
                         {canCreateCustomers && (
-                          <TableCell className="pr-6 text-right">
+                          <TableCell className="text-right">
                             <div className="flex items-center justify-end">
                               {customer.isBlocked ? (
                                 <AlertDialog>

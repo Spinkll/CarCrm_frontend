@@ -5,8 +5,19 @@ import { useParams, useRouter } from "next/navigation"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { StatusBadge } from "@/components/status-badge"
-import { ArrowLeft, Car, Calendar, Search, Wrench, Package, Clock, ShieldCheck, ChevronRight, FileText, Filter } from "lucide-react"
+import { ArrowLeft, Car, Calendar, Search, Wrench, Package, Clock, ShieldCheck, ChevronRight, FileText, Filter, Trash2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { api } from "@/lib/api"
 import { Loader2 } from "lucide-react"
@@ -15,6 +26,9 @@ import { Badge } from "@/components/ui/badge"
 import { useSettings } from "@/lib/settings-context"
 import { formatAppDate } from "@/lib/utils"
 import { useTranslation } from "@/hooks/use-translation"
+import { toast } from "@/hooks/use-toast"
+import { useVehicles } from "@/lib/vehicles-context"
+import { useAuth } from "@/lib/auth-context"
 
 export default function VehicleHistoryPage() {
     const params = useParams()
@@ -22,10 +36,13 @@ export default function VehicleHistoryPage() {
     const vehicleId = Number(params.id)
     const { settings } = useSettings()
     const { t } = useTranslation()
+    const { user } = useAuth()
+    const { deleteVehicle } = useVehicles()
     const td = (key: string) => t(key, "vehicles")
 
     const [historyData, setHistoryData] = useState<any>(null)
     const [isLoading, setIsLoading] = useState(true)
+    const [isDeleting, setIsDeleting] = useState(false)
 
     // Фільтри (API)
     const [startDate, setStartDate] = useState("")
@@ -106,6 +123,28 @@ export default function VehicleHistoryPage() {
     }, [historyData, searchQuery, statusFilter, typeFilter])
 
     const carInfo = historyData?.carInfo || null
+    const role = user?.role?.toLowerCase()
+    const canDeleteVehicle = role === "admin" || role === "manager" || role === "client"
+
+    async function handleDeleteVehicle() {
+        setIsDeleting(true)
+        const result = await deleteVehicle(vehicleId)
+        setIsDeleting(false)
+
+        if (!result.success) {
+            toast({
+                title: typeof result.error === "string" ? result.error : "Не вдалося видалити авто",
+                variant: "destructive",
+            })
+            return
+        }
+
+        toast({
+            title: "Автомобіль видалено",
+            variant: "success",
+        })
+        router.push("/vehicles")
+    }
 
     if (!carInfo && !isLoading) {
         return (
@@ -124,10 +163,41 @@ export default function VehicleHistoryPage() {
                 title={carInfo ? `${carInfo.fullName} (${carInfo.year})` : t("loading")}
                 description={td("details.historyTitle")}
             >
-                <Button variant="outline" onClick={() => router.push('/vehicles')} className="gap-2 h-9">
-                    <ArrowLeft className="size-4" />
-                    {td("details.allVehicles")}
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="outline" onClick={() => router.push('/vehicles')} className="gap-2 h-9">
+                        <ArrowLeft className="size-4" />
+                        {td("details.allVehicles")}
+                    </Button>
+                    {canDeleteVehicle && (
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" className="gap-2 h-9" disabled={isDeleting}>
+                                    {isDeleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+                                    Видалити авто
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Видалити автомобіль?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Цю дію не можна скасувати. Авто буде видалено з системи, тому перед видаленням переконайтеся, що воно більше не потрібне.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel disabled={isDeleting}>Скасувати</AlertDialogCancel>
+                                    <AlertDialogAction
+                                        onClick={handleDeleteVehicle}
+                                        className="bg-destructive text-white hover:bg-destructive/90"
+                                        disabled={isDeleting}
+                                    >
+                                        {isDeleting ? <Loader2 className="size-4 animate-spin" /> : null}
+                                        Підтвердити видалення
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    )}
+                </div>
             </PageHeader>
 
             <div className="flex-1 overflow-auto p-4 sm:p-6">
@@ -159,6 +229,18 @@ export default function VehicleHistoryPage() {
                                 <div>
                                     <span className="text-muted-foreground mr-2">{td("details.mileageLabel")}</span>
                                     <span className="font-medium text-foreground">{carInfo?.currentMileage?.toLocaleString() || 0} {t("km", "customers")}</span>
+                                </div>
+                                <div>
+                                    <span className="text-muted-foreground mr-2">Об'єм двигуна</span>
+                                    <span className="font-medium text-foreground">{carInfo?.engine || "—"}</span>
+                                </div>
+                                <div>
+                                    <span className="text-muted-foreground mr-2">Тип палива</span>
+                                    <span className="font-medium text-foreground">{carInfo?.fuelType || "—"}</span>
+                                </div>
+                                <div>
+                                    <span className="text-muted-foreground mr-2">Тип кузова</span>
+                                    <span className="font-medium text-foreground">{carInfo?.bodyClass || "—"}</span>
                                 </div>
                                 <div className="pt-2 border-t border-border mt-2 flex justify-between">
                                     <span className="text-muted-foreground">{td("details.totalVisits")}</span>

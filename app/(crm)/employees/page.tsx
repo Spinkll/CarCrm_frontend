@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { PageHeader } from "@/components/page-header"
 import { useAuth } from "@/lib/auth-context"
 import { useEmployees } from "@/lib/employees-context"
 import type { Employee } from "@/lib/employees-context"
+import { useOrders } from "@/lib/orders-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -46,13 +47,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { UserPlus, Shield, Settings, Search, Trash2, Briefcase, Percent, Pencil, Banknote, Lock, Unlock, Loader2 } from "lucide-react"
+import { UserPlus, Shield, Settings, Search, Trash2, Briefcase, Percent, Pencil, Banknote, Lock, Unlock, Loader2, MessageSquareText, Star } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTranslation } from "@/hooks/use-translation"
 
 export default function EmployeesPage() {
   const { user } = useAuth()
   const { employees, createEmployee, updateEmployee, deleteEmployee, blockEmployee, unblockEmployee, isLoading } = useEmployees()
+  const { orders } = useOrders()
   const router = useRouter()
   const { t } = useTranslation()
 
@@ -111,6 +113,32 @@ export default function EmployeesPage() {
   const mechanicCount = employees.filter((e) => e.role === "MECHANIC").length
   const adminCount = employees.filter((e) => e.role === "ADMIN").length
   const managerCount = employees.filter((e) => e.role === "MANAGER").length
+  const mechanicReviewStats = useMemo(() => {
+    const stats = new Map<number, { averageRating: number; reviewsCount: number }>()
+
+    for (const emp of employees) {
+      if (emp.role !== "MECHANIC") continue
+
+      const ratedOrders = orders.filter((order) => order.mechanic?.id === emp.id && order.review?.rating)
+      if (ratedOrders.length > 0) {
+        const total = ratedOrders.reduce((sum, order) => sum + Number(order.review?.rating || 0), 0)
+        stats.set(emp.id, {
+          averageRating: total / ratedOrders.length,
+          reviewsCount: ratedOrders.length,
+        })
+        continue
+      }
+
+      if (typeof emp.averageRating === "number" || typeof emp.reviewsCount === "number") {
+        stats.set(emp.id, {
+          averageRating: Number(emp.averageRating || 0),
+          reviewsCount: Number(emp.reviewsCount || 0),
+        })
+      }
+    }
+
+    return stats
+  }, [employees, orders])
 
   async function handleAdd() {
     setError("")
@@ -439,19 +467,21 @@ export default function EmployeesPage() {
             ) : (
               <Table>
                 <TableHeader>
-                  <TableRow className="border-border hover:bg-transparent">
-                    <TableHead className="text-muted-foreground">{t("employee", "employees")}</TableHead>
-                    <TableHead className="text-muted-foreground">{t("email", "employees")}</TableHead>
-                    <TableHead className="text-muted-foreground">{t("role", "employees")}</TableHead>
-                    <TableHead className="text-center text-muted-foreground">{t("salary", "employees")}</TableHead>
-                    <TableHead className="text-center text-muted-foreground">{t("commission", "employees")}</TableHead>
-                    <TableHead className="text-right text-muted-foreground">{t("actions", "employees")}</TableHead>
-                  </TableRow>
+                    <TableRow className="border-border hover:bg-transparent">
+                      <TableHead className="text-muted-foreground">{t("employee", "employees")}</TableHead>
+                      <TableHead className="text-muted-foreground">{t("email", "employees")}</TableHead>
+                      <TableHead className="text-muted-foreground">{t("role", "employees")}</TableHead>
+                      <TableHead className="text-center text-muted-foreground">Рейтинг</TableHead>
+                      <TableHead className="text-center text-muted-foreground">Відгуки</TableHead>
+                      <TableHead className="text-center text-muted-foreground">{t("salary", "employees")}</TableHead>
+                      <TableHead className="text-center text-muted-foreground">{t("commission", "employees")}</TableHead>
+                      <TableHead className="text-right text-muted-foreground">{t("actions", "employees")}</TableHead>
+                    </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                      <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                         {t("notFound", "employees")}
                       </TableCell>
                     </TableRow>
@@ -459,6 +489,7 @@ export default function EmployeesPage() {
                     filtered.map((emp) => {
                       const config = (roleConfig as any)[emp.role] || roleConfig.MECHANIC
                       const isSelf = emp.id === user?.id
+                      const reviewStats = mechanicReviewStats.get(emp.id)
                       return (
                         <TableRow key={emp.id} className="border-border">
                           <TableCell>
@@ -493,6 +524,34 @@ export default function EmployeesPage() {
                                 <config.icon className="size-3" />
                                 {config.label}
                               </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {emp.role === "MECHANIC" ? (
+                              reviewStats && reviewStats.reviewsCount > 0 ? (
+                                <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                  <Star className="size-3 fill-amber-400 text-amber-400" />
+                                  {reviewStats.averageRating.toFixed(1)}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {emp.role === "MECHANIC" ? (
+                              reviewStats && reviewStats.reviewsCount > 0 ? (
+                                <span className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                                  <MessageSquareText className="size-3" />
+                                  {reviewStats.reviewsCount}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">0</span>
+                              )
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
                             )}
                           </TableCell>
                           <TableCell className="text-center">

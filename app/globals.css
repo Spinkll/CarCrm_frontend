@@ -181,6 +181,16 @@
 
 /* ===== COMPACT MODE ===== */
 
+[data-slot="table"] tr > [data-slot="table-head"]:first-child,
+[data-slot="table"] tr > [data-slot="table-cell"]:first-child {
+  padding-left: var(--table-edge-px);
+}
+
+[data-slot="table"] tr > [data-slot="table-head"]:last-child,
+[data-slot="table"] tr > [data-slot="table-cell"]:last-child {
+  padding-right: var(--table-edge-px);
+}
+
 .compact [data-slot="card"] {
   gap: 0.25rem;
   padding-top: 0.5rem;
@@ -198,16 +208,31 @@
 }
 
 .compact [data-slot="table-head"] {
-  height: 2rem;
+  --table-cell-px: 0.625rem;
+  --table-cell-py: 0.375rem;
+  --table-head-height: 2rem;
+  --table-edge-px: 1rem;
   font-size: 0.75rem;
-  padding-top: 0.25rem;
-  padding-bottom: 0.25rem;
 }
 
 .compact [data-slot="table-cell"] {
-  padding-top: 0.375rem;
-  padding-bottom: 0.375rem;
   font-size: 0.8125rem;
+}
+
+.compact [data-slot="table-head"],
+.compact [data-slot="table-cell"] {
+  padding-left: var(--table-cell-px) !important;
+  padding-right: var(--table-cell-px) !important;
+}
+
+.compact [data-slot="table"] tr > [data-slot="table-head"]:first-child,
+.compact [data-slot="table"] tr > [data-slot="table-cell"]:first-child {
+  padding-left: var(--table-edge-px) !important;
+}
+
+.compact [data-slot="table"] tr > [data-slot="table-head"]:last-child,
+.compact [data-slot="table"] tr > [data-slot="table-cell"]:last-child {
+  padding-right: var(--table-edge-px) !important;
 }
 
 .compact [data-slot="table-row"] {

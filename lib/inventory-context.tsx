@@ -10,6 +10,7 @@ export interface InventoryItem {
     sku: string | null
     purchasePrice: number | null
     retailPrice: number
+    salePrice: number
     stockQuantity: number
     minStockLevel: number | null
     createdAt: string

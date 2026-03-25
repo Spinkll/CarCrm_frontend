@@ -14,6 +14,9 @@ export interface Car {
   plate: string
   color: string
   mileage: number
+  engine?: string
+  fuelType?: string
+  bodyClass?: string
   userId: number
 }
 
@@ -21,6 +24,7 @@ type VehiclesContextType = {
   vehicles: Car[]
   isLoading: boolean
   addVehicle: (data: Omit<Car, "id" | "userId">) => Promise<{ success: boolean; error?: string }>
+  deleteVehicle: (id: number) => Promise<{ success: boolean; error?: string }>
   refreshVehicles: () => void
 }
 
@@ -55,6 +59,16 @@ export function VehiclesProvider({ children }: { children: React.ReactNode }) {
     },
   })
 
+  const deleteVehicleMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const { data } = await api.delete(`/cars/${id}`)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] })
+    },
+  })
+
   // Обгортки для сумісності з існуючим кодом
   const addVehicle = async (carData: Omit<Car, "id" | "userId">) => {
     try {
@@ -62,6 +76,16 @@ export function VehiclesProvider({ children }: { children: React.ReactNode }) {
       return { success: true }
     } catch (error: any) {
       const msg = error.response?.data?.message || "Failed to add vehicle"
+      return { success: false, error: Array.isArray(msg) ? msg[0] : msg }
+    }
+  }
+
+  const deleteVehicle = async (id: number) => {
+    try {
+      await deleteVehicleMutation.mutateAsync(id)
+      return { success: true }
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Failed to delete vehicle"
       return { success: false, error: Array.isArray(msg) ? msg[0] : msg }
     }
   }
@@ -76,6 +100,7 @@ export function VehiclesProvider({ children }: { children: React.ReactNode }) {
         vehicles,
         isLoading,
         addVehicle,
+        deleteVehicle,
         refreshVehicles,
       }}
     >

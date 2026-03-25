@@ -15,6 +15,8 @@ export interface Employee {
   baseSalary?: number
   isBlocked?: boolean
   blockReason?: string
+  averageRating?: number | null
+  reviewsCount?: number
 }
 
 type EmployeesContextType = {

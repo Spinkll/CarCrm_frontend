@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/status-badge"
 import { useAuth } from "@/lib/auth-context"
@@ -41,7 +42,6 @@ export function ClientDashboard() {
       .reduce((sum, o: Order) => sum + Number(o.totalAmount || 0), 0)
   }, [filteredOrders])
 
-  // 2. Активні замовлення (додаємо статус 'received' та 'pending')
   const activeOrdersCount = useMemo(() => {
     const activeStatuses = ["in_progress", "pending", "received", "scheduled", "confirmed", "waiting_parts"]
     return filteredOrders.filter((o: Order) =>
@@ -49,7 +49,6 @@ export function ClientDashboard() {
     ).length
   }, [filteredOrders])
 
-  // 3. Сортування майбутніх візитів (використовуємо новий контекст з scheduledAt)
   const upcomingAppointments = useMemo(() => {
     return [...appointments]
       .filter((a) => !["CANCELLED", "COMPLETED", "NO_SHOW"].includes(a.status))
@@ -135,9 +134,10 @@ export function ClientDashboard() {
                 </div>
               ) : (
                 filteredVehicles.map((vehicle: VehicleType) => (
-                  <div
+                  <Link
                     key={vehicle.id}
-                    className="flex items-center gap-3 rounded-lg border border-border bg-secondary/30 p-3"
+                    href={`/vehicles/${vehicle.id}`}
+                    className="flex items-center gap-3 rounded-lg border border-border bg-secondary/30 p-3 transition-colors hover:bg-secondary/50 cursor-pointer"
                   >
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                       <Car className="size-5 text-primary" />
@@ -155,7 +155,7 @@ export function ClientDashboard() {
                       style={{ backgroundColor: vehicle.color?.toLowerCase() || '#ccc' }}
                       title={vehicle.color}
                     />
-                  </div>
+                  </Link>
                 ))
               )}
             </div>
@@ -245,7 +245,11 @@ export function ClientDashboard() {
               .map((order: Order) => {
                 const vehicle = filteredVehicles.find((v: VehicleType) => v.id === order.carId)
                 return (
-                  <div key={order.id} className="flex items-center justify-between gap-4 rounded-lg border border-border bg-secondary/30 p-3">
+                  <Link
+                    key={order.id}
+                    href={`/orders-detail/${order.id}`}
+                    className="mb-3 flex items-center justify-between gap-4 rounded-lg border border-border bg-secondary/30 p-3 transition-colors hover:bg-secondary/50 cursor-pointer last:mb-0"
+                  >
                     <div className="flex items-center gap-3 overflow-hidden">
                       <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                         <ClipboardList className="size-5 text-primary" />
@@ -259,11 +263,16 @@ export function ClientDashboard() {
                     </div>
                     <div className="flex shrink-0 items-center gap-3">
                       <StatusBadge status={order.status} />
+                      {order.review && (
+                        <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                          Відгук залишено
+                        </Badge>
+                      )}
                       <span className="text-sm font-bold text-foreground whitespace-nowrap">
                         {Number(order.totalAmount || 0).toLocaleString()} ₴
                       </span>
                     </div>
-                  </div>
+                  </Link>
                 )
               })
           )}

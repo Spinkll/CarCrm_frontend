@@ -223,6 +223,7 @@ export const translations = {
         noScheduleToday: "На сьогодні записів немає",
         client: "Клієнт",
         unknownVehicle: "Невідоме авто",
+        myRating: "Мій рейтинг",
       }
     },
     search: {
@@ -1266,6 +1267,7 @@ export const translations = {
         noScheduleToday: "No appointments today",
         client: "Client",
         unknownVehicle: "Unknown vehicle",
+        myRating: "My Rating",
       }
     },
     search: {
