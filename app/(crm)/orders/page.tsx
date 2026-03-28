@@ -42,7 +42,8 @@ import { uk, enUS } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { StatusBadge } from "@/components/status-badge"
 import { KanbanBoard } from "@/components/dashboard/kanban-board"
-import { Plus, ChevronDown, Eye, CalendarIcon, LayoutList, KanbanSquare, Loader2 } from "lucide-react"
+import { Plus, ChevronDown, Eye, CalendarIcon, LayoutList, KanbanSquare, Loader2, Zap, AlertTriangle } from "lucide-react"
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/lib/auth-context"
 import { useOrders } from "@/lib/orders-context"
 import { useVehicles } from "@/lib/vehicles-context"
@@ -51,6 +52,7 @@ import { useCrm } from "@/lib/crm-context"
 import { useNotifications } from "@/lib/notifications-context"
 import { useServiceRequests } from "@/lib/service-requests-context"
 import { useTranslation } from "@/hooks/use-translation"
+import { QuickEntryDialog } from "@/components/quick-entry-dialog"
 
 import {
   DropdownMenu,
@@ -73,6 +75,7 @@ export default function OrdersPage() {
   const { fetchNotifications } = useNotifications()
 
   const [open, setOpen] = useState(false)
+  const [quickOpen, setQuickOpen] = useState(false)
   const [tab, setTab] = useState("all")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -145,6 +148,9 @@ export default function OrdersPage() {
   }, [vehicles, role, user?.id])
 
   const canCreateOrders = role === "CLIENT" || role === "ADMIN" || role === "MANAGER"
+  const isTempCar = (v: any) => v.vin?.startsWith("TEMP-") || v.plate?.startsWith("TEMP-") || v.year === 0
+  const hasTempCar = role === "CLIENT" && vehicles.some(isTempCar)
+
   const canEditOrderStatus = role === "ADMIN" || role === "MANAGER" || role === "MECHANIC"
 
   const tabStatusMap: Record<string, string[]> = {
@@ -249,6 +255,17 @@ export default function OrdersPage() {
       />
 
       <div className="flex-1 overflow-auto p-6">
+        {hasTempCar && (
+          <Alert className="mb-6 border-amber-500/50 bg-amber-500/10 text-amber-600 dark:border-amber-400/50 dark:text-amber-400">
+            <AlertTriangle className="size-4 !text-amber-600 dark:!text-amber-400" />
+            <AlertTitle>Блокування створення замовлень</AlertTitle>
+            <AlertDescription>
+              У вас є транспортні засоби з незаповненими даними (наприклад, після швидкого запису). 
+              Будь ласка, перейдіть до розділу "Мій гараж" та заповніть інформацію (VIN, номерний знак, рік випуску), щоб розблокувати створення нових замовлень.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             {viewMode === "table" && (
@@ -292,8 +309,21 @@ export default function OrdersPage() {
               </button>
             </div>
 
+            {(role === "ADMIN" || role === "MANAGER") && (
+              <Button
+                variant="outline"
+                onClick={() => setQuickOpen(true)}
+                className="w-full sm:w-auto gap-2 shadow-sm border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+              >
+                <Zap className="size-4" />
+                {t("quickEntry", "orders")}
+              </Button>
+            )}
+
             {canCreateOrders && (
               <Button
+                disabled={hasTempCar}
+                title={hasTempCar ? "Заповніть дані про авто в розділі 'Мій гараж' перед створенням замовлення" : ""}
                 onClick={() => {
                   if (role === "CLIENT" && !user?.isVerified) {
                     toast({
@@ -307,7 +337,7 @@ export default function OrdersPage() {
                 }}
                 className="w-full sm:w-auto gap-2 shadow-sm"
               >
-                <Plus className="size-4" />
+                {hasTempCar ? <Zap className="size-4 text-amber-500" /> : <Plus className="size-4" />}
                 {role === "CLIENT" ? t("leaveRequest", "orders") : t("newOrder", "orders")}
               </Button>
             )}
@@ -640,6 +670,8 @@ export default function OrdersPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      <QuickEntryDialog open={quickOpen} onOpenChange={setQuickOpen} />
     </div>
   )
 }

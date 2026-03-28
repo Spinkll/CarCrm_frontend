@@ -24,6 +24,7 @@ type VehiclesContextType = {
   vehicles: Car[]
   isLoading: boolean
   addVehicle: (data: Omit<Car, "id" | "userId">) => Promise<{ success: boolean; error?: string }>
+  updateVehicle: (id: number, data: Partial<Omit<Car, "id" | "userId">>) => Promise<{ success: boolean; error?: string }>
   deleteVehicle: (id: number) => Promise<{ success: boolean; error?: string }>
   refreshVehicles: () => void
 }
@@ -90,6 +91,17 @@ export function VehiclesProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const updateVehicle = async (id: number, data: Partial<Omit<Car, "id" | "userId">>) => {
+    try {
+      await api.patch(`/cars/${id}`, data)
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] })
+      return { success: true }
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Failed to update vehicle"
+      return { success: false, error: Array.isArray(msg) ? msg[0] : msg }
+    }
+  }
+
   const refreshVehicles = useCallback(async () => {
     await refetch()
   }, [refetch])
@@ -100,6 +112,7 @@ export function VehiclesProvider({ children }: { children: React.ReactNode }) {
         vehicles,
         isLoading,
         addVehicle,
+        updateVehicle,
         deleteVehicle,
         refreshVehicles,
       }}

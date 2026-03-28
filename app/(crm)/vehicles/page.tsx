@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -23,7 +23,8 @@ import { api } from "@/lib/api"
 import { toast } from "@/hooks/use-toast"
 import { carBrandsAndModels, carYears } from "@/lib/cars"
 import { useTranslation } from "@/hooks/use-translation"
-import { Car, Check, Loader2, Plus, RefreshCw, SearchCheck, SearchX, User, Wrench } from "lucide-react"
+import { AlertTriangle, Car, Check, Loader2, Pencil, Plus, RefreshCw, SearchCheck, SearchX, User, Wrench, Zap } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 type VinDecodeStatus = "idle" | "loading" | "success" | "error" | "not_found"
 type VehicleDataMode = "select" | "manual"
@@ -83,7 +84,7 @@ export default function VehiclesPage() {
   const searchParams = useSearchParams()
   const { user } = useAuth()
   const { settings } = useSettings()
-  const { vehicles, addVehicle, isLoading: isVehiclesLoading } = useVehicles()
+  const { vehicles, addVehicle, updateVehicle, isLoading: isVehiclesLoading } = useVehicles()
   const { customers } = useCrm()
   const { orders, isLoading: isOrdersLoading } = useOrders()
   const { t } = useTranslation()
@@ -99,9 +100,21 @@ export default function VehiclesPage() {
   const [vehicleDataMode, setVehicleDataMode] = useState<VehicleDataMode>("select")
   const [form, setForm] = useState(initialForm)
 
+  // --- Edit dialog state ---
+  const [editOpen, setEditOpen] = useState(false)
+  const [editVehicle, setEditVehicle] = useState<any>(null)
+  const [editForm, setEditForm] = useState({ brand: "", model: "", year: "", vin: "", plate: "", color: "", mileage: "", engine: "", fuelType: "", bodyClass: "" })
+  const [isEditSubmitting, setIsEditSubmitting] = useState(false)
+  const [editVinDecodeStatus, setEditVinDecodeStatus] = useState<VinDecodeStatus>("idle")
+  const [editVinDecodeMessage, setEditVinDecodeMessage] = useState("")
+  const [editDecodedVin, setEditDecodedVin] = useState("")
+
+  const role = user?.role?.toLowerCase()
+  const isTempCar = (v: any) => v.vin?.startsWith("TEMP-") || v.plate?.startsWith("TEMP-") || v.year === 0
+  const hasTempCar = role === "client" && vehicles.some(isTempCar)
+
   const isLoading = isVehiclesLoading || isOrdersLoading
   const normalizedVin = form.vin.trim().toUpperCase()
-  const role = user?.role?.toLowerCase()
   const canAssignOwner = role === "admin" || role === "manager"
   const canCreateVehicle = role === "client" || role === "admin" || role === "manager"
   const openFromQuery = searchParams.get("new") === "1"
@@ -195,6 +208,57 @@ export default function VehiclesPage() {
     }
   }
 
+  async function decodeEditVin(vin: string, force = false) {
+    const normalized = vin.trim().toUpperCase()
+    if (normalized.length !== 17) return
+    if (!force && editDecodedVin === normalized) return
+
+    setEditVinDecodeStatus("loading")
+    setEditVinDecodeMessage("Шукаємо дані автомобіля за VIN...")
+
+    try {
+      const { data } = await api.get(`/cars/decode-vin/${normalized}`)
+      if (normalized !== editForm.vin.trim().toUpperCase()) return
+
+      const decoded = extractVinDecodedData(data)
+      const hasUsefulData = Boolean(decoded.brand || decoded.model || decoded.year || decoded.color || decoded.engine || decoded.fuelType || decoded.bodyClass)
+
+      if (!hasUsefulData) {
+        setEditVinDecodeStatus("not_found")
+        setEditVinDecodeMessage("Дані за цим VIN не знайдено.")
+        setEditDecodedVin(normalized)
+        return
+      }
+
+      setEditForm((current) => ({
+        ...current,
+        brand: decoded.brand || current.brand,
+        model: decoded.model || current.model,
+        year: decoded.year || current.year,
+        color: decoded.color || current.color,
+        engine: decoded.engine || current.engine,
+        fuelType: decoded.fuelType || current.fuelType,
+        bodyClass: decoded.bodyClass || current.bodyClass,
+      }))
+
+      setEditVinDecodeStatus("success")
+      setEditVinDecodeMessage("Дані підтягнуто з VIN.")
+      setEditDecodedVin(normalized)
+    } catch (error: any) {
+      if (normalized !== editForm.vin.trim().toUpperCase()) return
+      const message = error.response?.data?.message
+      setEditVinDecodeStatus("error")
+      setEditVinDecodeMessage(
+        Array.isArray(message)
+          ? message[0]
+          : typeof message === "string" && message.trim().length > 0
+            ? message
+            : "Не вдалося отримати дані з VIN."
+      )
+      setEditDecodedVin(normalized)
+    }
+  }
+
   useEffect(() => {
     if (!open) return
     if (normalizedVin.length !== 17) {
@@ -211,6 +275,25 @@ export default function VehiclesPage() {
 
     return () => window.clearTimeout(timeoutId)
   }, [decodedVin, normalizedVin, open])
+
+  useEffect(() => {
+    if (!editOpen) return
+    const editNormalizedVin = editForm.vin.trim().toUpperCase()
+    
+    if (editNormalizedVin.length !== 17) {
+      setEditVinDecodeStatus("idle")
+      setEditVinDecodeMessage("")
+      setEditDecodedVin("")
+      return
+    }
+    if (editDecodedVin === editNormalizedVin) return
+
+    const timeoutId = window.setTimeout(() => {
+      void decodeEditVin(editNormalizedVin)
+    }, 500)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [editDecodedVin, editForm.vin, editOpen])
 
   if (!user) return null
 
@@ -334,6 +417,58 @@ export default function VehiclesPage() {
     if (returnTo) router.push(returnTo)
   }
 
+  function openEditDialog(vehicle: any) {
+    setEditVehicle(vehicle)
+    setEditForm({
+      brand: vehicle.brand || "",
+      model: vehicle.model || "",
+      year: vehicle.year === 0 ? "" : String(vehicle.year || ""),
+      vin: vehicle.vin?.startsWith("TEMP-") ? "" : vehicle.vin || "",
+      plate: vehicle.plate?.startsWith("TEMP-") ? "" : vehicle.plate || "",
+      color: vehicle.color === "Невідомо" ? "" : vehicle.color || "",
+      mileage: String(vehicle.mileage || ""),
+      engine: vehicle.engine || "",
+      fuelType: vehicle.fuelType || "",
+      bodyClass: vehicle.bodyClass || "",
+    })
+    setEditVinDecodeStatus("idle")
+    setEditVinDecodeMessage("")
+    setEditDecodedVin("")
+    setEditOpen(true)
+  }
+
+  async function handleEditSubmit() {
+    if (!editVehicle) return
+    if (!editForm.brand || !editForm.model || !editForm.vin || !editForm.plate) {
+      toast({ title: t("fillRequired", "vehicles"), description: t("fillRequiredDesc", "vehicles"), variant: "destructive" })
+      return
+    }
+    setIsEditSubmitting(true)
+    const payload: any = {
+      brand: editForm.brand.trim(),
+      model: editForm.model.trim(),
+      year: parseInt(editForm.year) || new Date().getFullYear(),
+      vin: editForm.vin.trim().toUpperCase(),
+      plate: editForm.plate.trim().toUpperCase(),
+      color: editForm.color.trim() || undefined,
+      engine: editForm.engine.trim() || undefined,
+      fuelType: editForm.fuelType.trim() || undefined,
+      bodyClass: editForm.bodyClass.trim() || undefined,
+    }
+    // Only admin/manager can change mileage
+    if (role === "admin" || role === "manager") {
+      payload.mileage = parseInt(editForm.mileage) || 0
+    }
+    const result = await updateVehicle(editVehicle.id, payload)
+    setIsEditSubmitting(false)
+    if (result.success) {
+      setEditOpen(false)
+      toast({ title: t("updateSuccess", "vehicles"), variant: "success" })
+    } else {
+      toast({ title: result.error || t("updateError", "vehicles"), variant: "destructive" })
+    }
+  }
+
   const pageTitle = role === "client" ? t("myGarage", "vehicles") : role === "mechanic" ? t("mechanicTitle", "vehicles") : t("title", "vehicles")
   const selectedOwner = canAssignOwner ? customers.find((customer) => String(customer.id) === form.userId) : user
 
@@ -342,6 +477,16 @@ export default function VehiclesPage() {
       <PageHeader title={pageTitle} description={t("description", "vehicles")} />
 
       <div className="flex-1 overflow-auto p-6">
+        {hasTempCar && (
+          <Alert className="mb-6 border-amber-500/50 bg-amber-500/10 text-amber-600 dark:border-amber-400/50 dark:text-amber-400">
+            <AlertTriangle className="size-4 !text-amber-600 dark:!text-amber-400" />
+            <AlertTitle>Потрібна ваша увага</AlertTitle>
+            <AlertDescription>
+              У вас є транспортні засоби з тимчасовими або неповними даними. Для того щоб додати нові авто та створювати замовлення, обов'язково відредагуйте існуючі (натисність іконку олівця) та вкажіть реальний VIN, номерний знак та рік.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <Input
             placeholder={t("searchPlaceholder", "vehicles")}
@@ -351,6 +496,8 @@ export default function VehiclesPage() {
           />
           {canCreateVehicle && (
             <Button
+              disabled={hasTempCar}
+              title={hasTempCar ? "Заповніть дані про існуючі авто перед додаванням нових" : ""}
               onClick={() => {
                 if (role === "client" && !user?.isVerified) {
                   toast({
@@ -363,7 +510,7 @@ export default function VehiclesPage() {
                 setOpen(true)
               }}
             >
-              <Plus className="mr-2 size-4" />
+              {hasTempCar ? <Zap className="mr-2 size-4 text-amber-500" /> : <Plus className="mr-2 size-4" />}
               {t("addVehicle", "vehicles")}
             </Button>
           )}
@@ -385,6 +532,7 @@ export default function VehiclesPage() {
                     <TableHead className="text-muted-foreground">{t("color", "vehicles")}</TableHead>
                     <TableHead className="text-muted-foreground">{t("mileage", "vehicles")}</TableHead>
                     <TableHead className="text-muted-foreground">{t("serviceHistory", "vehicles")}</TableHead>
+                    <TableHead className="text-muted-foreground w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -405,13 +553,23 @@ export default function VehiclesPage() {
                               <Car className="size-4 text-primary" />
                             </div>
                             <div>
-                              <p className="font-medium text-foreground">{vehicle.year} {vehicle.brand} {vehicle.model}</p>
-                              <p className="text-xs uppercase text-muted-foreground">{vehicle.vin}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-foreground">{vehicle.year === 0 ? "" : vehicle.year} {vehicle.brand} {vehicle.model}</p>
+                                {isTempCar(vehicle) && (
+                                  <Badge variant="outline" className="gap-1 border-amber-500/50 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 text-[10px] px-1.5 py-0">
+                                    <AlertTriangle className="size-3" />
+                                    {t("tempCar", "vehicles")}
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-xs uppercase text-muted-foreground">{vehicle.vin?.startsWith("TEMP-") ? <span className="text-amber-600 dark:text-amber-400 normal-case">{t("tempCar", "vehicles")}</span> : vehicle.vin}</p>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className="rounded-md bg-secondary px-2 py-1 text-sm font-mono uppercase tracking-widest text-foreground">{vehicle.plate}</span>
+                          <span className="rounded-md bg-secondary px-2 py-1 text-sm font-mono uppercase tracking-widest text-foreground">
+                            {vehicle.plate?.startsWith("TEMP-") ? <span className="text-amber-600 dark:text-amber-400 normal-case text-xs">{t("tempCar", "vehicles")}</span> : vehicle.plate}
+                          </span>
                         </TableCell>
                         {role !== "client" && (
                           <TableCell>
@@ -451,12 +609,24 @@ export default function VehiclesPage() {
                             <span className="text-xs italic text-muted-foreground">{t("noHistory", "vehicles")}</span>
                           )}
                         </TableCell>
+                        <TableCell>
+                          {(role === "client" && vehicle.userId === user.id) || role === "admin" || role === "manager" ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8 text-muted-foreground hover:text-primary"
+                              onClick={(e) => { e.stopPropagation(); openEditDialog(vehicle) }}
+                            >
+                              <Pencil className="size-4" />
+                            </Button>
+                          ) : null}
+                        </TableCell>
                       </TableRow>
                     )
                   })}
                   {filtered.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={role !== "client" ? 6 : 5} className="py-12 text-center text-muted-foreground">
+                      <TableCell colSpan={role === "client" ? 6 : 7} className="py-12 text-center text-muted-foreground">
                         {t("notFound", "vehicles")}
                       </TableCell>
                     </TableRow>
@@ -781,6 +951,102 @@ export default function VehiclesPage() {
                 </Button>
               )}
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Vehicle Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("editVehicleTitle", "vehicles")}</DialogTitle>
+          </DialogHeader>
+
+          {editVehicle && isTempCar(editVehicle) && (
+            <Alert className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
+              <AlertTriangle className="size-4 text-amber-600" />
+              <AlertTitle className="text-amber-700 dark:text-amber-400">{t("tempCar", "vehicles")}</AlertTitle>
+              <AlertDescription className="text-amber-600/80 dark:text-amber-400/80">{t("tempCarDesc", "vehicles")}</AlertDescription>
+            </Alert>
+          )}
+
+          <div className="grid gap-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-brand">{t("brand", "vehicles")} *</Label>
+                <Input id="edit-brand" value={editForm.brand} onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })} placeholder="Volkswagen" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-model">{t("model", "vehicles")} *</Label>
+                <Input id="edit-model" value={editForm.model} onChange={(e) => setEditForm({ ...editForm, model: e.target.value })} placeholder="Passat" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-year">{t("year", "vehicles")}</Label>
+                <Input id="edit-year" type="number" value={editForm.year} onChange={(e) => setEditForm({ ...editForm, year: e.target.value })} placeholder="2020" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-color">{t("color", "vehicles")}</Label>
+                <Input id="edit-color" value={editForm.color} onChange={(e) => setEditForm({ ...editForm, color: e.target.value })} placeholder={t("color", "vehicles")} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-vin" className="flex items-center justify-between">
+                  <span>{t("vin", "vehicles")} *</span>
+                  {editVinDecodeStatus === "loading" && <Loader2 className="size-3 animate-spin text-muted-foreground mr-1" />}
+                  {editVinDecodeStatus === "success" && <Check className="size-3 text-emerald-500 mr-1" />}
+                  {editVinDecodeStatus === "not_found" && <SearchX className="size-3 text-amber-500 mr-1" />}
+                  {editVinDecodeStatus === "error" && <AlertTriangle className="size-3 text-destructive mr-1" />}
+                </Label>
+                <VinInput id="edit-vin" value={editForm.vin} onValueChange={(val) => setEditForm({ ...editForm, vin: val })} />
+                {editVinDecodeMessage && (
+                  <p className={cn("text-xs", 
+                    editVinDecodeStatus === "success" ? "text-emerald-600 dark:text-emerald-400" :
+                    editVinDecodeStatus === "error" ? "text-destructive" :
+                    editVinDecodeStatus === "not_found" ? "text-amber-600 dark:text-amber-400" :
+                    "text-muted-foreground"
+                  )}>
+                    {editVinDecodeMessage}
+                  </p>
+                )}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-plate">{t("plate", "vehicles")} *</Label>
+                <LicensePlateInput id="edit-plate" value={editForm.plate} onValueChange={(val) => setEditForm({ ...editForm, plate: val })} />
+              </div>
+            </div>
+            {(role === "admin" || role === "manager") && (
+              <div className="grid gap-2">
+                <Label htmlFor="edit-mileage">{t("mileage", "vehicles")}</Label>
+                <Input id="edit-mileage" type="number" value={editForm.mileage} onChange={(e) => setEditForm({ ...editForm, mileage: e.target.value })} placeholder="0" />
+              </div>
+            )}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-engine">Двигун</Label>
+                <Input id="edit-engine" value={editForm.engine} onChange={(e) => setEditForm({ ...editForm, engine: e.target.value })} placeholder="2.0" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-fuel">Паливо</Label>
+                <Input id="edit-fuel" value={editForm.fuelType} onChange={(e) => setEditForm({ ...editForm, fuelType: e.target.value })} placeholder="Бензин" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-body">Кузов</Label>
+                <Input id="edit-body" value={editForm.bodyClass} onChange={(e) => setEditForm({ ...editForm, bodyClass: e.target.value })} placeholder="Седан" />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={isEditSubmitting}>
+              {t("cancel")}
+            </Button>
+            <Button onClick={handleEditSubmit} disabled={isEditSubmitting}>
+              {isEditSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
+              {isEditSubmitting ? t("saving", "vehicles") : t("save")}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

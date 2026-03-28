@@ -42,6 +42,7 @@ type OrdersContextType = {
   orders: Order[]
   isLoading: boolean
   createOrder: (data: any) => Promise<{ success: boolean; error?: string }>
+  quickCreateOrder: (data: any) => Promise<{ success: boolean; error?: string }>
   updateStatus: (id: number, status: string) => Promise<void>
   refreshOrders: () => void
   fetchOrders: (force?: boolean) => Promise<void>
@@ -103,6 +104,20 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const quickCreateOrder = async (orderData: any) => {
+    try {
+      await api.post("/orders/quick", orderData)
+      queryClient.invalidateQueries({ queryKey: ["orders"] })
+      queryClient.invalidateQueries({ queryKey: ["appointments"] })
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] })
+      queryClient.invalidateQueries({ queryKey: ["customers"] })
+      return { success: true }
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Failed to create quick order"
+      return { success: false, error: Array.isArray(msg) ? msg[0] : msg }
+    }
+  }
+
   const updateStatus = async (id: number, status: string) => {
     try {
       // 1. Оновлюємо статус самого замовлення
@@ -141,10 +156,11 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
     orders,
     isLoading,
     createOrder,
+    quickCreateOrder,
     updateStatus,
     refreshOrders: () => fetchOrders(true),
     fetchOrders
-  }), [orders, isLoading, createOrder, updateStatus, fetchOrders])
+  }), [orders, isLoading, createOrder, quickCreateOrder, updateStatus, fetchOrders])
 
   return (
     <OrdersContext.Provider value={value}>
