@@ -219,7 +219,9 @@ export default function OrderDetailsPage() {
   const isOrderClosed = order?.status === "COMPLETED" || order?.status === "PAID" || order?.status === "CANCELLED"
   const canManageItems = (role === "ADMIN" || role === "MANAGER" || role === "MECHANIC") && !isOrderClosed
   const canAssign = role === "ADMIN" || role === "MANAGER"
-  const canEditStatus = (role === "ADMIN" || role === "MANAGER" || role === "MECHANIC") && order?.status !== "PAID" && order?.status !== "CANCELLED"
+  const canEditStatus = (role === "ADMIN" || role === "MANAGER") 
+    ? order?.status !== "PAID" 
+    : (role === "MECHANIC" && order?.status !== "PAID" && order?.status !== "CANCELLED")
   const canReviewMechanic = role === "CLIENT" && !!order?.mechanic && (order?.status === "COMPLETED" || order?.status === "PAID")
   const hasReview = !!review
 

@@ -123,6 +123,8 @@ export default function VehiclesPage() {
   const uniqueBrands = Object.keys(carBrandsAndModels).sort()
   const matchedBrandKey = Object.keys(carBrandsAndModels).find((item) => item.toLowerCase() === form.brand.trim().toLowerCase())
   const uniqueModels = matchedBrandKey ? carBrandsAndModels[matchedBrandKey].sort() : []
+  const matchedEditBrandKey = Object.keys(carBrandsAndModels).find((item) => item.toLowerCase() === editForm.brand.trim().toLowerCase())
+  const uniqueEditModels = matchedEditBrandKey ? carBrandsAndModels[matchedEditBrandKey].sort() : []
   const isKnownBrand = Boolean(matchedBrandKey)
   const isKnownModel = Boolean(matchedBrandKey && carBrandsAndModels[matchedBrandKey]?.some((item) => item.toLowerCase() === form.model.trim().toLowerCase()))
 
@@ -443,10 +445,21 @@ export default function VehiclesPage() {
       toast({ title: t("fillRequired", "vehicles"), description: t("fillRequiredDesc", "vehicles"), variant: "destructive" })
       return
     }
+    
+    // Normalize names from the list if possible
+    let brandToSave = editForm.brand.trim()
+    let modelToSave = editForm.model.trim()
+    
+    const validBrand = Object.keys(carBrandsAndModels).find((item) => item.toLowerCase() === editForm.brand.toLowerCase())
+    const validModel = validBrand ? carBrandsAndModels[validBrand].find((item) => item.toLowerCase() === editForm.model.toLowerCase()) : null
+    
+    if (validBrand) brandToSave = validBrand
+    if (validModel) modelToSave = validModel
+
     setIsEditSubmitting(true)
     const payload: any = {
-      brand: editForm.brand.trim(),
-      model: editForm.model.trim(),
+      brand: brandToSave,
+      model: modelToSave,
       year: parseInt(editForm.year) || new Date().getFullYear(),
       vin: editForm.vin.trim().toUpperCase(),
       plate: editForm.plate.trim().toUpperCase(),
@@ -902,26 +915,10 @@ export default function VehiclesPage() {
                     <p><span className="text-foreground">VIN:</span> {normalizedVin || "—"}</p>
                     <p><span className="text-foreground">Авто:</span> {[form.brand, form.model].filter(Boolean).join(" ") || "—"}</p>
                     <p><span className="text-foreground">Номер:</span> {form.plate || "—"}</p>
-                  </div>
                 </div>
               </div>
-            )}
-
-            <datalist id="brands-list">
-              {uniqueBrands.map((brand) => (
-                <option key={brand} value={brand} />
-              ))}
-            </datalist>
-            <datalist id="models-list">
-              {uniqueModels.map((model) => (
-                <option key={model} value={model} />
-              ))}
-            </datalist>
-            <datalist id="years-list">
-              {carYears.map((year) => (
-                <option key={year} value={year} />
-              ))}
-            </datalist>
+            </div>
+          )}
           </div>
 
           <DialogFooter>
@@ -974,17 +971,39 @@ export default function VehiclesPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="edit-brand">{t("brand", "vehicles")} *</Label>
-                <Input id="edit-brand" value={editForm.brand} onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })} placeholder="Volkswagen" />
+                <Input 
+                  id="edit-brand" 
+                  list="brands-list" 
+                  autoComplete="off"
+                  value={editForm.brand} 
+                  onChange={(e) => setEditForm({ ...editForm, brand: e.target.value, model: "" })} 
+                  placeholder="Volkswagen" 
+                />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="edit-model">{t("model", "vehicles")} *</Label>
-                <Input id="edit-model" value={editForm.model} onChange={(e) => setEditForm({ ...editForm, model: e.target.value })} placeholder="Passat" />
+                <Input 
+                  id="edit-model" 
+                  list="edit-models-list" 
+                  autoComplete="off"
+                  value={editForm.model} 
+                  onChange={(e) => setEditForm({ ...editForm, model: e.target.value })} 
+                  placeholder="Passat" 
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="edit-year">{t("year", "vehicles")}</Label>
-                <Input id="edit-year" type="number" value={editForm.year} onChange={(e) => setEditForm({ ...editForm, year: e.target.value })} placeholder="2020" />
+                <Input 
+                  id="edit-year" 
+                  type="number" 
+                  list="years-list"
+                  autoComplete="off"
+                  value={editForm.year} 
+                  onChange={(e) => setEditForm({ ...editForm, year: e.target.value })} 
+                  placeholder="2020" 
+                />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="edit-color">{t("color", "vehicles")}</Label>
@@ -1050,6 +1069,27 @@ export default function VehiclesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <datalist id="brands-list">
+        {uniqueBrands.map((brand) => (
+          <option key={brand} value={brand} />
+        ))}
+      </datalist>
+      <datalist id="models-list">
+        {uniqueModels.map((model) => (
+          <option key={model} value={model} />
+        ))}
+      </datalist>
+      <datalist id="edit-models-list">
+        {uniqueEditModels.map((model) => (
+          <option key={model} value={model} />
+        ))}
+      </datalist>
+      <datalist id="years-list">
+        {carYears.map((year) => (
+          <option key={year} value={year} />
+        ))}
+      </datalist>
     </div>
   )
 }

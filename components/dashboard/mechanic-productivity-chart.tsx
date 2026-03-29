@@ -3,14 +3,14 @@
 import { useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts"
-import { useAppointments } from "@/lib/appointments-context"
+import { useOrders } from "@/lib/orders-context"
 import { useEmployees } from "@/lib/employees-context"
 import { Loader2 } from "lucide-react"
 import { useSettings } from "@/lib/settings-context"
 import { translations } from "@/lib/translations"
 
 export function MechanicProductivityChart() {
-  const { appointments, isLoading: isAppointmentsLoading } = useAppointments()
+  const { orders, isLoading: isOrdersLoading } = useOrders()
   const { employees, isLoading: isEmployeesLoading } = useEmployees()
   const { settings } = useSettings()
 
@@ -29,24 +29,26 @@ export function MechanicProductivityChart() {
       })
     })
 
-    appointments.forEach((appt) => {
-      const mechanicId = appt.order?.mechanic?.id
+    orders.forEach((order) => {
+      const mechanicId = order.mechanic?.id
       if (mechanicId && dataMap.has(mechanicId)) {
         const currentData = dataMap.get(mechanicId)!
-        if (appt.status === "COMPLETED") {
+        
+        // Мапінг статусів замовлення на категорії графіка
+        if (order.status === "COMPLETED" || order.status === "PAID") {
           currentData.completed += 1
-        } else if (appt.status === "ARRIVED") {
+        } else if (order.status === "IN_PROGRESS" || order.status === "WAITING_PARTS") {
           currentData.arrived += 1
-        } else if (appt.status === "SCHEDULED" || appt.status === "CONFIRMED") {
+        } else if (order.status === "PENDING" || order.status === "CONFIRMED") {
           currentData.scheduled += 1
         }
       }
     })
 
     return Array.from(dataMap.values())
-  }, [appointments, employees])
+  }, [orders, employees])
 
-  if (isAppointmentsLoading || isEmployeesLoading) {
+  if (isOrdersLoading || isEmployeesLoading) {
     return (
       <Card className="border-border bg-card">
         <CardHeader className="pb-2">

@@ -93,6 +93,14 @@ const columns: KanbanColumn[] = [
         bgColor: "bg-emerald-500/5 border-emerald-500/20",
         dropStatus: "COMPLETED",
     },
+    {
+        id: "cancelled",
+        title: "Скасовано",
+        statuses: ["CANCELLED"],
+        color: "bg-destructive",
+        bgColor: "bg-destructive/5 border-destructive/20",
+        dropStatus: "CANCELLED",
+    },
 ]
 
 interface KanbanBoardProps {
@@ -111,8 +119,8 @@ export function KanbanBoard({ orders, vehicles, customers, updateStatus, canDrag
     const { refreshData } = useCrm()
     const { fetchNotifications } = useNotifications()
 
-    // Filter out cancelled orders for kanban view
-    const activeOrders = orders.filter(o => o.status !== "CANCELLED")
+    // Filter out very old cancelled/completed orders if needed, but for now show all
+    const activeOrders = orders
 
     const getColumnOrders = useCallback((col: KanbanColumn) => {
         return activeOrders

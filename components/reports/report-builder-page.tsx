@@ -1159,8 +1159,8 @@ export function ReportBuilderPage() {
                       1
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">{t("entities.orders", "reports")}?</p>
-                      <p className="text-xs text-muted-foreground">{t("entities.ordersDesc", "reports")}</p>
+                      <p className="font-semibold text-foreground">{t("entities." + entity, "reports")}</p>
+                      <p className="text-xs text-muted-foreground">{t("entities." + entity + "Desc", "reports")}</p>
                     </div>
                   </div>
 
@@ -1204,179 +1204,179 @@ export function ReportBuilderPage() {
                     </div>
                     <div>
                       <p className="font-semibold text-foreground">{t("filters.dateRange", "reports")}</p>
-                      <p className="text-xs text-muted-foreground">{t("filters.dateRange", "reports")}</p>
+                      <p className="text-xs text-muted-foreground">{t("periods." + periodPreset, "reports")}</p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    {PERIOD_OPTIONS.map((option) => (
-                      <Button
-                        key={option.id}
-                        type="button"
-                        variant={periodPreset === option.id ? "default" : "outline"}
-                        className="justify-start"
-                        onClick={() => handlePeriodChange(option.id)}
-                      >
-                        {option.label}
-                      </Button>
-                    ))}
-                  </div>
-
-                  {periodPreset === "custom" && (
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button type="button" variant="outline" className="w-full justify-start gap-2">
-                          <CalendarRange className="size-4" />
-                          {periodRange.label}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="range"
-                          numberOfMonths={2}
-                          selected={customRange}
-                          onSelect={(range) => {
-                            setSelectedPreset(null)
-                            setCustomRange(range || { from: undefined, to: undefined })
-                          }}
-                          initialFocus
-                          locale={currentLocale}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  )}
+                <div className="grid grid-cols-2 gap-2">
+                  {PERIOD_OPTIONS.map((option) => (
+                    <Button
+                      key={option.id}
+                      type="button"
+                      variant={periodPreset === option.id ? "default" : "outline"}
+                      className="justify-start"
+                      onClick={() => handlePeriodChange(option.id)}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
                 </div>
 
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-7 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-                      3
+                {periodPreset === "custom" && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button type="button" variant="outline" className="w-full justify-start gap-2">
+                        <CalendarRange className="size-4" />
+                        {periodRange.label}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="range"
+                        numberOfMonths={2}
+                        selected={customRange}
+                        onSelect={(range) => {
+                          setSelectedPreset(null)
+                          setCustomRange(range || { from: undefined, to: undefined })
+                        }}
+                        initialFocus
+                        locale={currentLocale}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-7 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                    3
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground">{t("filters.title", "reports")}</p>
+                    <p className="text-xs text-muted-foreground">{t("entities." + entity, "reports")}</p>
+                  </div>
+                </div>
+
+                {entity === "orders" && (
+                  <div className="grid gap-3">
+                    <div className="grid gap-2">
+                      <Label>{t("filters.status", "reports")}</Label>
+                      <Select value={filters.orderStatus} onValueChange={(value) => updateFilters({ orderStatus: value })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ORDER_STATUS_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <div>
-                      <p className="font-semibold text-foreground">{t("filters.title", "reports")}</p>
-                      <p className="text-xs text-muted-foreground">{t("filters.title", "reports")}</p>
+
+                    <div className="grid gap-2">
+                      <Label>{t("filters.brand", "reports")}</Label>
+                      <Select value={filters.orderBrand} onValueChange={(value) => updateFilters({ orderBrand: value })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ALL">{t("filters.allBrands", "reports")}</SelectItem>
+                          {availableBrands.map((brand) => (
+                            <SelectItem key={brand} value={brand}>
+                              {brand}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
+                )}
 
-                  {entity === "orders" && (
-                    <div className="grid gap-3">
-                      <div className="grid gap-2">
-                        <Label>{t("filters.status", "reports")}</Label>
-                        <Select value={filters.orderStatus} onValueChange={(value) => updateFilters({ orderStatus: value })}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ORDER_STATUS_OPTIONS.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                {entity === "finance" && (
+                  <div className="grid gap-2">
+                    <Label>{t("filters.financeMode", "reports")}</Label>
+                    <Select value={filters.financeMode} onValueChange={(value) => updateFilters({ financeMode: value })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FINANCE_MODE_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
-                      <div className="grid gap-2">
-                        <Label>{t("filters.brand", "reports")}</Label>
-                        <Select value={filters.orderBrand} onValueChange={(value) => updateFilters({ orderBrand: value })}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="ALL">{t("filters.allBrands", "reports")}</SelectItem>
-                            {availableBrands.map((brand) => (
-                              <SelectItem key={brand} value={brand}>
-                                {brand}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  )}
-
-                  {entity === "finance" && (
+                {entity === "inventory" && (
+                  <div className="grid gap-3">
                     <div className="grid gap-2">
-                      <Label>{t("filters.financeMode", "reports")}</Label>
-                      <Select value={filters.financeMode} onValueChange={(value) => updateFilters({ financeMode: value })}>
+                      <Label>{t("filters.category", "reports")}</Label>
+                      <Select
+                        value={filters.inventoryCategory}
+                        onValueChange={(value) => updateFilters({ inventoryCategory: value })}
+                      >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {FINANCE_MODE_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
+                          <SelectItem value="ALL">{t("filters.allCategories", "reports")}</SelectItem>
+                          {inventoryCategories.map((category) => (
+                            <SelectItem key={category} value={category}>
+                              {category}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                  )}
 
-                  {entity === "inventory" && (
-                    <div className="grid gap-3">
-                      <div className="grid gap-2">
-                        <Label>{t("filters.category", "reports")}</Label>
-                        <Select
-                          value={filters.inventoryCategory}
-                          onValueChange={(value) => updateFilters({ inventoryCategory: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="ALL">{t("filters.allCategories", "reports")}</SelectItem>
-                            {inventoryCategories.map((category) => (
-                              <SelectItem key={category} value={category}>
-                                {category}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="grid gap-2">
-                        <Label>{t("filters.maxStock", "reports")}</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          value={filters.inventoryMaxStock}
-                          onChange={(event) => updateFilters({ inventoryMaxStock: event.target.value || "0" })}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {entity === "employees" && (
                     <div className="grid gap-2">
-                      <Label>{t("filters.role", "reports")}</Label>
-                      <Select value={filters.employeeRole} onValueChange={(value) => updateFilters({ employeeRole: value })}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {EMPLOYEE_ROLE_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  {entity === "customers" && (
-                    <div className="grid gap-2">
-                      <Label>{t("filters.minVisits", "reports")}</Label>
+                      <Label>{t("filters.maxStock", "reports")}</Label>
                       <Input
                         type="number"
-                        min="1"
-                        value={filters.customerMinVisits}
-                        onChange={(event) => updateFilters({ customerMinVisits: event.target.value || "1" })}
+                        min="0"
+                        value={filters.inventoryMaxStock}
+                        onChange={(event) => updateFilters({ inventoryMaxStock: event.target.value || "0" })}
                       />
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
+
+                {entity === "employees" && (
+                  <div className="grid gap-2">
+                    <Label>{t("filters.role", "reports")}</Label>
+                    <Select value={filters.employeeRole} onValueChange={(value) => updateFilters({ employeeRole: value })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {EMPLOYEE_ROLE_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {entity === "customers" && (
+                  <div className="grid gap-2">
+                    <Label>{t("filters.minVisits", "reports")}</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={filters.customerMinVisits}
+                      onChange={(event) => updateFilters({ customerMinVisits: event.target.value || "1" })}
+                    />
+                  </div>
+                )}
+              </div>
 
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
@@ -1385,7 +1385,7 @@ export function ReportBuilderPage() {
                     </div>
                     <div>
                       <p className="font-semibold text-foreground">{t("filters.columns", "reports")}</p>
-                      <p className="text-xs text-muted-foreground">{t("filters.columns", "reports")}</p>
+                      <p className="text-xs text-muted-foreground">{t("common.settings", "common")}</p>
                     </div>
                   </div>
 
@@ -1467,8 +1467,8 @@ export function ReportBuilderPage() {
 
                 <CardContent className="space-y-4">
                   <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <span className="rounded-full bg-secondary px-2.5 py-1">{t("inventory.stockQty", "inventory")}: {formatNumber(activeRows.length)}</span>
-                    <span className="rounded-full bg-secondary px-2.5 py-1">{t("entities.orders", "reports")}: {ENTITY_OPTIONS.find((item) => item.id === entity)?.label}</span>
+                    <span className="rounded-full bg-secondary px-2.5 py-1">{t("summary.records", "reports")}: {formatNumber(activeRows.length)}</span>
+                    <span className="rounded-full bg-secondary px-2.5 py-1">{ENTITY_OPTIONS.find((item) => item.id === entity)?.label}</span>
                     <span className="rounded-full bg-secondary px-2.5 py-1">{t("filters.columns", "reports")}: {activeColumns.length}</span>
                   </div>
 

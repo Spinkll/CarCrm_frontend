@@ -51,8 +51,8 @@ export function QuickEntryDialog({ open, onOpenChange }: QuickEntryDialogProps) 
 
   // Пошук клієнта за телефоном при втраті фокусу
   const handlePhoneBlur = useCallback(async () => {
-    // Очищаємо номер від зайвих символів для пошуку
-    const phone = form.clientPhone.replace(/[\s\-\(\)\+]/g, "")
+    // Очищаємо номер від зайвих символів для пошуку, але залишаємо +
+    const phone = form.clientPhone.replace(/[^\d\+]/g, "")
     
     if (phone.length < 10) {
       setClientFound(false)
@@ -63,7 +63,7 @@ export function QuickEntryDialog({ open, onOpenChange }: QuickEntryDialogProps) 
       const { data: customers } = await api.get("/users/customers")
       // Шукаємо або повний збіг, або закінчення номера (останні 10 цифр)
       const found = customers.find((c: any) => {
-        const dbPhone = (c.phone || "").replace(/[\s\-\(\)\+]/g, "")
+        const dbPhone = (c.phone || "").replace(/[^\d\+]/g, "")
         return dbPhone === phone || (phone.length >= 10 && dbPhone.endsWith(phone.slice(-10)))
       })
 
@@ -87,9 +87,18 @@ export function QuickEntryDialog({ open, onOpenChange }: QuickEntryDialogProps) 
       return
     }
 
+    if (!form.clientPhone.startsWith('+')) {
+      toast({ 
+        title: "Некоректний номер", 
+        description: "Номер телефону повинен починатися з +", 
+        variant: "destructive" 
+      })
+      return
+    }
+
     setIsSubmitting(true)
 
-    const cleanPhone = form.clientPhone.replace(/[\s\-\(\)\+]/g, "")
+    const cleanPhone = form.clientPhone.replace(/[^\d\+]/g, "")
 
     const result = await quickCreateOrder({
       clientName: form.clientName.trim(),

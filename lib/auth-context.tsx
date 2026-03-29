@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react"
 import api from "./api"
 import { useRouter } from "next/navigation"
+import { useQueryClient } from "@tanstack/react-query"
 
 export type UserRole = "CLIENT" | "ADMIN" | "MECHANIC" | "MANAGER"
 
@@ -36,6 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
+  const queryClient = useQueryClient()
 
   useEffect(() => {
     const initAuth = async () => {
@@ -160,8 +162,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("refresh_token")
     localStorage.removeItem("user_data")
     setUser(null)
+    queryClient.clear()
     router.push("/login")
-  }, [router])
+  }, [router, queryClient])
 
   const markEmailAsVerified = useCallback(() => {
     if (user) {

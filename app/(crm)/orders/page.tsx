@@ -260,7 +260,7 @@ export default function OrdersPage() {
             <AlertTriangle className="size-4 !text-amber-600 dark:!text-amber-400" />
             <AlertTitle>Блокування створення замовлень</AlertTitle>
             <AlertDescription>
-              У вас є транспортні засоби з незаповненими даними (наприклад, після швидкого запису). 
+              У вас є транспортні засоби з незаповненими даними (наприклад, після швидкого запису).
               Будь ласка, перейдіть до розділу "Мій гараж" та заповніть інформацію (VIN, номерний знак, рік випуску), щоб розблокувати створення нових замовлень.
             </AlertDescription>
           </Alert>
@@ -373,7 +373,6 @@ export default function OrdersPage() {
                           <TableHead className="text-muted-foreground">{t("vehicle", "orders")}</TableHead>
                           {role !== "CLIENT" && <TableHead className="text-muted-foreground">{t("customer", "orders")}</TableHead>}
                           {role !== "CLIENT" && <TableHead className="text-muted-foreground">{t("manager", "orders")}</TableHead>}
-                          {role !== "CLIENT" && <TableHead className="text-muted-foreground">{t("mechanic", "orders")}</TableHead>}
                           <TableHead className="text-muted-foreground">{t("description", "orders")}</TableHead>
                           <TableHead className="text-muted-foreground">{t("status", "orders")}</TableHead>
                           <TableHead className="text-muted-foreground">{t("amount", "orders")}</TableHead>
@@ -386,14 +385,27 @@ export default function OrdersPage() {
                           const customer = customers.find(c => c.id === vehicleData?.userId)
 
                           return (
-                            <TableRow key={order.id} className="border-border group">
-                              <TableCell className="font-medium font-mono text-foreground">
+                            <TableRow
+                              key={order.id}
+                              className="border-border group cursor-pointer hover:bg-muted/50 transition-colors"
+                              onClick={() => router.push(`/orders-detail/${order.id}`)}
+                            >
+                              <TableCell className="font-medium font-mono text-foreground font-mono">
                                 #{order.id}
                               </TableCell>
-                              <TableCell className="text-muted-foreground">
-                                {vehicleData
-                                  ? `${vehicleData.brand} ${vehicleData.model} (${vehicleData.plate || t("noNumbers", "orders")})`
-                                  : `${t("car", "requests")} #${order.carId || order.vehicleId}`}
+                              <TableCell className="align-middle">
+                                <div className="flex flex-col">
+                                  <span className="text-foreground font-medium">
+                                    {vehicleData
+                                      ? `${vehicleData.brand} ${vehicleData.model}`
+                                      : `${t("car", "requests")} #${order.carId || order.vehicleId}`}
+                                  </span>
+                                  {vehicleData && (
+                                    <span className="text-foreground text-[14px] font-mono uppercase leading-tight">
+                                      {vehicleData.plate || t("noNumbers", "orders")}
+                                    </span>
+                                  )}
+                                </div>
                               </TableCell>
 
                               {role !== "CLIENT" && (
@@ -408,21 +420,15 @@ export default function OrdersPage() {
                                 </TableCell>
                               )}
 
-                              {role !== "CLIENT" && (
-                                <TableCell className="text-muted-foreground text-xs">
-                                  {order.mechanic ? `${order.mechanic.firstName} ${order.mechanic.lastName}` : "—"}
-                                </TableCell>
-                              )}
-
                               <TableCell className="max-w-48 truncate text-foreground" title={order.description}>
                                 {order.description}
                               </TableCell>
-                              <TableCell>
+                              <TableCell onClick={(e) => e.stopPropagation()}>
                                 <div className="flex flex-wrap items-center gap-2">
-                                  {canEditOrderStatus && order.status !== "PAID" && order.status !== "CANCELLED" ? (
+                                  {(role === "ADMIN" || role === "MANAGER" || (role === "MECHANIC" && order.status !== "CANCELLED")) && order.status !== "PAID" ? (
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
-                                        <button className="inline-flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity">
+                                        <button className="inline-flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity outline-none">
                                           <StatusBadge status={order.status.toLowerCase()} />
                                           <ChevronDown className="size-3 text-muted-foreground" />
                                         </button>
@@ -436,9 +442,9 @@ export default function OrdersPage() {
                                           .map((status) => (
                                             <DropdownMenuItem
                                               key={status}
-                                              onClick={async () => {
+                                              onClick={async (e) => {
+                                                e.stopPropagation();
                                                 await updateStatus(order.id, status)
-
                                                 fetchOrders(true)
                                                 refreshCrm()
                                                 fetchNotifications()
@@ -465,7 +471,10 @@ export default function OrdersPage() {
                                   variant="ghost"
                                   size="sm"
                                   className="gap-1.5 text-xs"
-                                  onClick={() => router.push(`/orders-detail/${order.id}`)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    router.push(`/orders-detail/${order.id}`);
+                                  }}
                                 >
                                   <Eye className="size-4" />
                                   {t("details", "orders")}
@@ -476,7 +485,7 @@ export default function OrdersPage() {
                         })}
                         {paginatedOrders.length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={role !== "CLIENT" ? 9 : 6} className="py-12 text-center text-muted-foreground">
+                            <TableCell colSpan={role !== "CLIENT" ? 8 : 6} className="py-12 text-center text-muted-foreground">
                               {t("notFound", "orders")}
                             </TableCell>
                           </TableRow>
